@@ -24,6 +24,7 @@ interface Workspace {
   session: Session | null;
   role: Role;
   me: string;
+  setDemoRole: (role: Role) => void;
   signIn: (email: string, password: string) => string | null;
   signOut: () => void;
   questions: Question[];
@@ -59,13 +60,46 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [local, setLocal] = useState<LocalQuestions>(EMPTY);
 
   useEffect(() => {
-    // Load this browser's choices once, after the first render.
+    // Load this browser's choices once, after the first render, then check if a server OAuth session is active.
     const saved = read<Session | null>(KEYS.session, null);
+    const localSession = saved && saved.name && saved.role ? saved : null;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSession(saved && saved.name && saved.role ? saved : null);
+    setSession(localSession);
     setLocal(read(KEYS.questions, EMPTY));
-    setReady(true);
     hydrate<Partial<LocalQuestions>>(KEYS.questions, (v) => setLocal({ ...EMPTY, ...v }), window.localStorage.getItem(KEYS.questions) ? read(KEYS.questions, EMPTY) : null);
+
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null } | null; role?: "partner" | "analyst" | null } | null) => {
+        if (data?.enabled && data.user?.email && data.role) {
+          const serverRole: Role = data.role === "partner" ? "Partner" : "Analyst";
+          const role: Role = localSession && localSession.email === data.user.email ? localSession.role : serverRole;
+          const defaultName = role === "Partner" ? "Kabir Shah" : "Riya Menon";
+          const name = localSession && localSession.email === data.user.email && localSession.role === role ? localSession.name : defaultName;
+          const next: Session = {
+            name,
+            role,
+            email: data.user.email,
+          };
+          setSession(next);
+          write(KEYS.session, next);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => setReady(true));
+  }, []);
+
+  const setDemoRole = useCallback((role: Role) => {
+    setSession((prev) => {
+      const name = role === "Partner" ? "Kabir Shah" : "Riya Menon";
+      const next: Session = {
+        name,
+        role,
+        email: prev?.email ?? (role === "Partner" ? "kabir@fundhub.demo" : "riya@fundhub.demo"),
+      };
+      write(KEYS.session, next);
+      return next;
+    });
   }, []);
 
   const signIn = useCallback((email: string, password: string) => {
@@ -83,6 +117,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Nothing saved to remove.
     }
+    fetch("/api/auth/csrf", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { csrfToken?: string } | null) => {
+        if (d?.csrfToken) {
+          return fetch("/api/auth/signout", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ csrfToken: d.csrfToken, json: "true" }),
+          });
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   const update = useCallback((fn: (l: LocalQuestions) => LocalQuestions) => {
@@ -107,6 +153,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       session,
       role: session?.role ?? "Analyst",
       me: session?.name ?? "",
+      setDemoRole,
       signIn,
       signOut,
       questions,
@@ -120,7 +167,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       questionsChanged: local.added.length > 0 || Object.keys(local.answers).length > 0,
       resetQuestions: () => update(() => EMPTY),
     }),
-    [ready, session, signIn, signOut, questions, update, local],
+    [ready, session, setDemoRole, signIn, signOut, questions, update, local],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

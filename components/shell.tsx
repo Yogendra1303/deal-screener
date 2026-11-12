@@ -115,7 +115,7 @@ function UserCard() {
       <button
         onClick={() => {
           w.signOut();
-          router.replace("/login");
+          router.replace("/");
         }}
         className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white hover:text-slate-900"
       >
@@ -304,10 +304,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const isPublic = path.startsWith("/founder") || path.startsWith("/login");
 
-  // Everything except the login and founder pages needs a signed-in person.
+  // Everything except the home landing, login and founder pages needs a signed-in person.
   useEffect(() => {
-    if (w.ready && !w.session && !isPublic) router.replace("/login");
-  }, [w.ready, w.session, isPublic, router]);
+    if (w.ready && !w.session && !isPublic && path !== "/") router.replace("/login");
+  }, [w.ready, w.session, isPublic, path, router]);
 
   useEffect(() => {
     if (!open) return;
@@ -335,7 +335,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
     );
 
-  if (path.startsWith("/login")) return <main className="min-h-full">{children}</main>;
+  if (path.startsWith("/login") || (path === "/" && w.ready && !w.session)) return <main className="min-h-full">{children}</main>;
 
   if (!w.ready || !w.session)
     return (

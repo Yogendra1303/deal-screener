@@ -97,6 +97,26 @@ export default function DealsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-1 rounded-lg bg-white p-1 text-xs ring-1 ring-slate-200" role="group" aria-label="Demo Role">
+            <span className="px-2 font-medium text-slate-500">Demo Role:</span>
+            {(["Partner", "Analyst"] as const).map((r) => {
+              const activeRole = w.role === r;
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => w.setDemoRole(r)}
+                  aria-pressed={activeRole}
+                  className={cx(
+                    "rounded-md px-2.5 py-1 font-semibold transition",
+                    activeRole ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                  )}
+                >
+                  {r}
+                </button>
+              );
+            })}
+          </div>
           <PitchLinkButton refSlug={analyst ? slugOf(w.me) : undefined} />
           {analyst && (
             <Link href="/new" className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:border-slate-400" title="Add a pitch for the AI to read (needs an API key)">

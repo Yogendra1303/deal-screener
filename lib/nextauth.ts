@@ -18,6 +18,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
   session: { strategy: "jwt", maxAge: 60 * 60 * 12 },
   trustHost: true,
+  debug: false,
+  logger: {
+    error(error) {
+      // Auth.js shows every unexpected failure as "Configuration"; this prints the real reason in the server log.
+      const cause = (error as Error & { cause?: unknown }).cause;
+      console.error("[auth][error]", error.name, "-", error.message, cause instanceof Error ? `| cause: ${cause.name}: ${cause.message}` : cause ? `| cause: ${JSON.stringify(cause)}` : "");
+    },
+  },
   callbacks: {
     // Only Google emails that are verified and on the permitted list get in.
     async signIn({ profile }) {

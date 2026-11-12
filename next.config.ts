@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "/api/**": ["./public/**", "./data/runtime-*", "./.next/cache/**", "./node_modules/.cache/**"],
   },
+  webpack: (config) => {
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ["**/data/runtime-db.json", "**/data/runtime-files/**", "**/dev.log"],
+    };
+    return config;
+  },
   turbopack: {
     rules: {
       "*.css": {

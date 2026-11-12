@@ -39,6 +39,7 @@ import { stateOf, type Question } from "@/lib/questions";
 import { usd } from "@/lib/rules";
 import { ANALYSTS, DEAL_OWNERS, PARTNER } from "@/lib/team";
 import type { DealResult } from "@/lib/types";
+import { LoginScreen } from "./login/page";
 
 export default function HomePage() {
   const w = useWorkspace();
@@ -46,6 +47,7 @@ export default function HomePage() {
   const p = usePortfolio();
   const ready = w.ready && store.ready && p.ready;
   if (!ready) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (!w.session) return <LoginScreen callbackUrl="/deals" />;
   return w.role === "Partner" ? <PartnerHome /> : <AnalystHome />;
 }
 

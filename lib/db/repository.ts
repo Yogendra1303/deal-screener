@@ -66,8 +66,16 @@ export interface Settings {
 const SB_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, "");
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const BUCKET = process.env.SUPABASE_BUCKET ?? "deal-files";
-const DB_FILE = process.env.FUNDHUB_DB_FILE ?? path.join(process.cwd(), "data", "runtime-db.json");
-const FILES_DIR = process.env.FUNDHUB_FILES_DIR ?? path.join(process.cwd(), "data", "runtime-files");
+const DB_FILE =
+  process.env.FUNDHUB_DB_FILE ??
+  (process.env.NODE_ENV === "development"
+    ? path.join("/tmp", "deal-screener-runtime-db.json")
+    : path.join(process.cwd(), "data", "runtime-db.json"));
+const FILES_DIR =
+  process.env.FUNDHUB_FILES_DIR ??
+  (process.env.NODE_ENV === "development"
+    ? path.join("/tmp", "deal-screener-runtime-files")
+    : path.join(process.cwd(), "data", "runtime-files"));
 
 let fileOk: boolean | null = null;
 function diskWritable(): boolean {
