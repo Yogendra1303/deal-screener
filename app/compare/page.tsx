@@ -117,7 +117,7 @@ export default function ComparePage() {
       <Ranked rows={rows.filter((r) => show === "all" || r.kind === show)} metric={metric} onOpen={(r) => openCell(r, metric, r.cells[metric])} />
 
       <Disclosure
-        className="rounded-2xl bg-white ring-1 ring-slate-200"
+        className="overflow-hidden rounded-lg border border-slate-200 bg-white"
         buttonClassName="px-5 py-4"
         summary={
           <>
@@ -129,10 +129,10 @@ export default function ComparePage() {
         <div className="border-t border-slate-200">
       <div className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] border-separate border-spacing-0 text-sm">
+          <table className="w-full min-w-[980px] text-sm">
             <thead>
-              <tr className="bg-slate-50 text-left text-xs text-slate-500">
-                <th className="sticky left-0 z-10 w-40 border-b border-slate-200 bg-slate-50 px-4 py-2.5 font-medium">Company</th>
+              <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <th className="sticky left-0 z-10 w-40 border-b border-slate-200 bg-slate-50 px-4 py-2.5">Company</th>
                 {COLUMNS.map((c) => {
                   const active = sort.col === c.key;
                   return (
@@ -140,12 +140,12 @@ export default function ComparePage() {
                       key={c.key}
                       scope="col"
                       aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-                      className="border-b border-slate-200 px-3 py-2.5 font-medium"
+                      className="border-b border-slate-200 bg-slate-50 px-4 py-2.5"
                     >
                       <button
                         title={c.hint}
                         onClick={() => setSort({ col: c.key, dir: active && sort.dir === "desc" ? "asc" : "desc" })}
-                        className={cx("inline-flex items-center gap-1 whitespace-nowrap hover:text-slate-900", active && "text-slate-900")}
+                        className={cx("inline-flex items-center gap-1 whitespace-nowrap uppercase tracking-wider hover:text-slate-900", active && "text-slate-900")}
                       >
                         {c.label}
                         <span aria-hidden className={cx("text-[10px]", active ? "" : "text-slate-300")}>
@@ -159,13 +159,13 @@ export default function ComparePage() {
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.id} className="group">
-                  <th scope="row" className="sticky left-0 z-10 border-b border-slate-100 bg-white px-4 py-2.5 text-left font-normal group-hover:bg-slate-50">
-                    <Link href={r.href} className="font-semibold text-slate-900 hover:text-indigo-700">
+                <tr key={r.id} className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/80">
+                  <th scope="row" className="sticky left-0 z-10 bg-white px-4 py-3 text-left align-middle font-normal group-hover:bg-slate-50/80">
+                    <Link href={r.href} className="font-semibold text-slate-900 hover:text-blue-700">
                       {r.name}
                     </Link>
                     <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
-                      <span className={cx("rounded px-1 py-px font-semibold uppercase tracking-wide", r.kind === "Pitch" ? "bg-slate-100 text-slate-700" : "bg-slate-100 text-slate-700")}>
+                      <span className="inline-flex items-center rounded-sm bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">
                         {r.kind}
                       </span>
                       <span className="truncate">{r.sector}</span>
@@ -179,7 +179,7 @@ export default function ComparePage() {
                       <>
                         <span className="flex items-center gap-1.5">
                           {cell.status && <StatusDot status={cell.status} />}
-                          {cell.status === "Conflict" && <span className="text-[11px] font-semibold text-rose-700">Conflict</span>}
+                          {cell.status === "Conflict" && <span className="inline-flex items-center rounded-sm bg-rose-100 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-rose-800">Conflict</span>}
                           <span
                             className={cx(
                               "whitespace-nowrap font-medium tabular-nums",
@@ -194,9 +194,9 @@ export default function ComparePage() {
                       </>
                     );
                     return (
-                      <td key={col.key} className="border-b border-slate-100 px-1.5 py-1.5 align-top group-hover:bg-slate-50">
+                      <td key={col.key} className="px-4 py-3 align-middle group-hover:bg-slate-50/80">
                         {clickable ? (
-                          <button onClick={() => openCell(r, col.key, cell)} className="block w-full rounded-md px-1.5 py-1 text-left hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+                          <button onClick={() => openCell(r, col.key, cell)} className="block w-full rounded-md px-1.5 py-1 text-left hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                             {body}
                           </button>
                         ) : (

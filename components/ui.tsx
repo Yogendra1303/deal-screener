@@ -1,39 +1,49 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { STATUSES, type Band, type DealResult, type DealStatus, type Level, type Score } from "@/lib/types";
 
 export function cx(...parts: (string | false | null | undefined)[]) {
   return parts.filter(Boolean).join(" ");
 }
 
-/** The only colours a tag may use: status or severity. Everything else is slate. */
+/** Atlassian Confluence / Linear lozenge colour tokens. */
 export type ToneKey = "alert" | "review" | "clear" | "neutral";
 export const TONE: Record<ToneKey, string> = {
-  alert: "bg-red-50 text-red-700 border-red-200",
-  review: "bg-amber-50 text-amber-700 border-amber-200",
-  clear: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  neutral: "bg-slate-100 text-slate-700 border-slate-200",
+  alert: "bg-rose-100 text-rose-800 border-rose-200/60",
+  review: "bg-amber-100 text-amber-800 border-amber-200/60",
+  clear: "bg-emerald-100 text-emerald-800 border-emerald-200/60",
+  neutral: "bg-slate-100 text-slate-600 border-slate-200/60",
 };
 
-/** A flat tag with a hairline border, in one of the four tones. */
+/** Atlassian-style status lozenge. */
 export function Tag({ tone = "neutral", children, className, title }: { tone?: ToneKey; children: React.ReactNode; className?: string; title?: string }) {
   return (
-    <span title={title} className={cx("inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-px text-[11px] font-semibold tracking-tight whitespace-nowrap", TONE[tone], className)}>
+    <span
+      title={title}
+      className={cx(
+        "inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight",
+        TONE[tone],
+        className,
+      )}
+    >
       {children}
     </span>
   );
 }
 
-/** Micro-label above or beside a data point. */
-export const LABEL = "text-[11px] font-medium uppercase tracking-wider text-slate-500";
+/** Secondary label above or beside a data point. */
+export const LABEL = "text-xs font-medium uppercase tracking-wider text-slate-600 leading-tight";
 
 /** A row of data points, each anchored by a micro-label. */
 export function KeyStrip({ items, className }: { items: [string, React.ReactNode][]; className?: string }) {
   return (
-    <dl className={cx("grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-slate-200/70 sm:grid-cols-3 lg:grid-cols-6", className)}>
+    <dl className={cx("grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:grid-cols-3 lg:grid-cols-6", className)}>
       {items.map(([k, v]) => (
-        <div key={k} className="bg-slate-50 px-3 py-2">
+        <div key={k} className="bg-white px-4 py-2.5">
           <dt className={LABEL}>{k}</dt>
-          <dd className="mt-0.5 truncate text-sm font-semibold tracking-tight text-slate-900 tabular-nums">{v}</dd>
+          <dd className="mt-1 truncate text-sm font-semibold leading-tight tracking-tight text-slate-900 tabular-nums">{v}</dd>
         </div>
       ))}
     </dl>
@@ -50,14 +60,14 @@ export function BandBadge({ band, overruled, size = "sm" }: { band: Band; overru
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1.5 rounded border font-semibold tracking-tight whitespace-nowrap",
-        size === "lg" ? "px-2.5 py-0.5 text-sm" : "px-1.5 py-px text-[11px]",
+        "inline-flex items-center gap-1.5 rounded-sm font-bold uppercase tracking-wide whitespace-nowrap leading-tight",
+        size === "lg" ? "px-2 py-0.5 text-xs" : "px-1.5 py-0.5 text-[11px]",
         BAND_STYLE[band],
       )}
       title={overruled ? "Set by an analyst" : "Set by the rules"}
     >
       {band}
-      {overruled && <span className="text-[10px] uppercase tracking-wide opacity-70">analyst</span>}
+      {overruled && <span className="text-[10px] uppercase tracking-wide opacity-75">analyst</span>}
     </span>
   );
 }
@@ -77,7 +87,7 @@ export const BAND_ACCENT: Record<Band, string> = {
 
 const STATUS_STYLE: Record<DealStatus, string> = {
   New: TONE.neutral,
-  Reviewing: TONE.neutral,
+  Reviewing: TONE.review,
   "Meeting set": TONE.clear,
   "On hold": TONE.review,
   Passed: TONE.neutral,
@@ -85,27 +95,129 @@ const STATUS_STYLE: Record<DealStatus, string> = {
 
 export function StatusPill({ status }: { status: DealStatus }) {
   return (
-    <span className={cx("inline-flex rounded border px-1.5 py-px text-[11px] font-semibold tracking-tight whitespace-nowrap", STATUS_STYLE[status])}>
+    <span className={cx("inline-flex items-center rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight", STATUS_STYLE[status])}>
       {status}
     </span>
   );
 }
 
-export function StatusSelect({ value, onChange, id }: { value: DealStatus; onChange: (s: DealStatus) => void; id?: string }) {
+export interface DropdownOption<T extends string = string> {
+  value: T;
+  label: string;
+}
+
+/** Floating popover dropdown control used across the app. */
+export function DropdownSelect<T extends string = string>({
+  value,
+  onChange,
+  options,
+  placeholder = "Select…",
+  prefix,
+  id,
+  ariaLabel,
+  className,
+  buttonClassName,
+  align = "left",
+  required,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: (T | DropdownOption<T>)[];
+  placeholder?: string;
+  prefix?: React.ReactNode;
+  id?: string;
+  ariaLabel?: string;
+  className?: string;
+  buttonClassName?: string;
+  align?: "left" | "right";
+  required?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const normalized: DropdownOption<T>[] = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  const selected = normalized.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <select
-      id={id}
-      value={value}
-      onChange={(e) => onChange(e.target.value as DealStatus)}
-      onClick={(e) => e.stopPropagation()}
-      aria-label="Status"
-      className={cx("rounded border py-1 pl-2 pr-7 text-xs font-semibold", STATUS_STYLE[value])}
-    >
-      {STATUSES.map((s) => (
-        <option key={s}>{s}</option>
-      ))}
-    </select>
+    <div ref={ref} className={cx("relative inline-block text-left", className)} onClick={(e) => e.stopPropagation()}>
+      {required && <input type="text" tabIndex={-1} aria-hidden value={value} onChange={() => {}} required className="sr-only" />}
+      <button
+        id={id}
+        type="button"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={cx(
+          "inline-flex w-full items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50",
+          buttonClassName,
+        )}
+      >
+        <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
+          {prefix && <span className="shrink-0 text-slate-500">{prefix}</span>}
+          <span className={cx("truncate", selected ? "text-slate-900" : "text-slate-500")}>{selected ? selected.label : placeholder}</span>
+        </span>
+        <svg viewBox="0 0 24 24" className={cx("h-4 w-4 shrink-0 text-slate-500 transition-transform", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          aria-label={ariaLabel}
+          className={cx(
+            "absolute z-50 mt-1 max-h-64 min-w-[11rem] w-full overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/50",
+            align === "right" ? "right-0" : "left-0",
+          )}
+        >
+          {normalized.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <li
+                key={opt.value}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={cx(
+                  "flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 hover:bg-slate-50",
+                  isSelected && "bg-blue-50/60 text-blue-700",
+                )}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
+}
+
+export function StatusSelect({ value, onChange, id }: { value: DealStatus; onChange: (s: DealStatus) => void; id?: string }) {
+  return <DropdownSelect id={id} ariaLabel="Status" value={value} onChange={onChange} options={[...STATUSES]} align="right" />;
 }
 
 /** One short line on what needs checking: conflicts first, then missing facts. */
@@ -114,35 +226,35 @@ export function IssuesChip({ deal }: { deal: DealResult }) {
   const missing = deal.flags.some((f) => f.kind === "missing");
   if (conflicts)
     return (
-      <span className={cx("inline-flex items-center gap-1 rounded border px-1.5 py-px text-[11px] font-semibold whitespace-nowrap", TONE.alert)}>
+      <span className={cx("inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight", TONE.alert)}>
         <span aria-hidden>!</span> {conflicts} {conflicts > 1 ? "issues" : "issue"} to check
       </span>
     );
   if (missing)
     return (
-      <span className={cx("inline-flex rounded border px-1.5 py-px text-[11px] font-semibold whitespace-nowrap", TONE.neutral)}>
+      <span className={cx("inline-flex items-center rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight", TONE.neutral)}>
         Key facts missing
       </span>
     );
   return (
-    <span className={cx("inline-flex items-center gap-1 rounded border px-1.5 py-px text-[11px] font-semibold whitespace-nowrap", TONE.clear)}>
+    <span className={cx("inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight", TONE.clear)}>
       <span aria-hidden>✓</span> Numbers check out
     </span>
   );
 }
 
 const LEVEL_DOT: Record<Level, string> = {
-  Strong: "bg-emerald-500",
-  Mixed: "bg-amber-400",
-  Weak: "bg-red-500",
-  "Not enough info": "bg-slate-300",
+  Strong: "bg-emerald-600",
+  Mixed: "bg-amber-600",
+  Weak: "bg-rose-600",
+  "Not enough info": "bg-slate-400",
 };
 
 const LEVEL_STYLE: Record<Level, string> = {
-  Strong: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  Mixed: "bg-amber-50 text-amber-700 ring-amber-200",
-  Weak: "bg-red-50 text-red-700 ring-red-200",
-  "Not enough info": "bg-slate-100 text-slate-700 ring-slate-200",
+  Strong: "bg-emerald-100 text-emerald-800",
+  Mixed: "bg-amber-100 text-amber-800",
+  Weak: "bg-rose-100 text-rose-800",
+  "Not enough info": "bg-slate-100 text-slate-600",
 };
 
 export function levelText(score: Pick<Score, "key" | "level">): string {
@@ -154,7 +266,7 @@ export function LevelChip({ score }: { score: Pick<Score, "key" | "level"> }) {
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight",
         LEVEL_STYLE[score.level],
       )}
     >
@@ -190,13 +302,13 @@ export function ScoreDots({ scores }: { scores: Score[] }) {
 }
 
 export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cx("rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]", className)}>{children}</div>;
+  return <div className={cx("rounded-lg border border-slate-200 bg-white shadow-xs", className)}>{children}</div>;
 }
 
 export function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-4">
-      <h2 className="text-sm font-semibold text-slate-900">{children}</h2>
+      <h2 className="text-sm font-semibold leading-tight text-slate-900">{children}</h2>
       {right}
     </div>
   );
@@ -217,7 +329,7 @@ export function PageLink({ url, page, quote }: { url: string | null; page?: numb
       target="_blank"
       rel="noreferrer"
       title={quote ? `“${quote}”` : `Open the deck at page ${page}`}
-      className="font-medium text-indigo-700 underline decoration-indigo-200 underline-offset-2 hover:decoration-indigo-500"
+      className="font-medium text-blue-600 underline decoration-blue-200 underline-offset-2 hover:decoration-blue-500"
     >
       {label}
     </a>
@@ -245,10 +357,10 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
-        variant === "primary" && "bg-slate-900 text-white hover:bg-slate-800",
-        variant === "secondary" && "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-        variant === "ghost" && "text-slate-600 hover:bg-slate-100",
+        "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium leading-tight shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        variant === "primary" && "bg-blue-600 text-white hover:bg-blue-700",
+        variant === "secondary" && "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+        variant === "ghost" && "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
         className,
       )}
     >
@@ -259,7 +371,7 @@ export function Button({
 
 export function TextLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="font-medium text-indigo-700 hover:text-indigo-900">
+    <Link href={href} className="font-medium text-blue-600 hover:text-blue-700">
       {children}
     </Link>
   );
@@ -278,10 +390,10 @@ export function Notice({ tone = "info", children }: { tone?: "info" | "warn" | "
   return (
     <div
       className={cx(
-        "rounded-lg px-4 py-3 text-sm ring-1 ring-inset",
-        tone === "info" && "bg-slate-100 text-slate-800 ring-slate-200",
-        tone === "warn" && "bg-amber-50 text-amber-900 ring-amber-200",
-        tone === "error" && "bg-red-50 text-red-700 ring-red-200",
+        "rounded-md border px-4 py-3 text-sm leading-snug",
+        tone === "info" && "border-slate-200 bg-slate-100 text-slate-900",
+        tone === "warn" && "border-amber-200 bg-amber-50 text-amber-900",
+        tone === "error" && "border-rose-200 bg-rose-50 text-rose-800",
       )}
     >
       {children}

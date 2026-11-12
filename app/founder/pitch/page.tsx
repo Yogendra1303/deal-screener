@@ -7,7 +7,7 @@ import Link from "next/link";
 import { use, useState } from "react";
 import { Disclosure } from "@/components/disclosure";
 import { useLinks } from "@/components/links-store";
-import { Card } from "@/components/ui";
+import { Card, DropdownSelect } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { FUND_NAME, REPLY_PROMISE_DAYS, slugOf } from "@/lib/links";
 import { ANALYSTS } from "@/lib/team";
@@ -118,25 +118,34 @@ export default function PitchLinkPage({ searchParams }: { searchParams: Promise<
             <p className="text-xs text-slate-500">Skip these if they&apos;re in your deck. We read them from there.</p>
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Stage">
-                <select className={input} value={f.stage} onChange={(e) => set("stage", e.target.value)}>
-                  {STAGES.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
+                <DropdownSelect
+                  value={f.stage}
+                  onChange={(v) => set("stage", v)}
+                  ariaLabel="Stage"
+                  options={STAGES.map((s) => ({ value: s, label: s }))}
+                  className="w-full"
+                  buttonClassName="w-full py-2"
+                />
               </Field>
               <Field label="Sector">
-                <select className={input} value={f.sector} onChange={(e) => set("sector", e.target.value)}>
-                  {SECTORS.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
+                <DropdownSelect
+                  value={f.sector}
+                  onChange={(v) => set("sector", v)}
+                  ariaLabel="Sector"
+                  options={SECTORS.map((s) => ({ value: s, label: s }))}
+                  className="w-full"
+                  buttonClassName="w-full py-2"
+                />
               </Field>
               <Field label="Country">
-                <select className={input} value={f.country} onChange={(e) => set("country", e.target.value)}>
-                  {COUNTRIES.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
+                <DropdownSelect
+                  value={f.country}
+                  onChange={(v) => set("country", v)}
+                  ariaLabel="Country"
+                  options={COUNTRIES.map((s) => ({ value: s, label: s }))}
+                  className="w-full"
+                  buttonClassName="w-full py-2"
+                />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">

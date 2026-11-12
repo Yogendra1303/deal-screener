@@ -21,6 +21,7 @@ import {
   BandBadge,
   Button,
   Card,
+  DropdownSelect,
   IssuesChip,
   KeyStrip,
   LevelChip,
@@ -782,15 +783,14 @@ function OverrulePanel({ deal, band }: { deal: DealResult; band: Band }) {
           <p className="text-slate-600">
             The rules suggest <strong>{deal.band}</strong>. If the team disagrees, pick another and say why. Both are kept.
           </p>
-          <select
+          <DropdownSelect
             value={choice}
-            onChange={(e) => setChoice(e.target.value as Band)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
-          >
-            {(["Priority", "Review", "Outside focus"] as Band[]).map((b) => (
-              <option key={b}>{b}</option>
-            ))}
-          </select>
+            onChange={(v) => setChoice(v as Band)}
+            ariaLabel="Band choice"
+            options={(["Priority", "Review", "Outside focus"] as Band[]).map((b) => ({ value: b, label: b }))}
+            className="w-full"
+            buttonClassName="w-full"
+          />
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}

@@ -9,7 +9,7 @@ import type { Group, TileSpec } from "./cards";
 import { AI_HELP, type AiState, type RoomFile, type RoomMissing, type RoomRow } from "./founder-links";
 import { useLinks } from "./links-store";
 import { usePortfolio } from "./portfolio-store";
-import { Button, cx } from "./ui";
+import { Button, DropdownSelect, cx } from "./ui";
 import { useWorkspace } from "./workspace";
 import { addDays, fmtDay } from "@/lib/dates";
 import { CHANNEL_HELP, FOLDERS, TO_FILE, folderName, type Channel } from "@/lib/dataroom";
@@ -25,16 +25,16 @@ export function useCanAct() {
 }
 
 const CHANNEL_TONE: Partial<Record<Channel, string>> = {
-  Email: "bg-slate-100 text-slate-700 ring-slate-200",
-  "Founder portal": "bg-slate-100 text-slate-700 ring-slate-200",
-  "Request link": "bg-slate-100 text-indigo-700 ring-slate-200",
-  "Pitch email": "bg-slate-100 text-slate-700 ring-slate-200",
-  "Partner email": "bg-slate-100 text-slate-700 ring-slate-200",
+  Email: "bg-slate-100 text-slate-600",
+  "Founder portal": "bg-slate-100 text-slate-600",
+  "Request link": "bg-slate-100 text-slate-600",
+  "Pitch email": "bg-slate-100 text-slate-600",
+  "Partner email": "bg-slate-100 text-slate-600",
 };
 
 export function ChannelChip({ c }: { c: Channel }) {
   return (
-    <span title={CHANNEL_HELP[c]} className={cx("inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset", CHANNEL_TONE[c] ?? "bg-slate-50 text-slate-600 ring-slate-200")}>
+    <span title={CHANNEL_HELP[c]} className={cx("inline-flex shrink-0 items-center rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide", CHANNEL_TONE[c] ?? "bg-slate-100 text-slate-600")}>
       {c}
     </span>
   );
@@ -218,24 +218,28 @@ export function FileIt({ r, f }: { r: RoomRow; f: RoomFile }) {
   };
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2">
-      <select value={folder} onChange={(e) => setFolder(e.target.value)} aria-label="Folder" className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm">
-        <option value="">Pick a folder…</option>
-        {FOLDERS.filter((x) => r.side === "portfolio" || x.id !== "reports").map((x) => (
-          <option key={x.id} value={x.id}>
-            {x.n}. {x.name}
-            {x.id === f.suggested ? " (suggested)" : ""}
-          </option>
-        ))}
-      </select>
+      <DropdownSelect
+        value={folder}
+        onChange={setFolder}
+        ariaLabel="Folder"
+        options={[
+          { value: "", label: "Pick a folder…" },
+          ...FOLDERS.filter((x) => r.side === "portfolio" || x.id !== "reports").map((x) => ({
+            value: x.id,
+            label: `${x.n}. ${x.name}${x.id === f.suggested ? " (suggested)" : ""}`,
+          })),
+        ]}
+      />
       {r.open.length > 0 && (
-        <select value={answers} onChange={(e) => setAnswers(e.target.value)} aria-label="Answers" className="max-w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm sm:max-w-xs">
-          <option value="">Doesn&apos;t answer an open request</option>
-          {slots.map((o) => (
-            <option key={o.key} value={o.key}>
-              Answers: {o.label}
-            </option>
-          ))}
-        </select>
+        <DropdownSelect
+          value={answers}
+          onChange={setAnswers}
+          ariaLabel="Answers"
+          options={[
+            { value: "", label: "Doesn't answer an open request" },
+            ...slots.map((o) => ({ value: o.key, label: `Answers: ${o.label}` })),
+          ]}
+        />
       )}
       <Button onClick={go} disabled={!folder && !answers} className="px-3 py-1.5 text-sm">
         File it

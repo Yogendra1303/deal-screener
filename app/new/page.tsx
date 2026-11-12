@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useLinks } from "@/components/links-store";
 import { useStore } from "@/components/store";
 import { useWorkspace } from "@/components/workspace";
-import { Button, Card, Notice, Spinner } from "@/components/ui";
+import { Button, Card, DropdownSelect, Notice, Spinner } from "@/components/ui";
 import { HOSTED_UPLOAD_LIMIT, isLocalhost, processOnServer } from "@/lib/client-api";
 import { saveDeck } from "@/lib/deckstore";
 import { putServerFile } from "@/lib/db/client";
@@ -118,30 +118,39 @@ export default function NewDealPage() {
               <span className="text-slate-700">Website</span>
               <input className={input} value={form.website} onChange={(e) => set("website", e.target.value)} />
             </label>
-            <label className="space-y-1 text-sm">
+            <div className="space-y-1 text-sm">
               <span className="text-slate-700">Country</span>
-              <select className={input} value={form.country} onChange={(e) => set("country", e.target.value)}>
-                {COUNTRIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
+              <DropdownSelect
+                value={form.country}
+                onChange={(v) => set("country", v)}
+                ariaLabel="Country"
+                options={COUNTRIES.map((c) => ({ value: c, label: c }))}
+                className="w-full"
+                buttonClassName="w-full py-2"
+              />
+            </div>
+            <div className="space-y-1 text-sm">
               <span className="text-slate-700">Sector</span>
-              <select className={input} value={form.sector} onChange={(e) => set("sector", e.target.value)}>
-                {SECTORS.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
+              <DropdownSelect
+                value={form.sector}
+                onChange={(v) => set("sector", v)}
+                ariaLabel="Sector"
+                options={SECTORS.map((c) => ({ value: c, label: c }))}
+                className="w-full"
+                buttonClassName="w-full py-2"
+              />
+            </div>
+            <div className="space-y-1 text-sm">
               <span className="text-slate-700">Stage</span>
-              <select className={input} value={form.stage} onChange={(e) => set("stage", e.target.value)}>
-                {STAGES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
-            </label>
+              <DropdownSelect
+                value={form.stage}
+                onChange={(v) => set("stage", v)}
+                ariaLabel="Stage"
+                options={STAGES.map((c) => ({ value: c, label: c }))}
+                className="w-full"
+                buttonClassName="w-full py-2"
+              />
+            </div>
             <label className="space-y-1 text-sm">
               <span className="text-slate-700">Amount raising (USD)</span>
               <input

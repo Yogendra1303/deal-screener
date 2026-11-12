@@ -7,7 +7,7 @@ import { ReminderButton } from "@/components/portfolio-actions";
 import { usePortfolio } from "@/components/portfolio-store";
 import { HealthChip, MonthStrip, StripLegend, monthDetail, CELL_LABEL } from "@/components/portfolio-ui";
 import { RevenueChart } from "@/components/revenue-chart";
-import { Button, Card, SectionTitle, cx } from "@/components/ui";
+import { Button, Card, DropdownSelect, SectionTitle, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { portfolioBrief } from "@/lib/brief";
 import { fmtMoney, fmtMonth } from "@/lib/format";
@@ -681,16 +681,12 @@ function Activity({ c }: { c: PortfolioCompany }) {
                 placeholder="What stood out in this month's numbers, or a suggestion"
               />
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <select
-                  aria-label="From"
+                <DropdownSelect
+                  ariaLabel="From"
                   value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
-                >
-                  {[c.owner, c.partner].map((n) => (
-                    <option key={n}>{n}</option>
-                  ))}
-                </select>
+                  onChange={setAuthor}
+                  options={[c.owner, c.partner].map((n) => ({ value: n, label: n }))}
+                />
                 <Button type="submit" disabled={!text.trim()}>
                   Add note
                 </Button>

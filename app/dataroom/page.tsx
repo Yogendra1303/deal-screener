@@ -133,27 +133,27 @@ function ByAnalyst({ rows }: { rows: RoomRow[] }) {
     <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
       <h2 className="font-semibold text-slate-900">Who is behind</h2>
       <p className="text-xs text-slate-500">Files waiting on each analyst, and what founders still owe them. Click a number to open the list.</p>
-      <div className="-mx-1 mt-3 overflow-x-auto px-1">
+      <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full min-w-[520px] text-sm">
           <thead>
-            <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500">
-              <th className="pb-2 font-medium">Analyst</th>
-              <th className="pb-2 text-right font-medium">Companies</th>
-              <th className="pb-2 text-right font-medium">New to check</th>
-              <th className="pb-2 text-right font-medium">To file</th>
-              <th className="pb-2 text-right font-medium">Waiting</th>
-              <th className="pb-2 text-right font-medium">Late</th>
-              <th className="pb-2 text-right font-medium">Not read by AI</th>
+            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+              <th className="px-4 py-2.5">Analyst</th>
+              <th className="px-4 py-2.5 text-right">Companies</th>
+              <th className="px-4 py-2.5 text-right">New to check</th>
+              <th className="px-4 py-2.5 text-right">To file</th>
+              <th className="px-4 py-2.5 text-right">Waiting</th>
+              <th className="px-4 py-2.5 text-right">Late</th>
+              <th className="px-4 py-2.5 text-right">Not read by AI</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {data
               .filter((d) => d.companies > 0)
               .map((d) => {
                 const [fresh, toFile, waiting, ai] = d.t;
                 return (
-                  <tr key={d.name || "nobody"}>
-                    <td className="py-2">
+                  <tr key={d.name || "nobody"} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/80">
+                    <td className="px-4 py-3 align-middle">
                       {d.name ? (
                         <span className="flex items-center gap-2 font-medium text-slate-900">
                           <Avatar name={d.name} size="xs" /> {d.name.split(" ")[0]}
@@ -162,20 +162,20 @@ function ByAnalyst({ rows }: { rows: RoomRow[] }) {
                         <span className="font-medium text-amber-700">Not picked up</span>
                       )}
                     </td>
-                    <td className="py-2 text-right tabular-nums text-slate-600">{d.companies}</td>
-                    <td className="py-2 text-right">
+                    <td className="px-4 py-3 text-right align-middle tabular-nums text-slate-600">{d.companies}</td>
+                    <td className="px-4 py-3 text-right align-middle">
                       <NumButton n={fresh.count} tone={fresh.count ? "new" : "plain"} label={fresh.title} onClick={() => panels.open(fresh.key)} />
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="px-4 py-3 text-right align-middle">
                       <NumButton n={toFile.count} tone={toFile.count ? "new" : "plain"} label={toFile.title} onClick={() => panels.open(toFile.key)} />
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="px-4 py-3 text-right align-middle">
                       <NumButton n={waiting.count} label={waiting.title} onClick={() => panels.open(waiting.key)} />
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="px-4 py-3 text-right align-middle">
                       <NumButton n={d.late.count} tone={d.late.count ? "bad" : "plain"} label={d.late.title} onClick={() => panels.open(d.late.key)} />
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="px-4 py-3 text-right align-middle">
                       <NumButton n={ai.count} label={ai.title} onClick={() => panels.open(ai.key)} />
                     </td>
                   </tr>
@@ -278,13 +278,13 @@ function Coverage({ rows, showOwner }: { rows: RoomRow[]; showOwner: boolean }) 
   const [side, setSide] = useState<"all" | "pitch" | "portfolio">("all");
   const shown = rows.filter((r) => side === "all" || r.side === side).sort((a, b) => (a.side === b.side ? a.name.localeCompare(b.name) : a.side === "pitch" ? -1 : 1));
   return (
-    <section className="rounded-2xl bg-white ring-1 ring-slate-200">
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
       <div className="flex flex-wrap items-end justify-between gap-3 px-5 pt-5">
         <div>
           <h2 className="font-semibold text-slate-900">What we hold, company by company</h2>
           <p className="text-xs text-slate-500">Files in each folder. Amber means something in that folder was asked for and hasn&apos;t arrived. Click a company to open its room.</p>
         </div>
-        <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5 text-xs">
+        <div className="flex gap-1 rounded-md border border-slate-200 bg-slate-100 p-0.5 text-xs">
           {(
             [
               ["all", "All"],
@@ -292,7 +292,7 @@ function Coverage({ rows, showOwner }: { rows: RoomRow[]; showOwner: boolean }) 
               ["portfolio", "Portfolio"],
             ] as const
           ).map(([k, l]) => (
-            <button key={k} onClick={() => setSide(k)} className={cx("rounded-md px-2.5 py-1 font-medium", side === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}>
+            <button key={k} onClick={() => setSide(k)} className={cx("rounded px-2.5 py-1 font-medium transition-colors", side === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}>
               {l}
             </button>
           ))}
@@ -301,46 +301,46 @@ function Coverage({ rows, showOwner }: { rows: RoomRow[]; showOwner: boolean }) 
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
           <thead>
-            <tr className="border-y border-slate-100 bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
-              <th className="px-5 py-2 font-medium">Company</th>
+            <tr className="border-y border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+              <th className="px-4 py-2.5">Company</th>
               {FOLDERS.map((f) => (
-                <th key={f.id} title={f.holds} className="px-2 py-2 text-center font-medium">
+                <th key={f.id} title={f.holds} className="px-4 py-2.5 text-center">
                   {f.n}. {f.name.split(" ")[0]}
                 </th>
               ))}
-              <th className="px-2 py-2 text-center font-medium">To file</th>
-              {showOwner && <th className="px-5 py-2 text-right font-medium">Analyst</th>}
+              <th className="px-4 py-2.5 text-center">To file</th>
+              {showOwner && <th className="px-4 py-2.5 text-right">Analyst</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {shown.map((r) => (
-              <tr key={r.id} className={cx("hover:bg-slate-50", r.newCount > 0 && "bg-slate-100/30")}>
-                <td className="px-5 py-2.5">
-                  <Link href={`/dataroom/${r.id}`} className="font-medium text-slate-900 hover:text-indigo-700">
+              <tr key={r.id} className={cx("border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/80", r.newCount > 0 && "bg-slate-100/30")}>
+                <td className="px-4 py-3 align-middle">
+                  <Link href={`/dataroom/${r.id}`} className="font-medium text-slate-900 hover:text-blue-700">
                     {r.name}
                   </Link>
-                  <span className={cx("ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", r.side === "pitch" ? "bg-slate-100 text-slate-700" : "bg-slate-100 text-slate-700")}>
+                  <span className="ml-2 inline-flex items-center rounded-sm bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">
                     {r.side === "pitch" ? "Pitch" : "Portfolio"}
                   </span>
-                  {r.newCount > 0 && <span className="ml-1.5 text-xs font-semibold text-indigo-700">{r.newCount} new</span>}
+                  {r.newCount > 0 && <span className="ml-1.5 text-xs font-semibold text-blue-700">{r.newCount} new</span>}
                 </td>
                 {FOLDERS.map((f) => {
                   if (f.id === "reports" && r.side === "pitch")
                     return (
-                      <td key={f.id} className="px-2 text-center text-slate-300">
+                      <td key={f.id} className="px-4 py-3 text-center align-middle text-slate-300">
                         –
                       </td>
                     );
                   const n = r.shared.filter((x) => x.folder === f.id).length;
                   const owed = r.missing.filter((m) => m.folder === f.id && m.answer !== "Don't have").length;
                   return (
-                    <td key={f.id} className="px-2 text-center">
+                    <td key={f.id} className="px-4 py-3 text-center align-middle">
                       <Link
                         href={`/dataroom/${r.id}#${f.id}`}
                         title={`${n} ${n === 1 ? "file" : "files"}${owed ? `, ${owed} still owed` : ""}`}
                         className={cx(
-                          "inline-flex min-w-[2.25rem] justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums ring-1 ring-inset",
-                          owed ? "bg-amber-50 text-amber-800 ring-amber-200" : n ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-white text-slate-300 ring-slate-100",
+                          "inline-flex min-w-[2.25rem] justify-center rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide tabular-nums",
+                          owed ? "bg-amber-100 text-amber-800" : n ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500",
                         )}
                       >
                         {n}
@@ -349,11 +349,11 @@ function Coverage({ rows, showOwner }: { rows: RoomRow[]; showOwner: boolean }) 
                     </td>
                   );
                 })}
-                <td className="px-2 text-center">
-                  {r.toFile ? <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">{r.toFile}</span> : <span className="text-slate-300">0</span>}
+                <td className="px-4 py-3 text-center align-middle">
+                  {r.toFile ? <span className="inline-flex items-center rounded-sm bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-800">{r.toFile}</span> : <span className="text-slate-300">0</span>}
                 </td>
                 {showOwner && (
-                  <td className="px-5 text-right text-xs text-slate-500">{r.owner ? r.owner.split(" ")[0] : <span className="font-medium text-amber-700">Nobody</span>}</td>
+                  <td className="px-4 py-3 text-right align-middle text-xs text-slate-500">{r.owner ? r.owner.split(" ")[0] : <span className="font-medium text-amber-700">Nobody</span>}</td>
                 )}
               </tr>
             ))}

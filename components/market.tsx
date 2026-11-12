@@ -629,7 +629,7 @@ function SortHead({
 }) {
   const on = Boolean(k && sort === k);
   return (
-    <th className={cx("whitespace-nowrap px-3 py-2 font-medium", className)} aria-sort={on ? (dir === "asc" ? "ascending" : "descending") : undefined}>
+    <th className={cx("whitespace-nowrap bg-slate-50 border-b border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 uppercase tracking-wider", className)} aria-sort={on ? (dir === "asc" ? "ascending" : "descending") : undefined}>
       {k ? (
         <button
           onClick={() => onSort(k)}
@@ -689,14 +689,14 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
   const hp = { sort, dir, onSort };
 
   return (
-    <section className={cx(PANEL, "@container overflow-hidden")}>
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white @container">
       <PanelHead
         title="Every sector"
         sub="Click a header to sort. Capital raised and round counts track broader sector activity; everything else is counted from our decks."
       />
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className={cx(LABEL, "border-b border-slate-200 bg-slate-50 text-left")}>
+          <thead className="border-b border-slate-200 bg-slate-50 text-left">
             <tr>
               <H className="sticky left-0 z-10 bg-slate-50 shadow-[1px_0_0_#e2e8f0]" {...hp}>
                 Sector
@@ -724,10 +724,10 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
               </H>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {list.map((f) => (
-              <tr key={f.m.sector} className="group hover:bg-slate-50">
-                <td className="sticky left-0 z-10 bg-white px-3 py-2 shadow-[1px_0_0_#e2e8f0] group-hover:bg-slate-50">
+              <tr key={f.m.sector} className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/80">
+                <td className="sticky left-0 z-10 bg-white px-4 py-3 align-middle shadow-[1px_0_0_#e2e8f0] group-hover:bg-slate-50/80">
                   <Link href={`/sectors/${slugOf(f.m.sector)}`} className="flex items-center gap-2">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TEMP_COLOR[f.m.temp] }} aria-hidden />
                     <span className="truncate font-semibold tracking-tight text-slate-900 group-hover:underline">{f.m.sector}</span>
@@ -736,29 +736,29 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
                     </span>
                   </Link>
                 </td>
-                <td className="hidden px-3 py-2 @2xl:table-cell">
+                <td className="hidden px-4 py-3 align-middle @2xl:table-cell">
                   <MiniColumns values={f.m.counts} max={peak} />
                 </td>
-                <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums text-slate-900">{f.decks3}</td>
-                <td className="px-3 py-2">
+                <td className="px-4 py-3 text-right align-middle font-mono font-semibold tabular-nums text-slate-900">{f.decks3}</td>
+                <td className="px-4 py-3 align-middle">
                   <ChangeBar value={f.m.inboundChange} max={2} className={GRID_BAR} from={windowCounts(f.m.counts)} />
                 </td>
-                <td className="hidden whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums text-slate-700 @3xl:table-cell">
+                <td className="hidden whitespace-nowrap px-4 py-3 text-right align-middle font-mono tabular-nums text-slate-700 @3xl:table-cell">
                   ${f.m.raised[0]}M<span className="ml-1 text-[11px] text-slate-400">{f.m.rounds[0]} rds</span>
                 </td>
-                <td className="hidden px-3 py-2 @3xl:table-cell">
+                <td className="hidden px-4 py-3 align-middle @3xl:table-cell">
                   <ChangeBar value={f.m.moneyChange} max={0.6} />
                 </td>
-                <td className="hidden whitespace-nowrap px-3 py-2 text-right @4xl:table-cell">
+                <td className="hidden whitespace-nowrap px-4 py-3 text-right align-middle @4xl:table-cell">
                   <Link
                     href={`/sectors/${slugOf(f.m.sector)}?f=strong`}
                     title={`${f.strong} of ${f.rated} companies have strong founder-market fit. Click to list them.`}
-                    className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-800 hover:border-emerald-300"
+                    className="inline-flex items-center gap-1 rounded-sm bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide tabular-nums text-emerald-800 hover:bg-emerald-200/80"
                   >
                     {f.strong} of {f.rated} <span className="font-normal text-emerald-700">({pct(f.strong, f.rated)}%)</span>
                   </Link>
                 </td>
-                <td className="hidden px-3 py-2 @xl:table-cell">
+                <td className="hidden px-4 py-3 align-middle @xl:table-cell">
                   <span className="flex items-center gap-2" title={`${f.meetings} meetings, ${f.companies - f.meetings - f.passed} still open, ${f.passed} passed or on hold, of ${f.companies} companies`}>
                     <SplitBar
                       className="w-14 shrink-0"

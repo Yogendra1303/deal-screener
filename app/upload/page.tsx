@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useLinks } from "@/components/links-store";
 import { useWorkspace } from "@/components/workspace";
-import { Card, Notice, cx } from "@/components/ui";
+import { Card, DropdownSelect, Notice, cx } from "@/components/ui";
 import type { Relation } from "@/lib/funnel";
 import type { Gold } from "@/lib/gold";
 import { parseSheet } from "@/lib/sheet";
@@ -218,15 +218,17 @@ export default function UploadPage() {
               <span className={cap}>Website (optional)</span>
               <input className={input} value={co.website} onChange={(e) => setCo({ ...co, website: e.target.value })} />
             </label>
-            <label className={label}>
+            <div className={label}>
               <span className={cap}>Sector</span>
-              <select className={input} value={co.sector} onChange={(e) => setCo({ ...co, sector: e.target.value })} required>
-                <option value="">Select a sector</option>
-                {SECTORS.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </label>
+              <DropdownSelect
+                value={co.sector}
+                onChange={(v) => setCo({ ...co, sector: v })}
+                ariaLabel="Sector"
+                options={[{ value: "", label: "Select a sector" }, ...SECTORS.map((s) => ({ value: s, label: s }))]}
+                className="w-full"
+                buttonClassName="w-full py-2"
+              />
+            </div>
             <label className={label}>
               <span className={cap}>Sub-category</span>
               <input className={input} list="sub-options" placeholder="e.g. Freight software" value={co.sub} onChange={(e) => setCo({ ...co, sub: e.target.value })} />
@@ -237,26 +239,32 @@ export default function UploadPage() {
               </datalist>
               <span className="block text-xs text-slate-500">Pick from the fund&apos;s list where one fits, so the Market page groups it correctly.</span>
             </label>
-            <label className={label}>
+            <div className={label}>
               <span className={cap}>Stage</span>
-              <select className={input} value={co.stage} onChange={(e) => setCo({ ...co, stage: e.target.value })}>
-                {STAGES.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </label>
+              <DropdownSelect
+                value={co.stage}
+                onChange={(v) => setCo({ ...co, stage: v })}
+                ariaLabel="Stage"
+                options={STAGES.map((s) => ({ value: s, label: s }))}
+                className="w-full"
+                buttonClassName="w-full py-2"
+              />
+            </div>
             <label className={label}>
               <span className={cap}>Round ask on the form (USD)</span>
               <input className={input} inputMode="numeric" placeholder="2000000" value={co.ask} onChange={(e) => setCo({ ...co, ask: e.target.value })} />
             </label>
-            <label className={label}>
+            <div className={label}>
               <span className={cap}>Country</span>
-              <select className={input} value={co.country} onChange={(e) => setCo({ ...co, country: e.target.value })}>
-                {COUNTRIES.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </label>
+              <DropdownSelect
+                value={co.country}
+                onChange={(v) => setCo({ ...co, country: v })}
+                ariaLabel="Country"
+                options={COUNTRIES.map((s) => ({ value: s, label: s }))}
+                className="w-full"
+                buttonClassName="w-full py-2"
+              />
+            </div>
             <label className={label}>
               <span className={cap}>City</span>
               <input className={input} value={co.city} onChange={(e) => setCo({ ...co, city: e.target.value })} />
@@ -292,16 +300,23 @@ export default function UploadPage() {
                   <span className={cap}>Years in it</span>
                   <input id={`${id}-years`} className={input} inputMode="numeric" value={f.years} onChange={(e) => set({ years: e.target.value })} />
                 </label>
-                <label className={cx(label, "sm:col-span-2")} htmlFor={`${id}-relation`}>
+                <div className={cx(label, "sm:col-span-2")}>
                   <span className={cap}>How close is that work to this problem?</span>
-                  <select id={`${id}-relation`} className={input} value={f.relation} onChange={(e) => set({ relation: e.target.value as Relation | "" })} required={Boolean(f.name.trim())}>
-                    <option value="">Select evidence-backed experience</option>
-                    <option value="direct">Worked on this exact problem</option>
-                    <option value="adjacent">Worked next to it</option>
-                    <option value="none">Unrelated work</option>
-                  </select>
+                  <DropdownSelect
+                    value={f.relation}
+                    onChange={(v) => set({ relation: v as Relation | "" })}
+                    ariaLabel="How close is that work to this problem?"
+                    options={[
+                      { value: "", label: "Select evidence-backed experience" },
+                      { value: "direct", label: "Worked on this exact problem" },
+                      { value: "adjacent", label: "Worked next to it" },
+                      { value: "none", label: "Unrelated work" },
+                    ]}
+                    className="w-full"
+                    buttonClassName="w-full py-2"
+                  />
                   <span className="block text-xs text-slate-500">Not chosen stays unscored. It is not the same as unrelated work.</span>
-                </label>
+                </div>
                 <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-700">
                   <input type="checkbox" checked={f.builtBefore} onChange={(e) => set({ builtBefore: e.target.checked })} />
                   Built a company before

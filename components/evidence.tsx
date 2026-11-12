@@ -5,7 +5,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Disclosure } from "./disclosure";
 import { Avatar } from "./shell";
-import { Button, cx } from "./ui";
+import { Button, DropdownSelect, cx } from "./ui";
 import { useWorkspace } from "./workspace";
 import { addDays, fmtDay } from "@/lib/dates";
 import { DEMO_DATE } from "@/lib/portfolio/health";
@@ -16,11 +16,11 @@ import { TEAM } from "@/lib/team";
 // ---------- Status label ----------
 
 const STATUS_STYLE: Record<FactStatus, { pill: string; dot: string; mark: string }> = {
-  Checked: { pill: "bg-emerald-50 text-emerald-800 ring-emerald-200", dot: "bg-emerald-500", mark: "✓" },
-  Reported: { pill: "bg-slate-100 text-slate-700 ring-slate-200", dot: "bg-slate-600", mark: "" },
-  Claimed: { pill: "bg-slate-100 text-slate-700 ring-slate-200", dot: "bg-slate-400", mark: "" },
-  Conflict: { pill: "bg-red-50 text-red-700 ring-red-200", dot: "bg-red-500", mark: "!" },
-  Missing: { pill: "bg-amber-50 text-amber-800 ring-amber-200", dot: "bg-amber-400", mark: "" },
+  Checked: { pill: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-500", mark: "✓" },
+  Reported: { pill: "bg-slate-100 text-slate-600", dot: "bg-slate-600", mark: "" },
+  Claimed: { pill: "bg-slate-100 text-slate-600", dot: "bg-slate-400", mark: "" },
+  Conflict: { pill: "bg-rose-100 text-rose-800", dot: "bg-rose-500", mark: "!" },
+  Missing: { pill: "bg-amber-100 text-amber-800", dot: "bg-amber-500", mark: "" },
 };
 
 export function StatusLabel({ status, className }: { status: FactStatus; className?: string }) {
@@ -28,7 +28,7 @@ export function StatusLabel({ status, className }: { status: FactStatus; classNa
   return (
     <span
       title={STATUS_MEANING[status]}
-      className={cx("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset", s.pill, className)}
+      className={cx("inline-flex items-center gap-1 whitespace-nowrap rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide", s.pill, className)}
     >
       {s.mark ? <span aria-hidden className="font-bold">{s.mark}</span> : <span aria-hidden className={cx("h-1.5 w-1.5 rounded-full", s.dot)} />}
       {status}
@@ -364,17 +364,17 @@ export function AskForm({
           className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
         />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-slate-600">
-            Ask
-            <select value={ownerValue} onChange={(e) => setOwner(e.target.value)} className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs">
-              {others.map((m) => (
-                <option key={m.name} value={m.name}>
-                  {m.name} ({m.role.toLowerCase()})
-                </option>
-              ))}
-            </select>
-            <span className="text-slate-400">· due in 7 days</span>
-          </label>
+          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <span>Ask</span>
+            <DropdownSelect
+              value={ownerValue}
+              onChange={setOwner}
+              ariaLabel="Ask teammate"
+              options={others.map((m) => ({ value: m.name, label: `${m.name} (${m.role.toLowerCase()})` }))}
+              buttonClassName="px-2 py-1 text-xs"
+            />
+            <span className="text-slate-500">· due in 7 days</span>
+          </div>
           <Button type="submit" disabled={!text.trim()} className="px-3 py-1 text-xs">
             Ask
           </Button>

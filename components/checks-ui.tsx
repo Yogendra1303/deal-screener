@@ -139,18 +139,17 @@ function Box({ tone, title, children }: { tone: keyof typeof BOX; title: string;
   );
 }
 
-const STATUS = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold";
+const STATUS = "inline-flex items-center gap-1 whitespace-nowrap rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide leading-tight";
 const STATUS_TONE = {
-  alert: "border-rose-200 bg-rose-50 text-rose-800",
-  review: "border-amber-200 bg-amber-50 text-amber-800",
-  clear: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  neutral: "border-slate-200 bg-white text-slate-600",
+  alert: "bg-rose-100 text-rose-800",
+  review: "bg-amber-100 text-amber-800",
+  clear: "bg-emerald-100 text-emerald-800",
+  neutral: "bg-slate-100 text-slate-600",
 } as const;
 
 export function StatusPill({ tone, children, title }: { tone: keyof typeof STATUS_TONE; children: React.ReactNode; title?: string }) {
   return (
     <span className={cx(STATUS, STATUS_TONE[tone])} title={title}>
-      <Dot tone={tone} />
       {children}
     </span>
   );
@@ -214,7 +213,7 @@ export function ChecksCell({ cover, sources, onOpen }: { cover: Coverage | null;
           <StatusPill tone="clear">{cover.ran ? `${cover.passed}/${cover.ran} Matched` : "Clear"}</StatusPill>
         )}
         {conflicts.length > 0 && cover.missing.length > 0 && (
-          <span className="whitespace-nowrap rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200" title={`Also missing: ${cover.missing.join(", ")}`}>
+          <span className="inline-flex items-center whitespace-nowrap rounded-sm bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide leading-tight text-amber-800" title={`Also missing: ${cover.missing.join(", ")}`}>
             +{cover.missing.length} missing
           </span>
         )}

@@ -440,7 +440,7 @@ function PartnerHome() {
           <span className="block text-xl font-semibold tabular-nums text-slate-900">{missed.length}</span>
           <span className="text-[11px] text-slate-500">raised after our pass</span>
         </button>
-        <Link href="/portfolio" className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+        <Link href="/portfolio" className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700">
           Open portfolio
         </Link>
       </section>

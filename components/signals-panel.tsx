@@ -10,9 +10,9 @@ import { fmtDate } from "@/lib/format";
 import { useStore } from "./store";
 import { useWorkspace } from "./workspace";
 import { useLinks } from "./links-store";
-import { Button, cx } from "./ui";
+import { Button, DropdownSelect, cx } from "./ui";
 
-const input = "w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-slate-900 focus:outline-none";
+const input = "w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none";
 
 const POINTS: Partial<Record<SignalType, number>> = {
   Raised: LOOK_POINTS.raised,
@@ -57,15 +57,18 @@ export function SignalsPanel({ id, name, className }: { id: string; name: string
 
       {open && (
         <div className="mt-3 grid gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
-          <label className="space-y-1 text-xs">
+          <div className="space-y-1 text-xs">
             <span className="font-medium text-slate-600">What happened</span>
-            <select className={input} value={kind} onChange={(e) => setKind(e.target.value as SignalType)}>
-              {SIGNAL_TYPES.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
+            <DropdownSelect
+              value={kind}
+              onChange={(v) => setKind(v as SignalType)}
+              ariaLabel="What happened"
+              options={SIGNAL_TYPES.map((t) => ({ value: t, label: t }))}
+              className="w-full"
+              buttonClassName="w-full"
+            />
             <span className="block text-[11px] text-slate-500">{SIGNAL_HELP[kind]}</span>
-          </label>
+          </div>
           <label className="space-y-1 text-xs">
             <span className="font-medium text-slate-600">When it happened</span>
             <input type="date" className={input} value={at} onChange={(e) => setAt(e.target.value)} />

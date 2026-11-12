@@ -9,13 +9,13 @@ import type { DealResult } from "@/lib/types";
 import { cx } from "./ui";
 
 const STATE: Record<EvidenceState, { label: string; cls: string }> = {
-  conflict: { label: "Conflict", cls: "border-rose-200 bg-rose-50 text-rose-700" },
-  match: { label: "Matched", cls: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  not_run: { label: "Not run", cls: "border-slate-200 bg-slate-50 text-slate-600" },
+  conflict: { label: "Conflict", cls: "bg-rose-100 text-rose-800" },
+  match: { label: "Matched", cls: "bg-emerald-100 text-emerald-800" },
+  not_run: { label: "Not run", cls: "bg-slate-100 text-slate-600" },
 };
 
 function StateTag({ state }: { state: EvidenceState }) {
-  return <span className={cx("inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold", STATE[state].cls)}>{STATE[state].label}</span>;
+  return <span className={cx("inline-flex items-center whitespace-nowrap rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide", STATE[state].cls)}>{STATE[state].label}</span>;
 }
 
 function DeckSource({ row, deckUrl }: { row: EvidenceRow; deckUrl: string | null }) {
@@ -73,33 +73,33 @@ export function EvidenceMatrix({ deal, deckUrl }: { deal: DealResult; deckUrl: s
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] border-separate border-spacing-0 text-sm">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <table className="w-full min-w-[860px] text-sm">
           <caption className="sr-only">Every cross-check with the deck claim, the supporting figure, the variance, its state and the source</caption>
           <thead>
-            <tr className="text-left text-xs font-semibold tracking-[.04em] text-slate-600">
-              <th scope="col" className="border-b border-slate-200 px-3 py-2">Metric</th>
-              <th scope="col" className="border-b border-slate-200 px-3 py-2 text-right">Deck claim</th>
-              <th scope="col" className="border-b border-slate-200 px-3 py-2 text-right">CSV / form / registry support</th>
-              <th scope="col" className="border-b border-slate-200 px-3 py-2 text-right">Variance</th>
-              <th scope="col" className="border-b border-slate-200 px-3 py-2">State</th>
-              <th scope="col" className="border-b border-slate-200 px-3 py-2">Source</th>
+            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+              <th scope="col" className="px-4 py-2.5">Metric</th>
+              <th scope="col" className="px-4 py-2.5 text-right">Deck claim</th>
+              <th scope="col" className="px-4 py-2.5 text-right">CSV / form / registry support</th>
+              <th scope="col" className="px-4 py-2.5 text-right">Variance</th>
+              <th scope="col" className="px-4 py-2.5">State</th>
+              <th scope="col" className="px-4 py-2.5">Source</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.checkId} className={cx("align-top", r.state === "conflict" && "bg-rose-50/40")}>
-                <th scope="row" className="border-b border-slate-100 px-3 py-3 text-left font-medium text-slate-900">
+              <tr key={r.checkId} className={cx("border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/80", r.state === "conflict" && "bg-rose-50/40")}>
+                <th scope="row" className="px-4 py-3 text-left align-middle font-medium text-slate-900">
                   {r.metric}
-                  <span className="block text-xs font-normal leading-[18px] text-slate-500">{r.rule}</span>
+                  <span className="block text-xs font-normal leading-tight text-slate-500">{r.rule}</span>
                 </th>
-                <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3 text-right tabular-nums text-slate-800">{r.deck ?? <span className="text-slate-400">Not stated</span>}</td>
-                <td className="whitespace-nowrap border-b border-slate-100 px-3 py-3 text-right tabular-nums text-slate-800">{r.support ?? <span className="text-slate-400">None</span>}</td>
-                <td className={cx("whitespace-nowrap border-b border-slate-100 px-3 py-3 text-right font-semibold tabular-nums", r.state === "conflict" ? "text-rose-700" : "text-slate-700")}>{r.varianceText}</td>
-                <td className="border-b border-slate-100 px-3 py-3">
+                <td className="whitespace-nowrap px-4 py-3 text-right align-middle tabular-nums text-slate-800">{r.deck ?? <span className="text-slate-400">Not stated</span>}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right align-middle tabular-nums text-slate-800">{r.support ?? <span className="text-slate-400">None</span>}</td>
+                <td className={cx("whitespace-nowrap px-4 py-3 text-right align-middle font-semibold tabular-nums", r.state === "conflict" ? "text-rose-700" : "text-slate-700")}>{r.varianceText}</td>
+                <td className="px-4 py-3 align-middle">
                   <StateTag state={r.state} />
                 </td>
-                <td className="border-b border-slate-100 px-3 py-3 text-xs leading-[18px] text-slate-600">
+                <td className="px-4 py-3 align-middle text-xs leading-tight text-slate-600">
                   <DeckSource row={r} deckUrl={deckUrl} /> · {r.supportSource}
                   {r.state === "not_run" && r.note && <span className="block text-slate-500">{r.note}</span>}
                 </td>

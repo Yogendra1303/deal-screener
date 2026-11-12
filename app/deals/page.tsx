@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { DeckList, PillTabs, TempPill, slugOf as sectorSlug, triageOrder, useDealFlow, type FlowRow, type SectorStat } from "@/components/flow";
 import { Delta } from "@/components/charts";
 import { useStore } from "@/components/store";
-import { LABEL, Notice, cx } from "@/components/ui";
+import { DropdownSelect, LABEL, Notice, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { FLOW_NOTE } from "@/lib/flow";
 import { MARKET, PITCH_ADDRESS } from "@/lib/funnel";
@@ -94,6 +94,11 @@ export default function DealsPage() {
     if (f && CHIPS.some((c) => c.key === f)) {
       setChips([f]);
     }
+    const qParam = params.get("q");
+    if (qParam) {
+      setQuery(qParam);
+      setTab("all");
+    }
   }, []);
   const flow = useDealFlow((o) => (analyst ? !o || o === w.me : !who || o === who));
 
@@ -121,8 +126,8 @@ export default function DealsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-1 rounded-lg bg-white p-1 text-xs ring-1 ring-slate-200" role="group" aria-label="Demo Role">
-            <span className="px-2 font-medium text-slate-500">Demo Role:</span>
+          <div className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white p-0.5 text-xs shadow-sm" role="group" aria-label="Demo Role">
+            <span className="px-2 font-medium text-slate-600">Demo Role:</span>
             {(["Partner", "Analyst"] as const).map((r) => {
               const activeRole = w.role === r;
               return (
@@ -132,8 +137,8 @@ export default function DealsPage() {
                   onClick={() => w.setDemoRole(r)}
                   aria-pressed={activeRole}
                   className={cx(
-                    "rounded-md px-2.5 py-1 font-semibold transition",
-                    activeRole ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                    "rounded px-2.5 py-1 font-medium leading-tight transition-colors",
+                    activeRole ? "bg-blue-600 text-white shadow-2xs" : "text-slate-700 hover:bg-slate-50 hover:text-slate-900",
                   )}
                 >
                   {r}
@@ -143,12 +148,22 @@ export default function DealsPage() {
           </div>
           <PitchLinkButton refSlug={analyst ? slugOf(w.me) : undefined} />
           {analyst && (
-            <Link href="/new" className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:border-slate-400" title="Add a pitch for the AI to read (needs an API key)">
+            <Link
+              href="/new"
+              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+              title="Add a pitch for the AI to read"
+            >
               Add for AI reading
             </Link>
           )}
-          <Link href="/upload" className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-            + Upload Pitch
+          <Link
+            href="/upload"
+            className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium leading-tight text-white shadow-sm transition-colors hover:bg-blue-700"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Upload Pitch
           </Link>
         </div>
       </div>
@@ -172,23 +187,23 @@ export default function DealsPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search company, city…"
-                  className="w-44 max-w-full rounded-lg border-0 bg-white px-3 py-1.5 text-sm ring-1 ring-slate-200 focus:ring-2 focus:ring-slate-900"
+                  className="w-44 max-w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm leading-tight text-slate-900 placeholder:text-slate-500 shadow-sm focus:border-blue-600 focus:outline-none"
                 />
-                <select value={sector} onChange={(e) => setSector(e.target.value)} aria-label="Sector" className="rounded-lg border-0 bg-white px-2.5 py-1.5 text-sm ring-1 ring-slate-200">
-                  <option value="">All sectors</option>
-                  {MARKET.map((m) => (
-                    <option key={m.sector}>{m.sector}</option>
-                  ))}
-                </select>
+                <DropdownSelect
+                  ariaLabel="Sector"
+                  value={sector}
+                  onChange={setSector}
+                  options={[{ value: "", label: "All sectors" }, ...MARKET.map((m) => ({ value: m.sector, label: m.sector }))]}
+                  align="right"
+                />
                 {!analyst && (
-                  <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person" className="rounded-lg border-0 bg-white px-2.5 py-1.5 text-sm ring-1 ring-slate-200">
-                    <option value="">Everyone</option>
-                    {TEAM.map((m) => (
-                      <option key={m.name} value={m.name}>
-                        {m.name.split(" ")[0]}
-                      </option>
-                    ))}
-                  </select>
+                  <DropdownSelect
+                    ariaLabel="Person"
+                    value={who}
+                    onChange={setWho}
+                    options={[{ value: "", label: "Everyone" }, ...TEAM.map((m) => ({ value: m.name, label: m.name.split(" ")[0] }))]}
+                    align="right"
+                  />
                 )}
               </div>
             </div>
@@ -249,8 +264,9 @@ function PitchLinkButton({ refSlug }: { refSlug?: string }) {
   const [copied, setCopied] = useState(false);
   const path = `/founder/pitch${refSlug ? `?ref=${refSlug}` : ""}`;
   return (
-    <span className="inline-flex overflow-hidden rounded-lg bg-white text-sm ring-1 ring-slate-200">
+    <span className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white text-sm font-medium leading-tight shadow-sm">
       <button
+        type="button"
         onClick={() =>
           navigator.clipboard?.writeText(`${window.location.origin}${path}`).then(
             () => setCopied(true),
@@ -258,11 +274,11 @@ function PitchLinkButton({ refSlug }: { refSlug?: string }) {
           )
         }
         title={refSlug ? "Your personal pitch link. Pitches sent through it come straight to you." : "The public link on the fund's website"}
-        className="px-3 py-2 font-medium text-slate-800 hover:bg-slate-50"
+        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-slate-700 transition-colors hover:bg-slate-50"
       >
         {copied ? "Copied" : refSlug ? "Copy my pitch link" : "Copy pitch link"}
       </button>
-      <a href={path} target="_blank" rel="noreferrer" className="border-l border-slate-200 px-2.5 py-2 text-slate-500 hover:bg-slate-50" title="Open it as a founder">
+      <a href={path} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center border-l border-slate-200 px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-50" title="Open it as a founder">
         ↗
       </a>
     </span>

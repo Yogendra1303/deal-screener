@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { useLinks } from "./links-store";
 import { usePortfolio } from "./portfolio-store";
 import { useStore } from "./store";
-import { cx } from "./ui";
+import { DropdownSelect, cx } from "./ui";
 import { useWorkspace } from "./workspace";
 import { attentionFor, needsAttention } from "@/lib/portfolio/attention";
 import { stateOf } from "@/lib/questions";
@@ -37,7 +37,7 @@ const PATHS: Record<IconName, string> = {
 
 function Icon({ name }: { name: IconName }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={PATHS[name]} />
     </svg>
   );
@@ -92,10 +92,10 @@ export function Avatar({ name, size = "sm" }: { name: string; size?: "xs" | "sm"
 function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-sm font-bold text-white">F</span>
+      <span className="grid h-7 w-7 place-items-center rounded-md bg-blue-600 text-xs font-bold text-white shadow-xs">F</span>
       <span className="leading-tight">
-        <span className="block text-[15px] font-semibold text-slate-900">Fund Hub</span>
-        <span className="block text-[11px] text-slate-500">Fund I · Active Workspace</span>
+        <span className="block text-sm font-semibold text-slate-900">Fund Hub</span>
+        <span className="block text-[11px] font-medium text-slate-500">Fund I · Active Workspace</span>
       </span>
     </Link>
   );
@@ -104,18 +104,15 @@ function Brand() {
 export function RoleViewDropdown({ compact = false }: { compact?: boolean }) {
   const w = useWorkspace();
   return (
-    <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs">
-      <span className="text-slate-500">Role View:</span>
-      <select
-        aria-label="Role View"
-        value={w.role}
-        onChange={(e) => w.setDemoRole(e.target.value as Role)}
-        className={cx("cursor-pointer bg-transparent font-semibold text-slate-900 focus:outline-hidden", compact ? "text-xs" : "text-xs sm:text-sm")}
-      >
-        <option value="Partner">Partner</option>
-        <option value="Analyst">Analyst</option>
-      </select>
-    </label>
+    <DropdownSelect<Role>
+      ariaLabel="Role View"
+      prefix="Role View:"
+      value={w.role}
+      onChange={(r) => w.setDemoRole(r)}
+      options={["Partner", "Analyst"]}
+      align="right"
+      className={compact ? "text-xs" : ""}
+    />
   );
 }
 
@@ -124,43 +121,40 @@ function UserCard() {
   const router = useRouter();
   const displayName = w.userName || w.me;
   return (
-    <div className="space-y-2.5 rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 shadow-2xs">
+    <div className="space-y-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <Avatar name={displayName} size="sm" />
-            <span className="truncate text-[13.5px] font-semibold tracking-tight text-slate-900">{displayName}</span>
+            <span className="truncate text-sm font-semibold leading-tight text-slate-900">{displayName}</span>
           </div>
           <span
             className={cx(
-              "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-              w.role === "Partner" ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200",
+              "inline-flex shrink-0 items-center rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide leading-tight",
+              w.role === "Partner" ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800",
             )}
           >
             {w.role}
           </span>
         </div>
-        {w.userEmail && <div className="truncate pl-8 text-[11px] text-slate-500">{w.userEmail}</div>}
+        {w.userEmail && <div className="truncate pl-8 text-xs leading-tight text-slate-500">{w.userEmail}</div>}
       </div>
-      <div className="flex items-center justify-between gap-2 border-t border-slate-200/80 pt-2">
-        <label className="flex min-w-0 flex-1 items-center justify-between gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs shadow-2xs">
-          <span className="text-[11px] font-medium text-slate-500">View:</span>
-          <select
-            aria-label="Sidebar Role View"
-            value={w.role}
-            onChange={(e) => w.setDemoRole(e.target.value as Role)}
-            className="cursor-pointer bg-transparent font-semibold text-slate-900 focus:outline-hidden"
-          >
-            <option value="Partner">Partner</option>
-            <option value="Analyst">Analyst</option>
-          </select>
-        </label>
+      <div className="flex items-center justify-between gap-2 border-t border-slate-200 pt-2">
+        <DropdownSelect<Role>
+          ariaLabel="Sidebar Role View"
+          prefix="View:"
+          value={w.role}
+          onChange={(r) => w.setDemoRole(r)}
+          options={["Partner", "Analyst"]}
+          className="min-w-0 flex-1"
+        />
         <button
+          type="button"
           onClick={() => {
             w.signOut();
             router.replace("/login");
           }}
-          className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-white hover:text-slate-900 hover:ring-1 hover:ring-slate-200"
+          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
         >
           Sign out
         </button>
@@ -216,8 +210,10 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 className={cx(
-                  "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-                  active ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                  "relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm font-medium leading-tight transition-colors",
+                  active
+                    ? "bg-blue-50 text-blue-700 before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-blue-600"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
                 )}
               >
                 <Icon name={l.icon} />
@@ -226,8 +222,8 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                   <span
                     title={l.count ? titles[l.count] : undefined}
                     className={cx(
-                      "inline-flex min-w-[1.35rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none tabular-nums",
-                      active ? "bg-white/20 text-white" : l.count === "room" ? "bg-slate-900 text-white" : "bg-slate-200/80 text-slate-700",
+                      "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide leading-tight tabular-nums",
+                      active ? "bg-blue-100 text-blue-800" : l.count === "room" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600",
                     )}
                   >
                     {n}
@@ -239,7 +235,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </ul>
       <div>
-        <p className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">More</p>
+        <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Workspace</p>
         <ul className="space-y-0.5">
           {SETTINGS.filter((l) => !l.partnerOnly || w.role === "Partner").map((l) => {
             const active = l.match(path);
@@ -250,12 +246,14 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cx(
-                    "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm",
-                    active ? "bg-slate-100 font-medium text-slate-900" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
+                    "relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm font-medium leading-tight transition-colors",
+                    active
+                      ? "bg-blue-50 text-blue-700 before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-blue-600"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                   )}
                 >
                   <Icon name={l.icon} />
-                  <span className="flex-1">{l.label}</span>
+                  <span className="flex-1 truncate">{l.label}</span>
                 </Link>
               </li>
             );
@@ -360,24 +358,84 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Sidebar />
       </aside>
 
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur lg:hidden">
-        <Brand />
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          aria-expanded={open}
-          className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-700"
+      <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-10">
+        <div className="flex items-center gap-3 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={open}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+          <Brand />
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = new FormData(e.currentTarget).get("q")?.toString().trim();
+            router.push(q ? `/deals?q=${encodeURIComponent(q)}` : "/deals");
+          }}
+          className="hidden max-w-md flex-1 items-center gap-2 lg:flex"
         >
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
-            <path d="M4 7h16M4 12h16M4 17h16" />
-          </svg>
-        </button>
+          <div className="relative w-full">
+            <svg
+              viewBox="0 0 24 24"
+              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              name="q"
+              type="search"
+              placeholder="Search companies, sectors, or founders…"
+              className="w-full rounded-md border border-slate-200 bg-slate-50/60 py-1.5 pr-3 pl-9 text-sm leading-tight text-slate-900 placeholder:text-slate-500 transition-colors focus:border-blue-600 focus:bg-white focus:outline-none"
+            />
+          </div>
+          <Link
+            href="/upload"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium leading-tight text-white shadow-sm transition-colors hover:bg-blue-700"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Create pitch
+          </Link>
+        </form>
+
+        <div className="flex items-center gap-2.5">
+          <RoleViewDropdown compact />
+          <Link
+            href="/founder/pitch"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50 sm:inline-flex"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            Share link
+          </Link>
+          <Avatar name={w.userName || w.me} size="sm" />
+        </div>
       </header>
 
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <button className="absolute inset-0 bg-slate-900/40" aria-label="Close menu" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-xl">
+          <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-slate-200 bg-white shadow-lg shadow-slate-200/50">
             <Sidebar onNavigate={() => setOpen(false)} />
           </div>
         </div>

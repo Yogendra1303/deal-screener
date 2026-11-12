@@ -335,12 +335,12 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
     if (!groups.length || groups[groups.length - 1].head !== head) groups.push({ head, items: [] });
     groups[groups.length - 1].items.push(r);
   }
-  const th = "whitespace-nowrap px-3 py-2 align-middle text-[11px] font-semibold uppercase tracking-wider text-slate-500";
+  const th = "whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left align-middle text-xs font-semibold uppercase tracking-wider text-slate-600";
   const cols = 9 + (owners ? 1 : 0) + (sort === "look" ? 1 : 0);
   const flip = (key: ColSort["key"]) => setCol((c) => (c?.key === key ? (c.dir === -1 ? { key, dir: 1 } : null) : { key, dir: -1 }));
   return (
-    <div className="@container overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
-      <table className="w-full text-sm">
+    <div className="@container overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <table className="w-full border-collapse text-sm">
         <thead className="border-b border-slate-200 bg-slate-50">
           <tr className="text-left">
             {sort === "look" && <th className={cx(th, "w-12 text-right")}>Pts</th>}
@@ -365,14 +365,14 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
                 In
               </SortButton>
             </th>
-            <th className="w-6" aria-hidden />
+            <th className={cx(th, "w-8 px-2")} aria-hidden />
           </tr>
         </thead>
         {groups.map((g) => (
-          <tbody key={g.head || "all"} className="divide-y divide-slate-100">
+          <tbody key={g.head || "all"}>
             {g.head && (
-              <tr>
-                <td colSpan={cols} className="bg-slate-50/60 px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-slate-100">
+                <td colSpan={cols} className="bg-slate-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
                   {g.head}
                 </td>
               </tr>
@@ -387,7 +387,7 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
         <div className="border-t border-slate-100 py-3 text-center">
           <button
             onClick={() => setShown((n) => n + pageSize)}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50"
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
           >
             Show {Math.min(pageSize, list.length - shown)} more · {list.length - shown} left
           </button>
@@ -403,36 +403,36 @@ const FIT_TAG: Record<FitLevel, ToneKey> = { Strong: "clear", Mixed: "review", W
 function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boolean; owner: boolean; onOpen: (r: FlowRow, code: string) => void }) {
   const router = useRouter();
   const sig = r.look.latest ?? r.signals.at(-1);
-  const td = "px-3 py-2.5 align-middle";
+  const td = "px-4 py-3 align-middle";
   return (
-    <tr onClick={() => router.push(r.href)} className="group cursor-pointer transition-colors hover:bg-slate-50/90">
+    <tr onClick={() => router.push(r.href)} className="group cursor-pointer border-b border-slate-100 last:border-0 transition-colors hover:bg-slate-50/80">
       {showPoints && <td className={cx(td, "text-right font-mono text-xs font-semibold tabular-nums text-slate-900")}>{r.look.points}</td>}
       <td className={cx(td, "min-w-[11rem] sm:min-w-[13rem]")}>
-        <Link href={r.href} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 whitespace-nowrap font-semibold tracking-tight text-slate-900 hover:underline">
+        <Link href={r.href} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 whitespace-nowrap font-medium leading-tight tracking-tight text-slate-900 hover:text-blue-600 hover:underline">
           {r.name}
-          {r.live && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-900" title="Live pitch" />}
+          {r.live && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" title="Live pitch" />}
         </Link>
-        <span className="block whitespace-nowrap text-xs text-slate-500">
+        <span className="mt-0.5 block whitespace-nowrap text-xs leading-tight text-slate-500">
           {r.city}
           <span className="@3xl:hidden"> · {r.stage}</span>
         </span>
       </td>
       <td className={cx(td, "hidden @3xl:table-cell")}>
-        <span className="block max-w-[14rem] truncate text-slate-700">{r.sub}</span>
-        <span className="block whitespace-nowrap text-xs text-slate-500">{r.stage}</span>
+        <span className="block max-w-[14rem] truncate leading-tight text-slate-900">{r.sub}</span>
+        <span className="mt-0.5 block whitespace-nowrap text-xs leading-tight text-slate-500">{r.stage}</span>
       </td>
       <td className={cx(td, "hidden whitespace-nowrap text-right font-mono text-xs font-medium tabular-nums text-slate-900 @md:table-cell")}>{r.askUsd ? money(r.askUsd) : "—"}</td>
-      <td className={cx(td, "hidden whitespace-nowrap @4xl:table-cell")}>{r.fit ? <Tag tone={FIT_TAG[r.fit]}>{r.fit}</Tag> : <span className="text-xs text-slate-400">—</span>}</td>
+      <td className={cx(td, "hidden whitespace-nowrap @4xl:table-cell")}>{r.fit ? <Tag tone={FIT_TAG[r.fit]}>{r.fit}</Tag> : <span className="text-xs text-slate-500">—</span>}</td>
       <td className={cx(td, "hidden whitespace-nowrap @xl:table-cell")}>
         <ChecksCell cover={r.cover} sources={r.sources} onOpen={(code) => onOpen(r, code)} />
       </td>
       <td className={cx(td, "whitespace-nowrap")}>
         <LabelPill label={r.label} />
       </td>
-      <td className={cx(td, "hidden max-w-[12rem] whitespace-nowrap @5xl:table-cell")}>{sig ? <SignalBadge kind={sig.kind} /> : <span className="text-xs text-slate-400">—</span>}</td>
-      {owner && <td className={cx(td, "hidden whitespace-nowrap @2xl:table-cell")}>{r.owner ? <Avatar name={r.owner} size="xs" /> : <span className="text-xs text-slate-400">—</span>}</td>}
+      <td className={cx(td, "hidden max-w-[12rem] whitespace-nowrap @5xl:table-cell")}>{sig ? <SignalBadge kind={sig.kind} /> : <span className="text-xs text-slate-500">—</span>}</td>
+      {owner && <td className={cx(td, "hidden whitespace-nowrap @2xl:table-cell")}>{r.owner ? <Avatar name={r.owner} size="xs" /> : <span className="text-xs text-slate-500">—</span>}</td>}
       <td className={cx(td, "text-right font-mono text-xs whitespace-nowrap tabular-nums text-slate-500")}>{fmtDay(r.last)}</td>
-      <td className={cx(td, "w-6 pl-0 text-slate-300 transition-colors group-hover:text-slate-700")} aria-hidden>
+      <td className={cx(td, "w-8 px-2 text-slate-400 transition-colors group-hover:text-slate-700")} aria-hidden>
         →
       </td>
     </tr>
@@ -452,12 +452,21 @@ export function PillTabs({ options, value, onChange }: { options: { key: string;
             aria-selected={value === o.key}
             onClick={() => onChange(o.key)}
             className={cx(
-              "rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-              value === o.key ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+              "inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium leading-tight whitespace-nowrap shadow-sm transition-colors",
+              value === o.key ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
             )}
           >
             {o.label}
-            {o.count != null && <span className={cx("ml-1.5 font-mono text-xs tabular-nums", value === o.key ? "text-slate-300" : "text-slate-400")}>{o.count}</span>}
+            {o.count != null && (
+              <span
+                className={cx(
+                  "inline-flex items-center rounded-sm px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums leading-tight",
+                  value === o.key ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600",
+                )}
+              >
+                {o.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
