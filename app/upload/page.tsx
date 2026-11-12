@@ -12,18 +12,20 @@ import { parseSheet } from "@/lib/sheet";
 import { summariseSheet, type SheetSummary } from "@/lib/csv-parser";
 import { fmtMoney, fmtNum } from "@/lib/format";
 import { COUNTRIES, SECTORS, STAGES, type SheetRow } from "@/lib/types";
+import { SUB_OPTIONS } from "@/lib/flow";
 import { checkUpload, founderFromInput, type ManualReading } from "@/lib/upload";
 
 const input = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-900 focus:outline-none";
 const label = "space-y-1 text-sm";
 const cap = "text-xs font-medium text-slate-600";
 
-type Founder = { name: string; past: string; years: string; relation: Relation; builtBefore: boolean };
-const NEW_FOUNDER: Founder = { name: "", past: "", years: "", relation: "direct", builtBefore: false };
+// No experience answer is pre-selected: an unchosen relation is "not chosen yet", never a guess (audit section 5).
+type Founder = { name: string; past: string; years: string; relation: Relation | ""; builtBefore: boolean };
+const NEW_FOUNDER: Founder = { name: "", past: "", years: "", relation: "", builtBefore: false };
 
 const NUMBERS: { key: keyof Gold; label: string; hint: string; money?: boolean }[] = [
-  { key: "mrr", label: "Monthly revenue (MRR)", hint: "USD a month", money: true },
-  { key: "arr", label: "Annual revenue (ARR)", hint: "USD a year", money: true },
+  { key: "mrr", label: "Monthly recurring revenue (MRR)", hint: "USD a month", money: true },
+  { key: "arr", label: "Annual recurring revenue (ARR)", hint: "USD a year", money: true },
   { key: "growth", label: "Monthly growth", hint: "% a month" },
   { key: "customers", label: "Customers", hint: "count" },
   { key: "team", label: "Team size", hint: "people" },
@@ -81,7 +83,7 @@ export default function UploadPage() {
   const [sheet, setSheet] = useState<SheetRow[] | null>(null);
   const [summary, setSummary] = useState<SheetSummary | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
-  const [co, setCo] = useState({ name: "", website: "", country: "India", city: "", sector: SECTORS[0], sub: "", stage: "Seed", ask: "", email: "" });
+  const [co, setCo] = useState({ name: "", website: "", country: "India", city: "", sector: "", sub: "", stage: "Seed", ask: "", email: "" });
   const [founders, setFounders] = useState<Founder[]>([{ ...NEW_FOUNDER }]);
   const [nums, setNums] = useState<Record<string, string>>({});
   const [asOf, setAsOf] = useState("");
@@ -133,7 +135,10 @@ export default function UploadPage() {
     asOf: asOf || null,
     sub: co.sub.trim() || co.sector,
     city: co.city.trim(),
-    founders: founders.filter((f) => f.name.trim()).map((f) => founderFromInput({ ...f, name: f.name.trim(), years: num(f.years) ?? 0 }, year)),
+    // Only founders whose experience has been chosen feed founder fit; the rest stay unscored, not guessed.
+    founders: founders
+      .filter((f) => f.name.trim() && f.relation)
+      .map((f) => founderFromInput({ ...f, relation: f.relation as Relation, name: f.name.trim(), years: num(f.years) ?? 0 }, year)),
     sheet,
     sheetFile: sheetFile?.name ?? null,
     deckFile: deck?.name ?? null,
@@ -146,7 +151,10 @@ export default function UploadPage() {
     e.preventDefault();
     setError(null);
     if (!form.companyName) return setError("Enter the company name.");
+    if (!co.sector) return setError("Choose the sector.");
     if (!deck) return setError("Attach the pitch deck as a PDF.");
+    const unchosen = founders.filter((f) => f.name.trim() && !f.relation).map((f) => f.name.trim());
+    if (unchosen.length) return setError(`Choose how close ${unchosen.join(" and ")}'s past work is to this problem. Nothing is assumed.`);
     if (sheetFile && !sheet) return setError("The monthly sheet could not be read. Fix it or remove it.");
     setSaving(true);
     const entry = await links.addInbound(
@@ -182,13 +190,19 @@ export default function UploadPage() {
               <input type="file" accept=".csv,text/csv" onChange={(e) => pickSheet(e.target.files?.[0] ?? null)} className={cx(input, "file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs")} />
             </label>
           </div>
-          <p className="text-xs text-slate-500">
-            Sheet columns: month, currency, revenue, customers, headcount, net_burn, cash.{" "}
-            <a href="/samples/template.csv" download className="font-medium text-slate-900 underline">
+          <div className="rounded-lg bg-slate-50 p-3 text-xs leading-[18px] text-slate-600">
+            <p className="font-semibold text-slate-800">What the files must look like</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              <li>Deck: one PDF, up to 4.4 MB on the hosted site (a Vercel limit) or 32 MB when the app runs locally.</li>
+              <li>
+                Sheet: CSV with columns month, currency, revenue, customers, headcount, net_burn, cash. One row per month, month written YYYY-MM, currency as an ISO
+                code (USD, INR, AED, SAR), plain numbers without symbols or commas. A blank cell stays blank; it is never read as zero.
+              </li>
+            </ul>
+            <a href="/samples/template.csv" download className="mt-1 inline-block font-medium text-slate-900 underline">
               Download the template
             </a>
-            .
-          </p>
+          </div>
           {sheetError && <Notice tone="error">Sheet not read: {sheetError}</Notice>}
           {summary && <SheetCard s={summary} />}
         </Card>
@@ -206,7 +220,8 @@ export default function UploadPage() {
             </label>
             <label className={label}>
               <span className={cap}>Sector</span>
-              <select className={input} value={co.sector} onChange={(e) => setCo({ ...co, sector: e.target.value })}>
+              <select className={input} value={co.sector} onChange={(e) => setCo({ ...co, sector: e.target.value })} required>
+                <option value="">Select a sector</option>
                 {SECTORS.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
@@ -214,7 +229,13 @@ export default function UploadPage() {
             </label>
             <label className={label}>
               <span className={cap}>Sub-category</span>
-              <input className={input} placeholder="e.g. Freight software" value={co.sub} onChange={(e) => setCo({ ...co, sub: e.target.value })} />
+              <input className={input} list="sub-options" placeholder="e.g. Freight software" value={co.sub} onChange={(e) => setCo({ ...co, sub: e.target.value })} />
+              <datalist id="sub-options">
+                {(SUB_OPTIONS[co.sector] ?? []).map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              <span className="block text-xs text-slate-500">Pick from the fund&apos;s list where one fits, so the Market page groups it correctly.</span>
             </label>
             <label className={label}>
               <span className={cap}>Stage</span>
@@ -253,22 +274,41 @@ export default function UploadPage() {
             )}
           </div>
           <p className="text-xs text-slate-500">Experience only, as the deck&apos;s team page states it. No school, age or home town.</p>
-          {founders.map((f, i) => (
-            <div key={i} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_90px]">
-              <input className={input} placeholder="Name" value={f.name} onChange={(e) => setFounders(founders.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
-              <input className={input} placeholder="Main past role, e.g. Ops head at a 3PL" value={f.past} onChange={(e) => setFounders(founders.map((x, k) => (k === i ? { ...x, past: e.target.value } : x)))} />
-              <input className={input} inputMode="numeric" placeholder="Years" value={f.years} onChange={(e) => setFounders(founders.map((x, k) => (k === i ? { ...x, years: e.target.value } : x)))} />
-              <select className={input} value={f.relation} onChange={(e) => setFounders(founders.map((x, k) => (k === i ? { ...x, relation: e.target.value as Relation } : x)))}>
-                <option value="direct">Worked on this exact problem</option>
-                <option value="adjacent">Worked next to it</option>
-                <option value="none">Unrelated work</option>
-              </select>
-              <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
-                <input type="checkbox" checked={f.builtBefore} onChange={(e) => setFounders(founders.map((x, k) => (k === i ? { ...x, builtBefore: e.target.checked } : x)))} />
-                Built a company before
-              </label>
-            </div>
-          ))}
+          {founders.map((f, i) => {
+            const set = (patch: Partial<Founder>) => setFounders(founders.map((x, k) => (k === i ? { ...x, ...patch } : x)));
+            const id = `founder-${i}`;
+            return (
+              <fieldset key={i} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_90px]">
+                <legend className="px-1 text-xs font-semibold text-slate-700">Founder {i + 1}</legend>
+                <label className={label} htmlFor={`${id}-name`}>
+                  <span className={cap}>Name</span>
+                  <input id={`${id}-name`} className={input} value={f.name} onChange={(e) => set({ name: e.target.value })} />
+                </label>
+                <label className={label} htmlFor={`${id}-past`}>
+                  <span className={cap}>Main past role</span>
+                  <input id={`${id}-past`} className={input} placeholder="e.g. Ops head at a 3PL" value={f.past} onChange={(e) => set({ past: e.target.value })} />
+                </label>
+                <label className={label} htmlFor={`${id}-years`}>
+                  <span className={cap}>Years in it</span>
+                  <input id={`${id}-years`} className={input} inputMode="numeric" value={f.years} onChange={(e) => set({ years: e.target.value })} />
+                </label>
+                <label className={cx(label, "sm:col-span-2")} htmlFor={`${id}-relation`}>
+                  <span className={cap}>How close is that work to this problem?</span>
+                  <select id={`${id}-relation`} className={input} value={f.relation} onChange={(e) => set({ relation: e.target.value as Relation | "" })} required={Boolean(f.name.trim())}>
+                    <option value="">Select evidence-backed experience</option>
+                    <option value="direct">Worked on this exact problem</option>
+                    <option value="adjacent">Worked next to it</option>
+                    <option value="none">Unrelated work</option>
+                  </select>
+                  <span className="block text-xs text-slate-500">Not chosen stays unscored. It is not the same as unrelated work.</span>
+                </label>
+                <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-700">
+                  <input type="checkbox" checked={f.builtBefore} onChange={(e) => set({ builtBefore: e.target.checked })} />
+                  Built a company before
+                </label>
+              </fieldset>
+            );
+          })}
         </Card>
 
         <Card className="space-y-4 p-5">
@@ -306,7 +346,8 @@ export default function UploadPage() {
         )}
 
         {error && <Notice tone="error">{error}</Notice>}
-        <div className="flex items-center justify-end gap-3">
+        <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-white/95 px-4 py-4 backdrop-blur">
+          <p className="mr-auto text-xs leading-[18px] text-slate-600">Nothing is saved until you press save. Saving stores the files and runs the checks.</p>
           <Link href="/deals" className="text-sm font-medium text-slate-600 hover:text-slate-900">
             Cancel
           </Link>

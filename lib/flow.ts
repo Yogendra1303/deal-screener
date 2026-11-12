@@ -365,6 +365,9 @@ function decide(c: FlowCompany, r: () => number) {
 }
 
 /** The detailed samples and the hand-written passes, filed under the same sub-categories as the history. */
+/** Known sub-categories per sector, for pick lists (the same taxonomy the sample deals use). */
+export const SUB_OPTIONS: Record<string, string[]> = Object.fromEntries(Object.entries(SUBS).map(([k, v]) => [k, v.map(([s]) => s)]));
+
 export const SUB_FOR: Record<string, string> = {
   ledgerly: "Accounting and finance software",
   mandiflow: "Farm-to-kitchen supply",
