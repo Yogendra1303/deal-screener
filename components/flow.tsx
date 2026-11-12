@@ -588,21 +588,21 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
         </span>
       </div>
       <div className="mt-4 overflow-x-auto px-3 sm:px-5">
-        <table className="w-full min-w-[740px] table-fixed border-separate border-spacing-x-1.5 border-spacing-y-1.5 text-xs">
+        <table className="w-full min-w-[740px] table-fixed border-collapse text-xs">
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-              <th className="w-36 pb-1.5 text-left font-semibold">Sector</th>
+              <th className="w-36 pb-2 pr-2 text-left font-semibold">Sector</th>
               {MONTHS.map((ym, i) => (
-                <th key={ym} className="pb-1.5 text-center font-semibold">
+                <th key={ym} className="px-[3px] pb-2 text-center font-semibold">
                   <button onClick={() => setPick({ ym })} className="w-full rounded py-1 uppercase hover:bg-slate-100 hover:text-slate-700" title={`Every deck in ${fmtMonth(ym)}: ${monthTotals[i]}`}>
                     {fmtMonth(ym).slice(0, 3)}
                   </button>
                 </th>
               ))}
-              <th className="w-16 pb-1.5 text-center font-semibold">Total</th>
-              <th className="w-[120px] pl-6 pb-1.5 text-left font-semibold" title="Decks, last 3 months against the 3 before">Decks</th>
-              <th className="w-28 pl-4 pb-1.5 text-left font-semibold" title="Early-stage capital raised in the sector, last 90 days against the 90 before">Money</th>
-              <th className="w-32 pl-4 pb-1.5 text-left font-semibold">Reading</th>
+              <th className="w-[76px] pb-2 pl-[3px] pr-4 text-center font-semibold">Total</th>
+              <th className="w-[116px] border-l border-slate-200/80 pb-2 pl-5 text-left font-semibold" title="Decks, last 3 months against the 3 before">Decks</th>
+              <th className="w-[104px] pb-2 pl-3 text-left font-semibold" title="Early-stage capital raised in the sector, last 90 days against the 90 before">Money</th>
+              <th className="w-[120px] pb-2 pl-3 text-left font-semibold">Reading</th>
             </tr>
           </thead>
           <tbody>
@@ -610,13 +610,13 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
               const sum = m.counts.reduce((a, b) => a + b, 0);
               return (
                 <tr key={m.sector}>
-                  <td className="truncate pr-2">
+                  <td className="truncate py-[3px] pr-2">
                     <Link href={`/sectors/${slugOf(m.sector)}`} className="font-medium text-slate-800 hover:text-blue-600">
                       {m.sector}
                     </Link>
                   </td>
                   {m.counts.map((n, i) => (
-                    <td key={MONTHS[i]}>
+                    <td key={MONTHS[i]} className="p-[3px]">
                       <button
                         onClick={() => setPick({ sector: m.sector, ym: MONTHS[i] })}
                         title={`${m.sector}, ${fmtMonth(MONTHS[i])}: ${n} decks`}
@@ -627,38 +627,40 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
                       </button>
                     </td>
                   ))}
-                  <td>
+                  <td className="py-[3px] pl-[3px] pr-4">
                     <button onClick={() => setPick({ sector: m.sector })} className="block h-8 w-full rounded-md bg-slate-100 text-[11px] font-semibold tabular-nums text-slate-800 hover:bg-slate-200">
                       {sum}
                     </button>
                   </td>
-                  <td className="pl-6 text-left">
+                  <td className="border-l border-slate-200/80 py-[3px] pl-5 text-left">
                     <Delta value={m.inboundChange} className="w-[72px] justify-center px-1.5 text-[11px]" from={windowCounts(m.counts)} />
                   </td>
-                  <td className="pl-4 text-left" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]}`}>
+                  <td className="py-[3px] pl-3 text-left" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]}`}>
                     <Delta value={m.moneyChange} className="w-[72px] justify-center px-1.5 text-[11px]" />
                   </td>
-                  <td className="pl-4 text-left">
+                  <td className="py-[3px] pl-3 text-left">
                     <TempPill t={m.temp} />
                   </td>
                 </tr>
               );
             })}
-            <tr>
-              <td className="pt-1 text-xs font-semibold text-slate-600">All sectors</td>
+            <tr className="border-t border-slate-200/70">
+              <td className="pt-2.5 pr-2 text-xs font-semibold text-slate-600">All sectors</td>
               {monthTotals.map((n, i) => (
-                <td key={MONTHS[i]} className="pt-1">
+                <td key={MONTHS[i]} className="px-[3px] pt-2.5">
                   <button onClick={() => setPick({ ym: MONTHS[i] })} className="block h-8 w-full rounded-md bg-slate-100 text-[11px] font-semibold tabular-nums text-slate-800 hover:bg-slate-200">
                     {n}
                   </button>
                 </td>
               ))}
-              <td className="pt-1">
+              <td className="pl-[3px] pr-4 pt-2.5">
                 <button onClick={() => setPick({})} className="block h-8 w-full rounded-md bg-slate-900 text-[11px] font-semibold tabular-nums text-white hover:bg-slate-800">
                   {total}
                 </button>
               </td>
-              <td colSpan={3} />
+              <td colSpan={3} className="border-l border-slate-200/80 pt-2.5 pl-5 text-[11px] text-slate-400">
+                90-day momentum vs prior 90d
+              </td>
             </tr>
           </tbody>
         </table>
