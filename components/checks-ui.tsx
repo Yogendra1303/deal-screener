@@ -161,7 +161,7 @@ export function ChecksCell({ cover, sources, onOpen }: { cover: Coverage | null;
   const codes = [...new Set((sources ?? []).map((s) => TABLE_CODE[s]).filter(Boolean))] as string[];
   const NAME: Record<string, string> = { DECK: "Pitch deck", CSV: "Monthly sheet", FORM: "Intake form", REG: "Registry record" };
   const src = codes.length ? (
-    <span className="mt-1 flex items-center gap-1" aria-label="Files on record">
+    <span className="mt-0.5 flex items-center gap-1" aria-label="Files on record">
       {codes.map((c) =>
         onOpen ? (
           <button
@@ -174,7 +174,7 @@ export function ChecksCell({ cover, sources, onOpen }: { cover: Coverage | null;
               e.stopPropagation();
               onOpen(c);
             }}
-            className="rounded transition hover:ring-1 hover:ring-slate-400"
+            className="inline-flex h-8 items-center rounded-md px-0.5 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-1"
           >
             <CodeTag code={c} />
           </button>

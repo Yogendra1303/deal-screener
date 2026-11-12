@@ -3,6 +3,7 @@
 // Small, quiet charts in the style of a trading app: a trend line with a soft fill, a change chip, and a
 // market map where each sector is a tile sized by how many decks came in and coloured by its direction.
 // All of them draw numbers that code has already worked out; nothing here is estimated.
+import { describeChange } from "@/lib/change";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { cx } from "./ui";
@@ -74,15 +75,25 @@ export function Sparkline({
   );
 }
 
-/** "▲ 34%", "▼ 15%" or, past doubling, "▲ 2.7×": numbers stay small and readable. */
+/** "▲ +34%", "▼ −15%" or, within ±5%, a neutral "+3%". Always a percentage change, never a ratio:
+ * 8 decks against 3 is +167%, not "2.7×". A zero baseline has no percentage; see describeChange. */
 export function changeText(value: number) {
   const flat = Math.abs(value) < 0.05;
-  const arrow = flat ? "■" : value > 0 ? "▲" : "▼";
-  return value >= 1 ? `${arrow} ${(1 + value).toFixed(1)}×` : `${arrow} ${Math.round(Math.abs(value) * 100)}%`;
+  const pct = Math.round(value * 100);
+  const signed = `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct)}%`;
+  return flat ? signed : `${value > 0 ? "▲" : "▼"} ${signed}`;
 }
 
-/** The change as a chip: green up, red down, grey within ±5%. */
-export function Delta({ value, className, solid }: { value: number; className?: string; solid?: boolean }) {
+/** The change as a chip: green up, red down, grey within ±5%. With `from` (previous, current counts) a zero
+ * baseline shows as "New · 0→N" or "No activity" instead of a made-up percentage. */
+export function Delta({ value, className, solid, from }: { value: number; className?: string; solid?: boolean; from?: [number, number] }) {
+  const said = from ? describeChange(from[0], from[1]) : null;
+  if (said && said.value === null)
+    return (
+      <span title={said.aria} aria-label={said.aria} className={cx("inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap", solid ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700", className)}>
+        {said.text}
+      </span>
+    );
   const flat = Math.abs(value) < 0.05;
   const up = value > 0;
   return (
@@ -103,7 +114,7 @@ export function Delta({ value, className, solid }: { value: number; className?: 
         className,
       )}
     >
-      {changeText(value)}
+      <span title={said?.aria}>{changeText(value)}</span>
     </span>
   );
 }

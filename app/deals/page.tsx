@@ -2,6 +2,7 @@
 
 // Pitches: every deck that reached the fund as one quiet list, with a few tabs. Live pitches carry a dot.
 // An analyst sees their own and the ones nobody has picked up; the partner sees the whole team's.
+import { windowCounts } from "@/lib/change";
 import { ZeroState } from "@/components/mode";
 import Link from "next/link";
 import { useState } from "react";
@@ -278,7 +279,7 @@ function Pulse({ rows, filtered, market, today, onPick }: { rows: FlowRow[]; fil
                 <Link href={`/sectors/${sectorSlug(m.sector)}`} className="w-28 truncate font-medium text-slate-700 hover:text-slate-900">
                   {m.sector}
                 </Link>
-                <Delta value={m.inboundChange} className="px-1 text-[10px]" />
+                <Delta value={m.inboundChange} className="px-1 text-[10px]" from={windowCounts(m.counts)} />
                 <TempPill t={m.temp} />
               </li>
             ))}

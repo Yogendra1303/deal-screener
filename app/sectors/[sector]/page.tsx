@@ -2,7 +2,7 @@
 
 // One sector, read like an instrument page: key numbers, decks by month and outcome, the pipeline,
 // sub-categories as a grid, the news, and every company that pitched. Counts are worked out by code from the decks.
-import { describeChange } from "@/lib/change";
+import { windowCounts } from "@/lib/change";
 import { ZeroState } from "@/components/mode";
 import { use, useRef, useState } from "react";
 import { BackLink } from "@/components/company";
@@ -16,7 +16,7 @@ import { MONTHS } from "@/lib/funnel";
 const count = (rows: FlowRow[], ym: string) => rows.reduce((n, r) => n + r.dates.filter((d) => d.startsWith(ym)).length, 0);
 const inWindow = (r: FlowRow) => r.dates.some((d) => MONTHS.includes(d.slice(0, 7)));
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
-const move = (v: number) => (Math.abs(v) < 0.05 ? "flat" : v >= 1 ? `up ${(1 + v).toFixed(1)}×` : `${v > 0 ? "up" : "down"} ${Math.round(Math.abs(v) * 100)}%`);
+const move = (v: number) => (Math.abs(v) < 0.05 ? "flat" : `${v > 0 ? "up" : "down"} ${Math.round(Math.abs(v) * 100)}%`);
 const FIT_COLOR = { Strong: "#059669", Mixed: "#94a3b8", Weak: "#dc2626" } as const;
 
 type Filter = { key: string; label: string; test: (r: FlowRow) => boolean };
@@ -109,7 +109,7 @@ export default function SectorPage({ params, searchParams }: { params: Promise<{
           <StatCell label="Last 3 months" on={picked === "recent"} onClick={() => pick("recent")} hint={`${n("recent")} companies`}>
             <span className="flex items-center gap-2">
               {recent}
-              <ChangeBar value={m.inboundChange} max={2} className="[&>span:first-child]:hidden" />
+              <ChangeBar value={m.inboundChange} max={2} className="[&>span:first-child]:hidden" from={windowCounts(m.counts)} />
             </span>
           </StatCell>
           <StatCell label="Raised in market, 90d" hint="Sample market data, not our deals">
@@ -212,15 +212,7 @@ export default function SectorPage({ params, searchParams }: { params: Promise<{
                     </td>
                     <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums text-slate-900">{s.recent}</td>
                     <td className="px-3 py-2">
-                      {s.before === 0 ? (
-                        <span className="whitespace-nowrap rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-700" title={describeChange(s.before, s.recent).aria}>
-                          {describeChange(s.before, s.recent).text}
-                        </span>
-                      ) : (
-                        <span title={describeChange(s.before, s.recent).aria}>
-                          <ChangeBar value={s.change} max={2} className={GRID_BAR} />
-                        </span>
-                      )}
+                      <ChangeBar value={s.change} max={2} className={GRID_BAR} from={[s.before, s.recent]} />
                     </td>
                     <td className="hidden px-3 py-2 text-right font-mono tabular-nums text-slate-700 @2xl:table-cell">{s.list.length}</td>
                     <td className="hidden whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums text-slate-700 @3xl:table-cell">
@@ -232,7 +224,7 @@ export default function SectorPage({ params, searchParams }: { params: Promise<{
                         <span className="whitespace-nowrap text-[11px] text-slate-500">
                           {parts
                             .filter((p) => p.value)
-                            .map((p) => `${p.value} ${p.label === "Passed or held" ? "passed" : p.label.toLowerCase()}`)
+                            .map((p) => `${p.value} ${p.label === "Passed or held" ? "passed / on hold" : p.label.toLowerCase()}`)
                             .join(" · ")}
                         </span>
                       </span>

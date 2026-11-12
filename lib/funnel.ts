@@ -445,6 +445,10 @@ export function temperature(r: Pick<MarketRow, "inbound" | "raised">): { temp: T
   return { temp, inboundChange, moneyChange };
 }
 
+/** The temperature rule in words, in the order the code checks it. Keep in step with temperature(). */
+export const TEMP_RULE_TEXT =
+  "Checked in this order, on unrounded values: heating up if decks and money are both up by more than 15%; crowding if decks are up by more than 15% and money is flat or down; cooling if either is down by more than 15%; otherwise steady. A sector with no decks in the 3 months before is counted as if it had 1, and its change is shown as New activity.";
+
 export const PULSE_DAYS = 5;
 
 /** How a sample deck reached the fund: by email to the partner, to the pitch address, or the form. */

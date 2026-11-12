@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtMonth } from "@/lib/format";
 import Link from "next/link";
 import { Disclosure } from "@/components/disclosure";
 import { useMemo, useState } from "react";
@@ -11,7 +12,7 @@ import { useLinks } from "@/components/links-store";
 import { useStore } from "@/components/store";
 import { Card, cx } from "@/components/ui";
 import { DEFINITIONS } from "@/lib/agents";
-import { COLUMNS, FX_NOTE, dealRow, portfolioRow, type Cell, type ColKey, type CompareRow } from "@/lib/compare";
+import { COLUMNS, FX_NOTE, dealRow, portfolioRow, type Cell, type ColKey, type CompareRow, periodScope } from "@/lib/compare";
 import type { KeyFact } from "@/lib/provenance";
 
 const METRICS: { key: ColKey; label: string; plain: string; bar?: number; barText?: string; unit: (n: number) => string }[] = [
@@ -84,8 +85,9 @@ export default function ComparePage() {
       <div className="max-w-3xl">
         <h1 className="text-2xl font-semibold tracking-tight">Compare</h1>
         <p className="mt-1 text-sm text-slate-600">
-          How each company stands against the others on one measure at a time, in one currency and on the same definitions. Pick a
-          measure, read the ranking, and click any company for the sources behind its number.
+          How each company stands against the others on one measure at a time, in one currency and on the same definitions. Each value
+          shows the period it covers: a company whose latest report is older is marked stale rather than silently ranked as like for like.
+          Pick a measure, read the ranking, and click any company for the sources behind its number. {FX_NOTE}
         </p>
       </div>
 
@@ -177,6 +179,7 @@ export default function ComparePage() {
                       <>
                         <span className="flex items-center gap-1.5">
                           {cell.status && <StatusDot status={cell.status} />}
+                          {cell.status === "Conflict" && <span className="text-[11px] font-semibold text-rose-700">Conflict</span>}
                           <span
                             className={cx(
                               "whitespace-nowrap font-medium tabular-nums",
@@ -294,6 +297,9 @@ function Ranked({ rows, metric, onOpen }: { rows: CompareRow[]; metric: ColKey; 
   const sorted = [...vals].sort((a, b) => a - b);
   const median = sorted.length ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2) : null;
   const good = (v: number) => (m.bar == null ? null : lowBetter ? v <= m.bar : v >= m.bar);
+  const { matched, stale } = periodScope(rows, metric);
+  const staleNames = withVal.filter((r) => stale.has(r.id)).map((r) => r.name);
+  const conflicted = withVal.filter((r) => r.cells[metric].status === "Conflict").length;
   return (
     <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -301,10 +307,13 @@ function Ranked({ rows, metric, onOpen }: { rows: CompareRow[]; metric: ColKey; 
         <span className="flex flex-wrap gap-x-4 text-xs text-slate-500">
           {median != null && (
             <span>
-              Median <span className="font-semibold text-slate-900">{m.unit(median)}</span>
+              Median of {vals.length} <span className="font-semibold text-slate-900">{m.unit(median)}</span>
+              {staleNames.length > 0 && <span className="text-amber-700"> · includes {staleNames.length} stale ({staleNames.join(", ")})</span>}
+              {conflicted > 0 && <span className="text-rose-700"> · {conflicted} conflicted</span>}
             </span>
           )}
-          {m.barText && <span>{m.barText}</span>}
+          {matched && <span>Most values cover {fmtMonth(matched)}</span>}
+          {m.barText && <span>{m.barText}{metric === "growth" ? " (one benchmark for every stage, not stage-adjusted)" : ""}</span>}
         </span>
       </div>
       <ul className="mt-4 space-y-1.5">
@@ -314,17 +323,25 @@ function Ranked({ rows, metric, onOpen }: { rows: CompareRow[]; metric: ColKey; 
           const ok = good(v);
           const left = Math.min(pos(0), pos(v));
           const width = Math.max(Math.abs(pos(v) - pos(0)), 0.8);
+          const isConflict = c.status === "Conflict";
+          const isStale = stale.has(r.id);
+          const said = [r.name, m.unit(v), c.sub, isStale ? "stale period" : null, isConflict ? "conflicted: two sources disagree" : null, ok == null ? null : ok ? "meets the fund's bar as calculated" : "below the fund's bar"].filter(Boolean).join(", ");
           return (
             <li key={r.id}>
-              <button onClick={() => onOpen(r)} className="grid w-full grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-slate-50 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_7rem]">
+              <button aria-label={said} onClick={() => onOpen(r)} className="grid w-full grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-slate-50 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_10rem]">
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-slate-900">{r.name}</span>
-                  <span className={cx("text-[10px] font-semibold uppercase tracking-wide", r.kind === "Pitch" ? "text-slate-700" : "text-slate-700")}>{r.kind}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">{r.kind}</span>
+                  {c.sub && <span className={cx("ml-1.5 text-[11px]", isStale ? "font-semibold text-amber-700" : "text-slate-500")}>{c.sub}{isStale ? " · stale" : ""}</span>}
                 </span>
                 <span className="relative h-5 rounded bg-slate-100">
                   <span
-                    className={cx("absolute inset-y-0 rounded", ok == null ? "bg-slate-700" : ok ? "bg-emerald-500" : "bg-red-400")}
-                    style={{ left: `${left}%`, width: `${width}%` }}
+                    className={cx("absolute inset-y-0 rounded", ok == null ? "bg-slate-700" : ok ? "bg-emerald-500" : "bg-red-400", (isConflict || isStale) && "opacity-60 ring-2 ring-inset", isConflict ? "ring-rose-600" : isStale && "ring-amber-500")}
+                    style={{
+                      left: `${left}%`,
+                      width: `${width}%`,
+                      backgroundImage: isConflict || isStale ? "repeating-linear-gradient(135deg, rgba(255,255,255,.55) 0 4px, transparent 4px 8px)" : undefined,
+                    }}
                   />
                   {median != null && <span aria-hidden className="absolute inset-y-[-3px] w-px bg-slate-900/60" style={{ left: `${pos(median)}%` }} title="Median" />}
                   {m.bar != null && m.bar !== 0 && <span aria-hidden className="absolute inset-y-[-3px] w-0.5 bg-amber-500" style={{ left: `${pos(m.bar)}%` }} title={m.barText} />}
@@ -332,6 +349,7 @@ function Ranked({ rows, metric, onOpen }: { rows: CompareRow[]; metric: ColKey; 
                 <span className="flex items-center justify-end gap-1.5 text-right">
                   {c.status && <StatusDot status={c.status} />}
                   <span className="text-sm font-semibold tabular-nums text-slate-900">{m.unit(v)}</span>
+                  {isConflict && <span className="text-xs font-semibold text-rose-700">· Conflicted</span>}
                 </span>
               </button>
             </li>
@@ -347,7 +365,10 @@ function Ranked({ rows, metric, onOpen }: { rows: CompareRow[]; metric: ColKey; 
         {m.bar != null && (
           <>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-3 rounded-sm bg-emerald-500" /> Meets the fund&apos;s bar
+              <span className="h-2 w-3 rounded-sm bg-emerald-500" /> Meets the fund&apos;s bar, as calculated
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-3 rounded-sm bg-emerald-500 opacity-60 ring-2 ring-inset ring-rose-600" style={{ backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,.55) 0 4px, transparent 4px 8px)" }} /> Striped: conflicted or stale, not verified
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-3 rounded-sm bg-red-400" /> Below it

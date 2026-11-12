@@ -37,7 +37,11 @@ export function StatusLabel({ status, className }: { status: FactStatus; classNa
 }
 
 export function StatusDot({ status }: { status: FactStatus }) {
-  return <span title={`${status}: ${STATUS_MEANING[status]}`} className={cx("inline-block h-2 w-2 shrink-0 rounded-full", STATUS_STYLE[status].dot)} />;
+  return (
+    <span title={`${status}: ${STATUS_MEANING[status]}`} className={cx("inline-block h-2 w-2 shrink-0 rounded-full", STATUS_STYLE[status].dot)}>
+      <span className="sr-only">{status}</span>
+    </span>
+  );
 }
 
 export function StatusKey({ statuses = ["Checked", "Reported", "Claimed", "Conflict", "Missing"] }: { statuses?: FactStatus[] }) {
@@ -106,7 +110,7 @@ function Drawer({ target, onClose }: { target: EvidenceTarget; onClose: () => vo
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="evidence-title">
       <button className="absolute inset-0 bg-slate-900/30" aria-label="Close the evidence panel" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl">
+      <div className="absolute inset-y-0 right-0 flex w-[min(520px,100vw)] flex-col bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-500">{company.name} · evidence</p>
@@ -179,6 +183,22 @@ function Drawer({ target, onClose }: { target: EvidenceTarget; onClose: () => vo
 }
 
 function SourceCard({ e }: { e: Evidence }) {
+  // Every input must trace to a viewable source or say plainly that it cannot be opened (audit A3).
+  const open = e.url ? (
+    <a
+      href={e.url}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Open source: ${e.file ?? e.source}${e.page ? `, page ${e.page}` : ""} (opens in a new tab)`}
+      className="inline-flex h-8 shrink-0 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-violet-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+    >
+      Open source{e.page ? ` · p.${e.page}` : ""}
+    </a>
+  ) : (
+    <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-600" title="This prototype holds the sample file by name only, so it cannot be opened here.">
+      {e.page ? `p.${e.page} · ` : ""}Sample file: preview unavailable
+    </span>
+  );
   return (
     <li className="rounded-lg border border-slate-200 p-3">
       <div className="flex items-start justify-between gap-3">
@@ -186,18 +206,10 @@ function SourceCard({ e }: { e: Evidence }) {
           <div className="text-xs font-medium text-slate-500">{e.source}</div>
           <div className="mt-0.5 text-sm font-semibold text-slate-900">{e.value}</div>
         </div>
-        {e.page ? (
-          e.url ? (
-            <a href={e.url} target="_blank" rel="noreferrer" className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100">
-              Open p. {e.page}
-            </a>
-          ) : (
-            <span className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">p. {e.page}</span>
-          )
-        ) : null}
+        {open}
       </div>
       {e.quote && <p className="mt-1.5 text-xs italic text-slate-600">“{e.quote}”</p>}
-      {e.file && <p className="mt-1 truncate text-[11px] text-slate-400">{e.file}</p>}
+      {e.file && <p className="mt-1 truncate text-xs leading-[18px] text-slate-500">{e.file}</p>}
     </li>
   );
 }

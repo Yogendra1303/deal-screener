@@ -10,7 +10,7 @@
     "make-samples": "node scripts/make-samples.mjs",
     "process-samples": "tsx scripts/process-samples.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/test-checks.ts && tsx scripts/test-health.ts && tsx scripts/test-v2.ts && tsx scripts/test-backend.ts && tsx scripts/test-change.ts",
+    "test": "tsx scripts/test-checks.ts && tsx scripts/test-health.ts && tsx scripts/test-v2.ts && tsx scripts/test-backend.ts && tsx scripts/test-change.ts && tsx scripts/test-evidence.ts",
     "chat-run": "tsx scripts/chat-run.ts"
   },
   "dependencies": {

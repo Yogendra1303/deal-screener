@@ -45,7 +45,7 @@ export default function MarketPage() {
           <span className="ml-1.5 text-xs font-normal text-slate-500">· {facts.reduce((s, f) => s + f.companies, 0)} companies</span>
         </Cell>
         <Cell label="Decks, last 3 months">
-          <ChangeLine n={recent} change={recent / Math.max(1, before) - 1} />
+          <ChangeLine n={recent} change={recent / Math.max(1, before) - 1} from={[before, recent]} />
         </Cell>
         <Cell label="Raised in market, 90d" hint="Sample market data">
           <ChangeLine n={`$${(raised / 1000).toFixed(2)}B`} change={raised / raisedBefore - 1} />
@@ -105,11 +105,11 @@ function Cell({ label, hint, children }: { label: string; hint?: string; childre
   );
 }
 
-function ChangeLine({ n, change }: { n: React.ReactNode; change: number }) {
+function ChangeLine({ n, change, from }: { n: React.ReactNode; change: number; from?: [number, number] }) {
   return (
     <span className="flex items-center gap-2">
       <span className="font-mono">{n}</span>
-      <ChangeBar value={change} max={1} className="[&>span:first-child]:hidden" />
+      <ChangeBar value={change} max={1} className="[&>span:first-child]:hidden" from={from} />
     </span>
   );
 }

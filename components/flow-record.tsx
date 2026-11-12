@@ -2,6 +2,7 @@
 
 // One company from the deal-flow history, told as a row of slides: every message both ways, what the
 // fund decided, and what the monthly watch found since. Read from the email thread and the deck's first pages.
+import { windowCounts } from "@/lib/change";
 import { useState } from "react";
 import Link from "next/link";
 import { Delta, Sparkline, changeText } from "./charts";
@@ -148,7 +149,7 @@ export function FlowRecord({ id }: { id: string }) {
                 <LabelPill label={r.label} />
               </div>
               <p className="mt-0.5 text-slate-600">
-                {c.sub} in {c.city}. {last.stage}, raising {usd(last.askUsd)}.
+                {c.sub} in {c.city}. {last.stage}, raising {usd(last.askUsd)} <span className="text-xs text-slate-500">(as typed on the intake form)</span>.
               </p>
               <p className="mt-1 text-xs text-slate-400">
                 {r.fits ? "Fits the fund's rules" : "Outside the fund's rules"}
@@ -167,7 +168,25 @@ export function FlowRecord({ id }: { id: string }) {
           <KeyStrip
             className="mt-4 lg:grid-cols-6"
             items={[
-              ["Round ask", <span key="a" className="font-mono">{usd(a.record.round.amount.amount ?? last.askUsd)}</span>],
+              [
+                "Round ask",
+                <span key="a" className="font-mono">
+                  {a.record.round.amount.amount != null ? (
+                    <>
+                      {usd(a.record.round.amount.amount)} <span className="font-sans text-xs font-normal text-slate-500">deck</span>
+                      {a.record.round.amount.amount !== last.askUsd && (
+                        <span className="block text-xs">
+                          {usd(last.askUsd)} <span className="font-sans font-normal text-slate-500">form</span>
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {usd(last.askUsd)} <span className="font-sans text-xs font-normal text-slate-500">form</span>
+                    </>
+                  )}
+                </span>,
+              ],
               ["Implied ARR", <span key="b" className="font-mono">{arr ? fmtMoney(arr, "USD") : "—"}</span>],
               ["MoM growth", <span key="c" className="font-mono">{t.monthlyGrowthPct.value != null ? `${t.monthlyGrowthPct.value}%` : "Not stated"}</span>],
               ["Runway", <span key="d" className="font-mono">{t.runwayMonths.value != null ? `${t.runwayMonths.value} months` : "Not stated"}</span>],
@@ -232,7 +251,14 @@ export function FlowRecord({ id }: { id: string }) {
                   ["Reason", d.reason],
                   ["Decided", <span key="a" className="font-mono">{d.at}</span>],
                   ["By", d.by],
-                  ["Next check", <span key="c" className="font-mono">{d.checkOn ?? "None"}</span>],
+                  ["Next scheduled check", <span key="c" className="font-mono">{d.checkOn ?? "None"}</span>],
+                  [
+                    "Trigger event",
+                    (() => {
+                      const hit = c.signals.filter((x) => x.kind === "Trigger met").sort((x, y) => y.at.localeCompare(x.at))[0];
+                      return hit ? <span key="t" className="font-mono">{hit.at}</span> : <span key="t" className="text-slate-500">None yet</span>;
+                    })(),
+                  ],
                   [
                     "Re-engage",
                     reengage ? (
@@ -383,7 +409,7 @@ export function FlowRecord({ id }: { id: string }) {
               <div>
                 <p className="flex items-center gap-2">
                   <span className="text-2xl font-semibold tabular-nums text-slate-900">{m.counts.slice(-3).reduce((a, b) => a + b, 0)}</span>
-                  <Delta value={m.inboundChange} />
+                  <Delta value={m.inboundChange} from={windowCounts(m.counts)} />
                 </p>
                 <p className="text-xs text-slate-500">decks in the last 3 months</p>
               </div>

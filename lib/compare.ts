@@ -34,6 +34,8 @@ export interface Cell {
   /** The same figure in the company's own currency, for money cells. */
   local?: string;
   sub?: string;
+  /** The month the figure describes (YYYY-MM), so rows from different periods are never silently ranked as like for like. */
+  asOf?: string;
   status: FactStatus | null;
   evidence: Evidence[];
   working: string[];
@@ -76,7 +78,7 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
   const month = (m: string) => fmtMonth(m).split(" ")[0];
 
   const revenue = last
-    ? moneyCell(last.numbers.revenue!.value, c.currency, fact("revenue").status === "Conflict" ? "Conflict" : "Reported", misEvidence(c, last, "revenue"), month(last.month))
+    ? { ...moneyCell(last.numbers.revenue!.value, c.currency, fact("revenue").status === "Conflict" ? "Conflict" : "Reported", misEvidence(c, last, "revenue"), month(last.month)), asOf: last.month }
     : empty("No report");
   const owed = last ? c.reports.filter((r) => r.month > last.month && reportStatus(r, today) === "missing") : [];
   if (owed.length) {
@@ -91,6 +93,7 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
         sort: g.pct,
         text: `${g.pct >= 0 ? "" : "−"}${Math.abs(g.pct).toFixed(1)}%`,
         sub: `${month(g.from.month)} to ${month(g.to.month)}`,
+        asOf: g.to.month,
         status: g.to.numbers.revenue!.inFile != null ? "Conflict" : "Reported",
         evidence: [...misEvidence(c, g.from, "revenue"), ...misEvidence(c, g.to, "revenue")],
         working: fact("growth").working ?? [],
@@ -103,6 +106,7 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
         sort: b.value,
         text: b.value != null ? `${b.value.toFixed(1)}×` : "n/a",
         sub: b.note ?? "3 months",
+        asOf: g?.to.month,
         status: last?.numbers.revenue?.inFile != null ? "Conflict" : "Reported",
         evidence: [],
         working: b.working,
@@ -114,7 +118,7 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
   const rw = rwReport ? runwayMonths(rwReport)! : null;
   const runway: Cell =
     rw != null
-      ? { sort: rw, text: `${rw.toFixed(1)} mo`, sub: month(rwReport!.month), status: "Reported", evidence: rwFact.evidence, working: rwFact.working ?? [] }
+      ? { sort: rw, text: `${rw.toFixed(1)} mo`, sub: month(rwReport!.month), asOf: rwReport!.month, status: "Reported", evidence: rwFact.evidence, working: rwFact.working ?? [] }
       : empty();
 
   const pf = fact("plan");
@@ -132,6 +136,7 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
         sort: custReport.numbers.customers!.value,
         text: String(custReport.numbers.customers!.value),
         sub: cf.status === "Missing" ? `${month(custReport.month)}; latest not sent` : month(custReport.month),
+        asOf: custReport.month,
         status: cf.status === "Missing" ? "Missing" : "Reported",
         evidence: cf.evidence,
         working: [],
@@ -177,7 +182,7 @@ export function dealRow(d: DealResult): CompareRow {
   const month = (m: string) => fmtMonth(m).split(" ")[0];
   const sheetEv = (r: SheetRow, v: string): Evidence => ({ source: "Numbers sheet", value: `${v} in ${fmtMonth(r.month)}`, file: "Monthly numbers sheet (CSV)" });
 
-  const revenue = last ? moneyCell(last.revenue!, cur, fact("revenue").status, fact("revenue").evidence, `${month(last.month)}, sheet`) : empty();
+  const revenue = last ? { ...moneyCell(last.revenue!, cur, fact("revenue").status, fact("revenue").evidence, `${month(last.month)}, sheet`), asOf: last.month } : empty();
 
   const from = last ? sheet.find((r) => r.month === addMonths(last.month, -3)) : undefined;
   const g3 = last && from ? (Math.pow(last.revenue! / from.revenue!, 1 / 3) - 1) * 100 : null;
@@ -187,6 +192,7 @@ export function dealRow(d: DealResult): CompareRow {
           sort: g3,
           text: `${g3.toFixed(1)}%`,
           sub: `${month(from!.month)} to ${month(last!.month)}`,
+          asOf: last!.month,
           status: "Reported",
           evidence: [sheetEv(from!, fmtMoney(from!.revenue, cur)), sheetEv(last!, fmtMoney(last!.revenue, cur))],
           working: [`(${fmtMoney(last!.revenue, cur)} ÷ ${fmtMoney(from!.revenue, cur)}) ^ (1 ÷ 3) − 1 = ${g3.toFixed(1)}%`],
@@ -206,7 +212,7 @@ export function dealRow(d: DealResult): CompareRow {
         `New annual revenue: (${fmtMoney(last.revenue, cur)} − ${fmtMoney(from.revenue, cur)}) × 12 = ${fmtMoney(added, cur)}`,
       ];
       if (added > 0) working.push(`${fmtMoney(burn, cur)} ÷ ${fmtMoney(added, cur)} = ${(burn / added).toFixed(2)}×`);
-      bm = { sort: added > 0 ? burn / added : null, text: added > 0 ? `${(burn / added).toFixed(1)}×` : "n/a", sub: "3 months, sheet", status: "Reported", evidence: [], working };
+      bm = { sort: added > 0 ? burn / added : null, text: added > 0 ? `${(burn / added).toFixed(1)}×` : "n/a", sub: "3 months, sheet", asOf: last.month, status: "Reported", evidence: [], working };
     }
   }
 
@@ -235,4 +241,15 @@ export function dealRow(d: DealResult): CompareRow {
       reporting: empty("Pitch", "Not invested, so no reporting yet."),
     },
   };
+}
+
+/** The reporting period most rows share, and which rows are older than it (stale). Display only: nothing is
+ * dropped from a calculation here; the page says which values a median includes. */
+export function periodScope(rows: CompareRow[], key: ColKey): { matched: string | null; stale: Set<string> } {
+  const months = rows.map((r) => r.cells[key]).filter((c) => c.sort != null && c.asOf).map((c) => c.asOf!);
+  if (!months.length) return { matched: null, stale: new Set() };
+  const tally = months.reduce<Record<string, number>>((acc, m) => ((acc[m] = (acc[m] ?? 0) + 1), acc), {});
+  const matched = Object.entries(tally).sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0][0];
+  const stale = new Set(rows.filter((r) => r.cells[key].sort != null && r.cells[key].asOf && r.cells[key].asOf! < matched).map((r) => r.id));
+  return { matched, stale };
 }

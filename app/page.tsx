@@ -366,7 +366,7 @@ function PartnerHome() {
             <p className="text-xs font-medium uppercase tracking-wider text-white/50">Deal flow · {fmtMonth(today.slice(0, 7))}</p>
             <p className="mt-2 flex items-baseline gap-3">
               <span className="text-5xl font-semibold tabular-nums tracking-tight">{thisMonth}</span>
-              <Delta value={change} solid />
+              <Delta value={change} solid from={[monthly.at(-2)!, thisMonth]} />
             </p>
             <p className="mt-1 text-sm text-white/60">decks this month, against {monthly.at(-2)} last month</p>
             <Sparkline values={monthly} width={320} height={64} tone="white" fluid className="mt-4 h-16 w-full max-w-sm" />
@@ -668,7 +668,7 @@ function AnalystHome() {
     { key: "a-read", n: toReadRows.length, label: "To read", hint: "New decks for you", dot: "bg-slate-600" },
     { key: "founders", n: fromFounders.length, label: "From founders", hint: "Files to check or chase", dot: "bg-slate-600" },
     { key: "a-look", n: lookMine.length, label: "Look again", hint: "News since you passed", dot: "bg-amber-500" },
-    { key: "a-never", n: unclaimed.length, label: "Never opened", hint: "No owner yet", dot: "bg-red-500" },
+    { key: "a-never", n: unclaimed.length, label: "Never opened", hint: "No owner yet", dot: "bg-slate-500" },
   ];
   const stages: { label: string; value: number; color: string }[] = [
     { label: "New", value: mineRows.filter((r) => r.status === "New").length, color: "bg-slate-600" },

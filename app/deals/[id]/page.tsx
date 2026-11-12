@@ -1,5 +1,6 @@
 "use client";
 
+import { EvidenceMatrix } from "@/components/evidence-matrix";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
 import { DiligenceChecklist, useDiligenceView } from "@/components/diligence";
@@ -156,6 +157,8 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
         <DealDocs id={deal.id} name={deal.form.companyName} className="" />
         <CheckSummary cover={coverage({ record: deal.record, form: deal.form, sheet: deal.sheet, registry: deal.registry, flags: deal.flags })} />
       </section>
+
+      <EvidenceMatrix deal={deal} deckUrl={deckUrl} />
 
       <Verdict deal={deal} band={band} overruled={Boolean(overrule?.band)} />
 

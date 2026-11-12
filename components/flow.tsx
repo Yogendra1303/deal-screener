@@ -3,6 +3,7 @@
 // The deal-flow terminal: every deck the fund has ever received as one list of rows (the live pitches
 // plus 6 months of sample history), the market map, the news list, the look-again list and the deck list.
 // Counts, ranks and readings are worked out here by code from those rows.
+import { windowCounts } from "@/lib/change";
 import { DocDrawer, useDocs } from "./docs";
 import type { SourceDoc } from "@/lib/docs";
 import { checkUploadCached } from "@/lib/upload";
@@ -21,7 +22,7 @@ import { sampleById } from "@/lib/data";
 import { fmtDay } from "@/lib/dates";
 import { fmtMonth } from "@/lib/format";
 import { FLOW, FLOW_NOTE, LOOK_NOW, LOOK_RECENT_DAYS, SUB_FOR, deckCounts, fitsRules, lookAgain, missRate, type FlowSignal } from "@/lib/flow";
-import { FUNNEL, MARKET, MONTHS, TEMP_SHARE, founderFit, sampleChannel, temperature, type Decision, type FitLevel, type Temperature } from "@/lib/funnel";
+import { FUNNEL, MARKET, MONTHS, TEMP_SHARE, founderFit, sampleChannel, temperature, type Decision, type FitLevel, type Temperature, TEMP_RULE_TEXT } from "@/lib/funnel";
 import { daysBetween } from "@/lib/portfolio/health";
 import { usd } from "@/lib/rules";
 import type { DealStatus } from "@/lib/types";
@@ -217,7 +218,8 @@ export function feedOf(rows: FlowRow[]): FeedItem[] {
 
 const LABEL_TONE: Record<string, ToneKey> = {
   New: "neutral",
-  "Never opened": "alert",
+  // Unread is a workflow state, not a data problem: neutral slate with a dot. Red stays for evidence conflicts.
+  "Never opened": "neutral",
   Reviewing: "neutral",
   "Meeting set": "clear",
   "On hold": "review",
@@ -225,6 +227,13 @@ const LABEL_TONE: Record<string, ToneKey> = {
 };
 
 export function LabelPill({ label }: { label: string }) {
+  if (label === "Never opened")
+    return (
+      <Tag tone="neutral" title="No one at the fund has opened this deck yet. This is not a data problem.">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+        Never opened
+      </Tag>
+    );
   return <Tag tone={LABEL_TONE[label] ?? "neutral"}>{label === "Meeting set" ? "Meeting" : label}</Tag>;
 }
 
@@ -513,8 +522,8 @@ function SliceSummary({ list }: { list: FlowRow[] }) {
         {[
           [list.length, "companies"],
           [fit, "fit our rules"],
-          [meet, "meetings"],
-          [passed, "passed or held"],
+          [meet, meet === 1 ? "meeting" : "meetings"],
+          [passed, "passed / on hold"],
         ].map(([n, l]) => (
           <div key={l as string}>
             <p className="text-xl font-semibold tabular-nums text-slate-900">{n}</p>
@@ -611,7 +620,7 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
                     </button>
                   </td>
                   <td className="text-right">
-                    <Delta value={m.inboundChange} className="px-1 text-[10px]" />
+                    <Delta value={m.inboundChange} className="px-1 text-[10px]" from={windowCounts(m.counts)} />
                   </td>
                   <td className="text-right" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]} (sample)`}>
                     <Delta value={m.moneyChange} className="px-1 text-[10px]" />
@@ -642,8 +651,7 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
         </table>
       </div>
       <p className="px-5 pb-4 text-[11px] text-slate-400">
-        Decks and Money compare the last 3 months with the 3 before. Both up by more than {TEMP_SHARE * 100}% is heating up; more decks but money flat or
-        down is crowding; either down by more than {TEMP_SHARE * 100}% is cooling. {FLOW_NOTE}
+        Decks and Money compare the last 3 months with the 3 before. {TEMP_RULE_TEXT} {FLOW_NOTE}
       </p>
       {pick && (
         <Panel
@@ -687,7 +695,7 @@ export function SectorRows({ market }: { market: SectorStat[] }) {
             </span>
             <Sparkline values={m.counts} width={88} height={28} tone={m.inboundChange >= 0.05 ? "up" : m.inboundChange <= -0.05 ? "down" : "indigo"} className="hidden sm:block" />
             <span className="flex w-24 flex-col items-end gap-1">
-              <Delta value={m.inboundChange} />
+              <Delta value={m.inboundChange} from={windowCounts(m.counts)} />
               <TempPill t={m.temp} />
             </span>
           </Link>

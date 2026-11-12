@@ -25,3 +25,9 @@ export function describeChange(previous: number, current: number, unit = "decks"
   const text = `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct)}%`;
   return { kind, text, counts, aria: `${text}: ${current} ${unit} against ${previous} in the period before`, value };
 }
+
+/** Last 3 months against the 3 before, from six monthly counts (oldest first): [previous, current]. */
+export function windowCounts(counts: number[]): [number, number] {
+  const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+  return [sum(counts.slice(-6, -3)), sum(counts.slice(-3))];
+}

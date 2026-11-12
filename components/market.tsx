@@ -2,6 +2,7 @@
 
 // Market charts in a terminal style: light panels, thin marks, fixed-width numbers and a hover readout on every mark.
 // Every number here is counted by code from the deal-flow rows or read from the sample market table (lib/funnel.ts).
+import { describeChange, windowCounts } from "@/lib/change";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +10,7 @@ import { changeText } from "./charts";
 import { TempPill, slugOf, type FlowRow, type SectorStat } from "./flow";
 import { LABEL, cx } from "./ui";
 import { fmtMonth } from "@/lib/format";
-import { MONTHS, TEMP_SHARE, type Temperature } from "@/lib/funnel";
+import { MONTHS, TEMP_SHARE, type Temperature, TEMP_RULE_TEXT } from "@/lib/funnel";
 
 // ---------- Shared pieces ----------
 
@@ -208,7 +209,16 @@ export function MiniColumns({ values, max, className }: { values: number[]; max?
 }
 
 /** A change as a bar either side of zero (green up, red down) with the figure beside it. */
-export function ChangeBar({ value, max = 1.5, className }: { value: number; max?: number; className?: string }) {
+export function ChangeBar({ value, max = 1.5, className, from }: { value: number; max?: number; className?: string; from?: [number, number] }) {
+  const said = from ? describeChange(from[0], from[1]) : null;
+  // Growth from zero is undefined: say "New · 0→N" or "No activity" rather than draw a bar.
+  if (said && said.value === null)
+    return (
+      <span className={cx("flex items-center gap-2", className)} title={said.aria}>
+        <span className="relative h-2 w-20 shrink-0" aria-hidden />
+        <span className="whitespace-nowrap rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-700">{said.text}</span>
+      </span>
+    );
   const flat = Math.abs(value) < 0.05;
   const w = Math.min(1, Math.abs(value) / max) * 50;
   return (
@@ -222,7 +232,7 @@ export function ChangeBar({ value, max = 1.5, className }: { value: number; max?
           />
         )}
       </span>
-      <span className={cx("w-12 font-mono text-xs font-semibold tabular-nums", flat ? "text-slate-500" : value > 0 ? "text-emerald-700" : "text-red-700")}>
+      <span title={said?.aria} className={cx("w-16 whitespace-nowrap font-mono text-xs font-semibold tabular-nums", flat ? "text-slate-500" : value > 0 ? "text-emerald-700" : "text-red-700")}>
         {changeText(value)}
       </span>
     </span>
@@ -500,7 +510,8 @@ export function MomentumMap({ facts }: { facts: SectorFacts[] }) {
         {node}
       </div>
       <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500">
-        Dashed lines are the ±{Math.round(TEMP_SHARE * 100)}% the temperature rule uses. Bigger bubble, more decks. Click a sector to open it.
+        Dashed lines are the ±{Math.round(TEMP_SHARE * 100)}% the temperature rule uses. Bigger bubble, more decks in 6 months. Click a sector to open it.{" "}
+        <span className="text-slate-400">{TEMP_RULE_TEXT}</span>
       </p>
     </section>
   );
@@ -730,7 +741,7 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
                 </td>
                 <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums text-slate-900">{f.decks3}</td>
                 <td className="px-3 py-2">
-                  <ChangeBar value={f.m.inboundChange} max={2} className={GRID_BAR} />
+                  <ChangeBar value={f.m.inboundChange} max={2} className={GRID_BAR} from={windowCounts(f.m.counts)} />
                 </td>
                 <td className="hidden whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums text-slate-700 @3xl:table-cell">
                   ${f.m.raised[0]}M<span className="ml-1 text-[11px] text-slate-400">{f.m.rounds[0]} rds</span>
@@ -758,7 +769,7 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
                       ]}
                     />
                     <span className="whitespace-nowrap text-[11px] tabular-nums text-slate-600">
-                      {f.meetings} {f.meetings === 1 ? "meeting" : "meetings"} · {f.passed} passed
+                      {f.meetings} {f.meetings === 1 ? "meeting" : "meetings"} · {f.passed} passed / on hold
                     </span>
                   </span>
                 </td>
@@ -773,7 +784,7 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
               </td>
               <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums">{tot.decks3}</td>
               <td className="px-3 py-2">
-                <ChangeBar value={tot.decks3 / Math.max(1, before3) - 1} max={2} className={GRID_BAR} />
+                <ChangeBar value={tot.decks3 / Math.max(1, before3) - 1} max={2} className={GRID_BAR} from={[before3, tot.decks3]} />
               </td>
               <td className="hidden whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums @3xl:table-cell">
                 ${tot.raised.toLocaleString("en-US")}M<span className="ml-1 text-[11px] text-slate-400">{tot.rounds} rds</span>
@@ -785,7 +796,7 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
                 {tot.strong} of {tot.rated} ({pct(tot.strong, tot.rated)}%)
               </td>
               <td className="hidden whitespace-nowrap px-3 py-2 text-[11px] tabular-nums text-slate-600 @xl:table-cell">
-                {tot.meetings} meetings · {tot.passed} passed · {tot.companies} companies
+                {tot.meetings} {tot.meetings === 1 ? "meeting" : "meetings"} · {tot.passed} passed / on hold · {tot.companies} companies
               </td>
             </tr>
           </tfoot>
