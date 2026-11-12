@@ -359,3 +359,31 @@ export async function putSettings(patch: Partial<Settings>): Promise<Settings> {
     return db.settings;
   });
 }
+
+// ---------- Permitted users (who may sign in, and as what) ----------
+
+export type AppRole = "analyst" | "partner";
+export interface PermittedUser {
+  email: string;
+  name: string | null;
+  role: AppRole;
+  active: boolean;
+}
+
+/**
+ * The permitted-user row for a Google email, or null. With Supabase this reads public.permitted_users.
+ * Without it (file or none driver) only the FUNDHUB_PARTNERS / FUNDHUB_ANALYSTS email lists apply.
+ */
+export async function getPermittedUser(email: string): Promise<PermittedUser | null> {
+  const e = email.trim().toLowerCase();
+  if (!e) return null;
+  if (driver() === "supabase") {
+    const rows = await sbSelect<PermittedUser>("permitted_users", `email=eq.${encodeURIComponent(e)}&select=email,name,role,active`);
+    const r = rows[0];
+    return r && r.active ? r : null;
+  }
+  const list = (v: string | undefined) => (v ?? "").split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+  if (list(process.env.FUNDHUB_PARTNERS).includes(e)) return { email: e, name: null, role: "partner", active: true };
+  if (list(process.env.FUNDHUB_ANALYSTS).includes(e)) return { email: e, name: null, role: "analyst", active: true };
+  return null;
+}

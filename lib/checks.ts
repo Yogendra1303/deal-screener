@@ -177,7 +177,7 @@ export function runChecks(args: {
         detail: `${registry.legalName} was incorporated on ${registry.incorporated}. The company may have operated before incorporating, so ask rather than assume.`,
         sources: [
           deckRef(founded, `Founded ${founded.value}`),
-          { label: "Registry (sample)", value: `Incorporated ${registry.incorporated}` },
+          { label: /sample/i.test(registry.source) ? "Registry (sample)" : "Registry (live)", value: `Incorporated ${registry.incorporated}` },
         ],
       });
     }

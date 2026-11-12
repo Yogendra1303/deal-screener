@@ -7,7 +7,8 @@ import { AssessmentSchema, DealRecordSchema, DealRecordWireSchema, ResearchSchem
 import { ASSESS_SYSTEM, EXTRACT_SYSTEM, RESEARCH_SYSTEM, assessContext, researchBrief } from "../prompts";
 import { checkStage, finishDeal } from "../pipeline";
 import { findProfiles, findRegistry } from "../fixtures";
-import type { DealResult, FormInput, SheetRow } from "../types";
+import { runChecks } from "../checks";
+import type { DealResult, FormInput, Profile, RegistryRecord, SheetRow } from "../types";
 
 export const BRIDGE_TOOLS = {
   claude: { name: "Claude.ai", url: "https://claude.ai/new", model: "claude.ai (own account)" },
@@ -131,12 +132,17 @@ export interface ExtractionInput {
   /** Which account read it, for the audit trail. */
   tool: BridgeTool;
   research?: Research | null;
+  /** Live registry/profile facts fetched from /api/lookups (the keys live on the server). Falls back to the samples. */
+  lookups?: { registry: RegistryRecord | null; profiles: Profile[] };
 }
 
 /** The same code path as the API run: checks, founder conflicts, scores and band. Marked as read in chat. */
 export function applyExtraction(a: ExtractionInput): DealResult {
   const t = Date.now();
-  const { registry, profiles, flags } = checkStage({ record: a.record, form: a.form, sheet: a.sheet });
+  const staged = checkStage({ record: a.record, form: a.form, sheet: a.sheet });
+  const registry = a.lookups ? a.lookups.registry : staged.registry;
+  const profiles = a.lookups ? a.lookups.profiles : staged.profiles;
+  const flags = a.lookups ? runChecks({ record: a.record, form: a.form, sheet: a.sheet, registry }) : staged.flags;
   const checksMs = Date.now() - t;
   return finishDeal({
     id: a.id,

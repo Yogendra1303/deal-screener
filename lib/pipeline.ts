@@ -3,6 +3,7 @@ import { extractRecord } from "./extract";
 import { assessDeal } from "./assess";
 import { runChecks } from "./checks";
 import { findProfiles, findRegistry } from "./fixtures";
+import { lookupFacts } from "./lookups";
 import { MODEL } from "./ai";
 import { DEFAULT_RULES, bandFor, completenessScore, consistencyScore, fitScore } from "./rules";
 import type { DealResult, Flag, FormInput, Profile, RegistryRecord, RunStep, Score, SheetRow } from "./types";
@@ -30,7 +31,7 @@ export async function processDeal(input: {
   // 2. Code checks against the form, the sheet and the sample registry.
   say("Checking numbers against the sheet, the form and the registry");
   let t = Date.now();
-  const { registry, profiles, flags } = checkStage({ record, form: input.form, sheet: input.sheet });
+  const { registry, profiles, flags } = await checkStageLive({ record, form: input.form, sheet: input.sheet });
   runLog.push({ step: "Number and registry checks", ms: Date.now() - t });
 
   // 3. AI judges traction and team, checks founder roles against profiles, writes questions.
@@ -63,6 +64,17 @@ export function checkStage(args: { record: DealRecord; form: FormInput; sheet: S
   return { registry, profiles, flags };
 }
 
+/** Same checks, but the registry record and founder profiles come from the live lookups (see lib/lookups). */
+export async function checkStageLive(args: { record: DealRecord; form: FormInput; sheet: SheetRow[] | null }) {
+  const { record, form, sheet } = args;
+  const { registry, profiles } = await lookupFacts(form, {
+    companyName: record.company.name.value ?? "",
+    founderNames: record.team.map((f) => f.name),
+  });
+  const flags: Flag[] = runChecks({ record, form, sheet, registry });
+  return { registry, profiles, flags };
+}
+
 /** Turns founder conflicts into flags, makes the code scores and the band, and assembles the result. */
 export function finishDeal(a: {
   id: string;
@@ -91,7 +103,7 @@ export function finishDeal(a: {
       detail: c.detail,
       sources: [
         { label: "Deck", value: c.claim },
-        { label: "Profile (sample)", value: c.detail },
+        { label: a.profiles.some((p) => !/sample/i.test(p.source)) ? "Profile (live)" : "Profile (sample)", value: c.detail },
       ],
     });
   }
