@@ -39,6 +39,7 @@ export interface Session {
   name: string;
   role: Role;
   email: string;
+  userName?: string;
 }
 
 export function signInCheck(email: string, password: string): Session | string {

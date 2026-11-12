@@ -1,10 +1,11 @@
 "use client";
 
-// Production Google sign-in screen. Partner vs. Analyst access is assigned automatically on the server by fund email.
+// Production Google sign-in screen with an institutional "Workspace View on Entry" lens selector.
 import { signIn as nextAuthSignIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useWorkspace } from "@/components/workspace";
+import { cx } from "@/components/ui";
+import { ROLE_STORAGE_KEY, useWorkspace } from "@/components/workspace";
 
 const POINTS: [string, string][] = [
   ["One record per company", "Every deck becomes the same standard record, with a page and quote behind each fact."],
@@ -12,8 +13,29 @@ const POINTS: [string, string][] = [
   ["People decide", "AI sorts and explains. A partner or analyst sets every status, with a reason."],
 ];
 
-export function LoginScreen({ callbackUrl = "/deals" }: { callbackUrl?: string }) {
-  const [activeTarget, setActiveTarget] = useState(callbackUrl);
+const LENSES: {
+  id: "partner" | "analyst";
+  label: string;
+  badge: string;
+  summary: string;
+}[] = [
+  {
+    id: "partner",
+    label: "Partner View",
+    badge: "Partner",
+    summary: "Full fund pipeline, IC decisions & >10% math-gap audit",
+  },
+  {
+    id: "analyst",
+    label: "Analyst View",
+    badge: "Analyst",
+    summary: "Assigned screening queue, deck verification & founder follow-ups",
+  },
+];
+
+export function LoginScreen({ callbackUrl = "/" }: { callbackUrl?: string }) {
+  const [selectedRole, setSelectedRole] = useState<"partner" | "analyst">("partner");
+  const [customCallback, setCustomCallback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,8 +43,17 @@ export function LoginScreen({ callbackUrl = "/deals" }: { callbackUrl?: string }
     const params = new URLSearchParams(window.location.search);
     const cb = params.get("callbackUrl");
     const err = params.get("error");
+    const roleParam = params.get("role")?.toLowerCase();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (cb && cb.startsWith("/")) setActiveTarget(cb);
+    if (cb && cb.startsWith("/") && cb !== "/") setCustomCallback(cb);
+    try {
+      const saved = (roleParam || window.sessionStorage.getItem(ROLE_STORAGE_KEY) || window.localStorage.getItem(ROLE_STORAGE_KEY) || "").toLowerCase();
+      if (saved === "partner" || saved === "analyst") {
+        setSelectedRole(saved);
+      }
+    } catch {
+      // Ignore storage errors.
+    }
     if (err === "AccessDenied") {
       setError("Your Google email isn't on the fund's permitted Partner or Analyst list. Contact a fund partner to be added.");
     } else if (err) {
@@ -30,10 +61,29 @@ export function LoginScreen({ callbackUrl = "/deals" }: { callbackUrl?: string }
     }
   }, []);
 
+  function selectLens(role: "partner" | "analyst") {
+    setSelectedRole(role);
+    try {
+      window.sessionStorage.setItem(ROLE_STORAGE_KEY, role);
+      window.localStorage.setItem(ROLE_STORAGE_KEY, role);
+    } catch {
+      // Ignore storage errors.
+    }
+  }
+
   function handleGoogleSignIn() {
     setLoading(true);
     setError(null);
-    void nextAuthSignIn("google", { callbackUrl: activeTarget });
+    try {
+      window.sessionStorage.setItem(ROLE_STORAGE_KEY, selectedRole);
+      window.localStorage.setItem(ROLE_STORAGE_KEY, selectedRole);
+    } catch {
+      // Ignore storage errors.
+    }
+    const base = customCallback ?? callbackUrl;
+    const sep = base.includes("?") ? "&" : "?";
+    const target = `${base}${sep}role=${selectedRole}`;
+    void nextAuthSignIn("google", { callbackUrl: target });
   }
 
   return (
@@ -73,7 +123,7 @@ export function LoginScreen({ callbackUrl = "/deals" }: { callbackUrl?: string }
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Sign in to Fund Hub</h1>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-              Use your authorized fund Google account. Partner and Analyst access is assigned automatically by your fund email.
+              Authenticate with your fund Google account and choose your initial workspace lens below. You can switch between Partner and Analyst views anytime inside the workspace.
             </p>
 
             {error && (
@@ -81,6 +131,52 @@ export function LoginScreen({ callbackUrl = "/deals" }: { callbackUrl?: string }
                 {error}
               </p>
             )}
+
+            <div className="mt-6">
+              <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500">Workspace View on Entry</span>
+              <div role="radiogroup" aria-label="Workspace View on Entry" className="mt-2.5 space-y-2.5">
+                {LENSES.map((lens) => {
+                  const active = selectedRole === lens.id;
+                  return (
+                    <button
+                      key={lens.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => selectLens(lens.id)}
+                      className={cx(
+                        "flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition",
+                        active ? "border-slate-900 bg-slate-50/70 ring-1 ring-slate-900" : "border-slate-200 bg-white hover:border-slate-300",
+                      )}
+                    >
+                      <span
+                        aria-hidden
+                        className={cx(
+                          "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border",
+                          active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white",
+                        )}
+                      >
+                        {active && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-900">{lens.label}</span>
+                          <span
+                            className={cx(
+                              "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                              lens.id === "partner" ? "bg-indigo-50 text-indigo-700" : "bg-teal-50 text-teal-700",
+                            )}
+                          >
+                            {lens.badge}
+                          </span>
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-snug text-slate-500">{lens.summary}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <button
               type="button"
@@ -106,21 +202,12 @@ export function LoginScreen({ callbackUrl = "/deals" }: { callbackUrl?: string }
                   d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"
                 />
               </svg>
-              {loading ? "Redirecting to Google…" : "Continue with Google"}
+              {loading ? "Redirecting to Google…" : `Continue with Google as ${selectedRole === "partner" ? "Partner" : "Analyst"}`}
             </button>
-
-            <div className="mt-6 space-y-2 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-500">
-              <p>
-                <span className="font-semibold text-slate-700">Partner access:</span> Full pipeline, IC decisions, team workload, and &gt;10% math-gap audit views.
-              </p>
-              <p>
-                <span className="font-semibold text-slate-700">Analyst access:</span> Assigned screening queue, founder follow-ups, and portfolio reporting checks.
-              </p>
-            </div>
           </div>
 
           <p className="mt-5 text-center text-[11px] leading-snug text-slate-400">
-            Role permissions are verified on the server against the fund&apos;s permitted workspace directory on every request.
+            Access is verified on the server against the fund&apos;s permitted workspace directory on every request.
           </p>
         </div>
       </main>
@@ -133,8 +220,8 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (w.ready && w.session) router.replace("/deals");
+    if (w.ready && w.session) router.replace("/");
   }, [w.ready, w.session, router]);
 
-  return <LoginScreen callbackUrl="/deals" />;
+  return <LoginScreen callbackUrl="/" />;
 }

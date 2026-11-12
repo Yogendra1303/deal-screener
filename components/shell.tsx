@@ -102,25 +102,68 @@ function Brand() {
   );
 }
 
+export function RoleViewDropdown({ compact = false }: { compact?: boolean }) {
+  const w = useWorkspace();
+  return (
+    <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs">
+      <span className="text-slate-500">Role View:</span>
+      <select
+        aria-label="Role View"
+        value={w.role}
+        onChange={(e) => w.setDemoRole(e.target.value as Role)}
+        className={cx("cursor-pointer bg-transparent font-semibold text-slate-900 focus:outline-hidden", compact ? "text-xs" : "text-xs sm:text-sm")}
+      >
+        <option value="Partner">Partner</option>
+        <option value="Analyst">Analyst</option>
+      </select>
+    </label>
+  );
+}
+
 function UserCard() {
   const w = useWorkspace();
   const router = useRouter();
+  const displayName = w.userName || w.me;
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
-      <Avatar name={w.me} size="md" />
-      <div className="min-w-0 flex-1 leading-tight">
-        <div className="truncate text-sm font-medium text-slate-900">{w.me}</div>
-        <div className="text-[11px] text-slate-500">{w.role}</div>
+    <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+      <div className="flex items-center gap-2.5">
+        <Avatar name={displayName} size="md" />
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
+          <div className="truncate text-[11px] text-slate-500">{w.userEmail || w.role}</div>
+        </div>
+        <span
+          className={cx(
+            "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+            w.role === "Partner" ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200",
+          )}
+        >
+          {w.role}
+        </span>
       </div>
-      <button
-        onClick={() => {
-          w.signOut();
-          router.replace("/");
-        }}
-        className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white hover:text-slate-900"
-      >
-        Sign out
-      </button>
+      <div className="flex items-center justify-between gap-2 border-t border-slate-200/80 pt-2">
+        <label className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs">
+          <span className="text-[11px] text-slate-500">Role View:</span>
+          <select
+            aria-label="Sidebar Role View"
+            value={w.role}
+            onChange={(e) => w.setDemoRole(e.target.value as Role)}
+            className="min-w-0 flex-1 cursor-pointer bg-transparent font-semibold text-slate-900 focus:outline-hidden"
+          >
+            <option value="Partner">Partner</option>
+            <option value="Analyst">Analyst</option>
+          </select>
+        </label>
+        <button
+          onClick={() => {
+            w.signOut();
+            router.replace("/login");
+          }}
+          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white hover:text-slate-900"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }

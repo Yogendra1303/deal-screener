@@ -9,8 +9,8 @@ import { signInCheck, type Session } from "@/lib/auth";
 import type { Role } from "@/lib/team";
 import { hydrate, persist } from "@/lib/db/client";
 
+export const ROLE_STORAGE_KEY = "ds.role.v1";
 const KEYS = { session: "ds.session.v1", questions: "ds.questions.v1" };
-
 
 interface LocalQuestions {
   added: Question[];
@@ -24,6 +24,8 @@ interface Workspace {
   session: Session | null;
   role: Role;
   me: string;
+  userName: string;
+  userEmail: string;
   setDemoRole: (role: Role) => void;
   signIn: (email: string, password: string) => string | null;
   signOut: () => void;
@@ -54,15 +56,43 @@ function write(key: string, value: unknown) {
   }
 }
 
+function readStoredRole(): Role | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlRole = params.get("role")?.toLowerCase();
+    if (urlRole === "partner") return "Partner";
+    if (urlRole === "analyst") return "Analyst";
+    const s = (window.sessionStorage.getItem(ROLE_STORAGE_KEY) ?? window.localStorage.getItem(ROLE_STORAGE_KEY) ?? "").toLowerCase();
+    if (s === "partner") return "Partner";
+    if (s === "analyst") return "Analyst";
+  } catch {
+    // Ignore storage read errors.
+  }
+  return null;
+}
+
+function persistRole(role: Role) {
+  try {
+    window.sessionStorage.setItem(ROLE_STORAGE_KEY, role.toLowerCase());
+    window.localStorage.setItem(ROLE_STORAGE_KEY, role.toLowerCase());
+  } catch {
+    // Ignore storage write errors.
+  }
+}
+
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [local, setLocal] = useState<LocalQuestions>(EMPTY);
 
   useEffect(() => {
-    // Load this browser's choices once, after the first render, then check if a server OAuth session is active.
     const saved = read<Session | null>(KEYS.session, null);
+    const preferredRole = readStoredRole();
     const localSession = saved && saved.name && saved.role ? saved : null;
+    if (localSession && preferredRole && localSession.role !== preferredRole) {
+      localSession.role = preferredRole;
+      localSession.name = preferredRole === "Partner" ? "Kabir Shah" : "Riya Menon";
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSession(localSession);
     setLocal(read(KEYS.questions, EMPTY));
@@ -73,13 +103,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null } | null; role?: "partner" | "analyst" | null } | null) => {
         if (data?.enabled && data.user?.email && data.role) {
           const serverRole: Role = data.role === "partner" ? "Partner" : "Analyst";
-          const role: Role = localSession && localSession.email === data.user.email ? localSession.role : serverRole;
+          const role: Role = preferredRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole);
+          persistRole(role);
           const defaultName = role === "Partner" ? "Kabir Shah" : "Riya Menon";
-          const name = localSession && localSession.email === data.user.email && localSession.role === role ? localSession.name : defaultName;
+          const realName = data.user.name?.trim() || data.user.email.split("@")[0];
           const next: Session = {
-            name,
+            name: defaultName,
             role,
             email: data.user.email,
+            userName: realName,
           };
           setSession(next);
           write(KEYS.session, next);
@@ -90,12 +122,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setDemoRole = useCallback((role: Role) => {
+    persistRole(role);
     setSession((prev) => {
       const name = role === "Partner" ? "Kabir Shah" : "Riya Menon";
       const next: Session = {
         name,
         role,
         email: prev?.email ?? (role === "Partner" ? "kabir@fundhub.demo" : "riya@fundhub.demo"),
+        userName: prev?.userName,
       };
       write(KEYS.session, next);
       return next;
@@ -105,6 +139,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback((email: string, password: string) => {
     const r = signInCheck(email, password);
     if (typeof r === "string") return r;
+    persistRole(r.role);
     setSession(r);
     write(KEYS.session, r);
     return null;
@@ -114,6 +149,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     try {
       window.localStorage.removeItem(KEYS.session);
+      window.sessionStorage.removeItem(ROLE_STORAGE_KEY);
+      window.localStorage.removeItem(ROLE_STORAGE_KEY);
     } catch {
       // Nothing saved to remove.
     }
@@ -153,6 +190,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       session,
       role: session?.role ?? "Analyst",
       me: session?.name ?? "",
+      userName: session?.userName || session?.name || "",
+      userEmail: session?.email || "",
       setDemoRole,
       signIn,
       signOut,

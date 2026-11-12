@@ -19,7 +19,7 @@ import { TO_FILE } from "@/lib/dataroom";
 import { useLinks } from "@/components/links-store";
 import { DeckList, HowItWorks, LookAgainList, MarketCard, MissRate, SectorHeatmap, NEVER_OPENED_DAYS, NewsList, listSpec, lookHow, triageOrder, useDealFlow, type FlowRow } from "@/components/flow";
 import { Delta, Sparkline, StackBar } from "@/components/charts";
-import { Avatar } from "@/components/shell";
+import { Avatar, RoleViewDropdown } from "@/components/shell";
 import { useDataToFix } from "@/components/queues";
 import { useStore } from "@/components/store";
 import { Button, cx } from "@/components/ui";
@@ -47,17 +47,24 @@ export default function HomePage() {
   const p = usePortfolio();
   const ready = w.ready && store.ready && p.ready;
   if (!ready) return <p className="text-sm text-slate-500">Loading…</p>;
-  if (!w.session) return <LoginScreen callbackUrl="/deals" />;
+  if (!w.session) return <LoginScreen callbackUrl="/" />;
   return w.role === "Partner" ? <PartnerHome /> : <AnalystHome />;
 }
 
 function Greeting({ name, line }: { name: string; line: string }) {
   const p = usePortfolio();
+  const w = useWorkspace();
+  const firstName = (w.userName || name).split(" ")[0];
   return (
-    <div>
-      <p className="text-sm text-slate-500">{fmtDay(p.today)} 2026 · demo date</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Good afternoon, {name.split(" ")[0]}</h1>
-      <p className="mt-1 text-slate-600">{line}</p>
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p className="text-sm text-slate-500">{fmtDay(p.today)} 2026 · demo date</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Good afternoon, {firstName}</h1>
+        <p className="mt-1 text-slate-600">{line}</p>
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        <RoleViewDropdown />
+      </div>
     </div>
   );
 }
