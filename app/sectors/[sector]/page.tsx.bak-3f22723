@@ -1,0 +1,298 @@
+"use client";
+
+// One sector, read like an instrument page: key numbers, decks by month and outcome, the pipeline,
+// sub-categories as a grid, the news, and every company that pitched. Counts are worked out by code from the decks.
+import { ZeroState } from "@/components/mode";
+import { use, useRef, useState } from "react";
+import { BackLink } from "@/components/company";
+import { DeckList, LookAgainList, NewsList, TempPill, sectorOfSlug, useDealFlow, type FlowRow } from "@/components/flow";
+import { ChangeBar, Funnel, GRID_BAR, Legend, MiniColumns, OUTCOME_COLOR, OUTCOMES, OutcomeColumns, PANEL, PanelHead, SplitBar, monthlyOutcomes, outcomeOf } from "@/components/market";
+import { useStore } from "@/components/store";
+import { Card, LABEL, cx } from "@/components/ui";
+import { FLOW_NOTE } from "@/lib/flow";
+import { MONTHS } from "@/lib/funnel";
+
+const count = (rows: FlowRow[], ym: string) => rows.reduce((n, r) => n + r.dates.filter((d) => d.startsWith(ym)).length, 0);
+const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
+const move = (v: number) => (Math.abs(v) < 0.05 ? "flat" : v >= 1 ? `up ${(1 + v).toFixed(1)}×` : `${v > 0 ? "up" : "down"} ${Math.round(Math.abs(v) * 100)}%`);
+const FIT_COLOR = { Strong: "#059669", Mixed: "#94a3b8", Weak: "#dc2626" } as const;
+
+type Filter = { key: string; label: string; test: (r: FlowRow) => boolean };
+
+export default function SectorPage({ params, searchParams }: { params: Promise<{ sector: string }>; searchParams: Promise<{ f?: string }> }) {
+  const { sector: slug } = use(params);
+  const initial = use(searchParams).f ?? null;
+  const sector = sectorOfSlug(slug);
+  const store = useStore();
+  const { rows, market } = useDealFlow();
+  const [picked, setPicked] = useState<string | null>(initial);
+  const table = useRef<HTMLElement>(null);
+  if (!store.ready) return <p className="text-sm text-slate-500">Loading…</p>;
+  const m = market.find((x) => x.sector === sector);
+  if (!sector || !m)
+    return (
+      <Card className="p-8 text-center text-sm text-slate-600">
+        No such sector. <BackLink href="/sectors" label="Back to the market" />
+      </Card>
+    );
+
+  if (!rows.length)
+    return (
+      <div className="space-y-5">
+        <BackLink href="/sectors" label="Market" />
+        <h1 className="text-2xl font-semibold tracking-tight">{sector}</h1>
+        <ZeroState />
+      </div>
+    );
+  const mine = rows.filter((r) => r.sector === sector);
+  const total = m.counts.reduce((a, b) => a + b, 0);
+  const recent = m.counts.slice(-3).reduce((a, b) => a + b, 0);
+  const subs = [...new Set(mine.map((r) => r.sub))]
+    .map((sub) => {
+      const list = mine.filter((r) => r.sub === sub);
+      const months = MONTHS.map((ym) => count(list, ym));
+      const recent = months.slice(-3).reduce((a, b) => a + b, 0);
+      const before = months.slice(-6, -3).reduce((a, b) => a + b, 0);
+      return { sub, list, months, recent, change: recent / Math.max(1, before) - 1, strong: list.filter((r) => r.fit === "Strong").length };
+    })
+    .sort((a, b) => b.recent - a.recent || b.list.length - a.list.length);
+  const subPeak = Math.max(1, ...subs.flatMap((s) => s.months));
+  const last3 = MONTHS.slice(-3);
+
+  const FILTERS: Filter[] = [
+    { key: "pitched", label: "Pitched", test: () => true },
+    { key: "recent", label: "Pitched in the last 3 months", test: (r) => r.dates.some((d) => last3.includes(d.slice(0, 7))) },
+    { key: "read", label: "Read by someone", test: (r) => r.label !== "Never opened" && r.label !== "New" },
+    { key: "meeting", label: "Meeting", test: (r) => outcomeOf(r) === "Meeting" },
+    { key: "passed", label: "Passed or on hold", test: (r) => outcomeOf(r) === "Passed or held" },
+    { key: "never", label: "Never opened", test: (r) => outcomeOf(r) === "Never opened" },
+    { key: "strong", label: "Strong founder fit", test: (r) => r.fit === "Strong" },
+    { key: "mixed", label: "Mixed founder fit", test: (r) => r.fit === "Mixed" },
+    { key: "weak", label: "Weak founder fit", test: (r) => r.fit === "Weak" },
+    { key: "fits", label: "Fits our rules", test: (r) => r.fits },
+    ...subs.map((s) => ({ key: `sub:${s.sub}`, label: s.sub, test: (r: FlowRow) => r.sub === s.sub })),
+  ];
+  const n = (key: string) => mine.filter(FILTERS.find((f) => f.key === key)!.test).length;
+  const active = FILTERS.find((f) => f.key === picked) ?? null;
+  const shown = active ? mine.filter(active.test) : mine;
+  const pick = (key: string) => {
+    setPicked((cur) => (cur === key ? null : key));
+    requestAnimationFrame(() => table.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const fit = (["Strong", "Mixed", "Weak"] as const).map((k) => ({ key: k.toLowerCase(), label: k, value: mine.filter((r) => r.fit === k).length, color: FIT_COLOR[k] }));
+  const rated = fit.reduce((s, f) => s + f.value, 0);
+  const subPicked = picked?.startsWith("sub:") ? picked.slice(4) : null;
+
+  return (
+    <div className="space-y-5">
+      <section className={cx(PANEL, "p-4 sm:p-5")}>
+        <BackLink href="/sectors" label="Market" />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">{sector}</h1>
+          <TempPill t={m.temp} />
+        </div>
+        <p className="mt-1 text-sm text-slate-500">
+          Every deck we received in {sector}, what happened to each company, and how the sector is moving. Decks are {move(m.inboundChange)} and money raised in the
+          sector is {move(m.moneyChange)} (sample), so code reads it as <span className="font-medium text-slate-700">{m.temp.toLowerCase()}</span>. Click any number to
+          see those companies.
+        </p>
+        <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-slate-200/70 sm:grid-cols-3 lg:grid-cols-6">
+          <StatCell label="Decks, 6 months" on={picked === "pitched"} onClick={() => pick("pitched")} hint={`${mine.length} companies`}>
+            {total}
+          </StatCell>
+          <StatCell label="Last 3 months" on={picked === "recent"} onClick={() => pick("recent")} hint={`${n("recent")} companies`}>
+            <span className="flex items-center gap-2">
+              {recent}
+              <ChangeBar value={m.inboundChange} max={2} className="[&>span:first-child]:hidden" />
+            </span>
+          </StatCell>
+          <StatCell label="Raised in market, 90d" hint="Sample market data, not our deals">
+            <span className="flex items-center gap-2">
+              ${m.raised[0]}M
+              <ChangeBar value={m.moneyChange} max={1} className="[&>span:first-child]:hidden" />
+            </span>
+          </StatCell>
+          <StatCell label="Rounds, 90d" hint={`${m.rounds[1]} in the 90 days before (sample)`}>
+            {m.rounds[0]}
+          </StatCell>
+          <StatCell label="Strong founder fit" on={picked === "strong"} onClick={() => pick("strong")} hint={`${pct(fit[0].value, rated)}% of companies`}>
+            {fit[0].value} of {rated}
+          </StatCell>
+          <StatCell label="Fit our rules" on={picked === "fits"} onClick={() => pick("fits")} hint={`${pct(n("fits"), mine.length)}% of companies`}>
+            {n("fits")} of {mine.length}
+          </StatCell>
+        </dl>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <OutcomeColumns data={monthlyOutcomes(mine)} title={`${sector} decks by month`} />
+        </div>
+        <section className={cx(PANEL, "flex flex-col")}>
+          <PanelHead title="Pipeline" sub={`${mine.length} companies pitched. Click a step to list them.`} />
+          <div className="space-y-4 p-3">
+            <Funnel
+              active={picked}
+              onPick={pick}
+              steps={[
+                { key: "pitched", label: "Pitched", value: mine.length },
+                { key: "read", label: "Read by someone", value: n("read") },
+                { key: "meeting", label: "Meeting", value: n("meeting") },
+              ]}
+            />
+            <div className="flex flex-wrap gap-1.5 px-2">
+              <MiniFilter on={picked === "passed"} onClick={() => pick("passed")}>
+                {n("passed")} passed or on hold
+              </MiniFilter>
+              <MiniFilter on={picked === "never"} onClick={() => pick("never")}>
+                {n("never")} never opened
+              </MiniFilter>
+            </div>
+            <div className="px-2">
+              <p className={LABEL}>Founder-market fit</p>
+              <SplitBar className="mt-2 h-2.5" parts={fit} />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {fit.map((f) => (
+                  <MiniFilter key={f.key} on={picked === f.key} onClick={() => pick(f.key)} dot={f.color}>
+                    {f.value} {f.label.toLowerCase()}
+                  </MiniFilter>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section className={cx(PANEL, "@container overflow-hidden")}>
+        <PanelHead
+          title="What is moving inside it"
+          sub="Sub-categories, busiest first. Click a row to list its companies below."
+          right={<Legend items={OUTCOMES.map((o) => [o, OUTCOME_COLOR[o]])} />}
+        />
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className={cx(LABEL, "border-b border-slate-200 bg-slate-50 text-left")}>
+              <tr className="[&>th]:whitespace-nowrap [&>th]:px-3 [&>th]:py-2 [&>th]:align-middle [&>th]:font-medium">
+                <th className="w-[34%]">Sub-category</th>
+                <th className="hidden @xl:table-cell">6 months</th>
+                <th className="text-right">Decks 3m</th>
+                <th>Change</th>
+                <th className="hidden text-right @2xl:table-cell">Companies</th>
+                <th className="hidden text-right @3xl:table-cell">Strong fit</th>
+                <th className="hidden @3xl:table-cell">What happened</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {subs.map((s) => {
+                const on = subPicked === s.sub;
+                const parts = OUTCOMES.map((o) => ({ label: o, value: s.list.filter((r) => outcomeOf(r) === o).length, color: OUTCOME_COLOR[o] }));
+                return (
+                  <tr
+                    key={s.sub}
+                    onClick={() => pick(`sub:${s.sub}`)}
+                    aria-selected={on}
+                    className={cx("cursor-pointer transition-colors", on ? "bg-slate-100 shadow-[inset_3px_0_0_#0f172a]" : "hover:bg-slate-50/90")}
+                  >
+                    <td className="px-3 py-2">
+                      <span className="flex items-center gap-2 font-semibold tracking-tight text-slate-900">
+                        <span className="truncate">{s.sub}</span>
+                        <span aria-hidden className={cx("text-slate-300", on && "text-slate-900")}>
+                          →
+                        </span>
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-2 @xl:table-cell">
+                      <MiniColumns values={s.months} max={subPeak} />
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums text-slate-900">{s.recent}</td>
+                    <td className="px-3 py-2">
+                      <ChangeBar value={s.change} max={2} className={GRID_BAR} />
+                    </td>
+                    <td className="hidden px-3 py-2 text-right font-mono tabular-nums text-slate-700 @2xl:table-cell">{s.list.length}</td>
+                    <td className="hidden whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums text-slate-700 @3xl:table-cell">
+                      {s.strong} of {s.list.length}
+                    </td>
+                    <td className="hidden px-3 py-2 @3xl:table-cell">
+                      <span className="flex items-center gap-2" title={parts.map((p) => `${p.label}: ${p.value}`).join("\n")}>
+                        <SplitBar className="w-16 shrink-0" parts={parts} />
+                        <span className="whitespace-nowrap text-[11px] text-slate-500">
+                          {parts
+                            .filter((p) => p.value)
+                            .map((p) => `${p.value} ${p.label === "Passed or held" ? "passed" : p.label.toLowerCase()}`)
+                            .join(" · ")}
+                        </span>
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <NewsList rows={rows} sector={sector} limit={4} />
+        <LookAgainList rows={rows} sector={sector} limit={4} />
+      </div>
+
+      <section ref={table} className="scroll-mt-4 space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h2 className="text-base font-semibold text-slate-900">Every company that pitched</h2>
+          <span className="text-xs text-slate-500">Click a row for the full deal report.</span>
+        </div>
+        {active && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm text-white">
+            <span className="text-slate-300">Filtered by:</span>
+            <span className="font-semibold">
+              {active.label} ({shown.length} {shown.length === 1 ? "company" : "companies"})
+            </span>
+            <button onClick={() => setPicked(null)} className="ml-auto rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold hover:bg-white/20">
+              ✕ {subPicked ? "Show all sub-categories" : "Reset filter"}
+            </button>
+          </div>
+        )}
+        <DeckList key={picked ?? "all"} rows={shown} pageSize={12} empty="No company matches this filter." />
+        <p className="text-xs text-slate-400">{FLOW_NOTE}</p>
+      </section>
+    </div>
+  );
+}
+
+function StatCell({ label, hint, on, onClick, children }: { label: string; hint?: string; on?: boolean; onClick?: () => void; children: React.ReactNode }) {
+  const body = (
+    <>
+      <dt className={cx(LABEL, "flex items-center justify-between gap-1")}>
+        {label}
+        {onClick && <span className={cx("text-[10px]", on ? "text-white/70" : "text-slate-400")}>{on ? "✕" : "→"}</span>}
+      </dt>
+      <dd className={cx("mt-0.5 font-mono text-sm font-semibold tracking-tight tabular-nums", on ? "text-white" : "text-slate-900")}>{children}</dd>
+      {hint && <dd className={cx("text-[11px]", on ? "text-white/70" : "text-slate-500")}>{hint}</dd>}
+    </>
+  );
+  return onClick ? (
+    <button onClick={onClick} className={cx("px-3 py-2 text-left transition-colors", on ? "bg-slate-900 [&_dt]:text-white/80" : "bg-slate-50 hover:bg-white")} aria-pressed={on}>
+      {body}
+    </button>
+  ) : (
+    <div className="bg-slate-50 px-3 py-2" title={hint}>
+      {body}
+    </div>
+  );
+}
+
+function MiniFilter({ on, onClick, dot, children }: { on: boolean; onClick: () => void; dot?: string; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={on}
+      className={cx(
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
+        on ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+      )}
+    >
+      {dot && <span className="h-2 w-2 rounded-sm" style={{ background: dot }} />}
+      <span className="font-mono tabular-nums">{children}</span>
+    </button>
+  );
+}

@@ -1,0 +1,436 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useStore, type FactCheck } from "@/components/store";
+import { BandBadge, Card, PageLink, SectionTitle, cx } from "@/components/ui";
+import { evaluate } from "@/lib/evaluate";
+import { sampleById } from "@/lib/data";
+import { fmtMoney, fmtNum } from "@/lib/format";
+import { CHECK_LABELS, type DealResult, type SheetRow } from "@/lib/types";
+import { checksPreview } from "@/lib/preview";
+import { parseSheet } from "@/lib/sheet";
+import { SAMPLES } from "@/lib/data";
+
+export default function ResultsPage() {
+  const store = useStore();
+  const ev = useMemo(() => evaluate(store.deals), [store.deals]);
+  const sampleDeals = store.deals.filter((d) => d.source === "sample");
+  const facts = useMemo(() => sampleDeals.flatMap(factsOf), [sampleDeals]);
+  const checked = facts.filter((f) => store.factChecks[f.key]);
+  const right = checked.filter((f) => store.factChecks[f.key] === "right").length;
+
+  return (
+    <div className="space-y-6">
+      <div className="max-w-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight">Screener test</h1>
+        <p className="mt-1 text-slate-600">
+          Can the screener be trusted? This page tests it the way a fund would test a new analyst: give it decks with known mistakes and
+          count what it catches, what it misses, and what it flags wrongly.
+        </p>
+      </div>
+
+      <Verdict
+        rows={[
+          { bar: "All 10 test decks screened", pass: ev.processed === 10, now: `${ev.processed} of 10` },
+          { bar: "A blind run with an API key", pass: ev.processed > 0 && ev.byChat === 0, now: ev.byChat ? `${ev.byChat} read in a Claude chat (not blind)` : ev.processed ? "Yes" : "Not run" },
+          { bar: "Catches 90% or more of planted issues", pass: ev.planted > 0 && ev.caught / ev.planted >= 0.9, now: ev.processed ? `${ev.caught} of ${ev.planted}` : "—" },
+          { bar: "At most 1 false alarm per deck", pass: ev.processed > 0 && ev.falseAlarms <= ev.processed, now: ev.processed ? `${ev.falseAlarms} across ${ev.processed}` : "—" },
+          { bar: "95% or more of key numbers read right", pass: ev.factsTotal > 0 && ev.factsRight / ev.factsTotal >= 0.95, now: ev.factsTotal ? `${ev.factsRight} of ${ev.factsTotal}` : "—" },
+          { bar: "20 or more page references checked by hand", pass: checked.length >= 20, now: `${checked.length} checked` },
+        ]}
+      />
+
+      <ChecksScorecard />
+
+      <section className="grid gap-3 md:grid-cols-3">
+        {[
+          ["1", "10 test decks", "Fictional pitch decks with mistakes planted on purpose: revenue that doesn't match the sheet, wrong maths, a founding date the registry contradicts."],
+          ["2", "The screener reads them", "The same AI and code a real pitch goes through. It never sees the answer key."],
+          ["3", "Compared with the answer key", "Caught, missed and false alarms are counted by code. A person checks page references by hand."],
+        ].map(([n, t, d]) => (
+          <div key={n} className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-900 text-xs font-semibold text-white">{n}</span>
+            <p className="mt-2 font-semibold text-slate-900">{t}</p>
+            <p className="mt-0.5 text-sm text-slate-600">{d}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-semibold text-slate-900">How far the test has got</h2>
+          <span className="text-sm text-slate-600">
+            <span className="font-semibold text-slate-900">{ev.processed}</span> of 10 decks screened
+          </span>
+        </div>
+        <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-slate-100">
+          <span className="bg-slate-1000" style={{ width: `${ev.processed * 10}%` }} />
+        </div>
+        <p className="mt-2 text-sm text-slate-600">
+          {ev.processed < 10
+            ? "The numbers below only count screened decks. A fair result needs all 10, screened with an API key so time and cost are measured too."
+            : "All 10 decks are screened."}
+        </p>
+      </section>
+
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat label="Planted issues caught" value={ev.processed ? `${ev.caught} of ${ev.planted}` : "—"} />
+        <Stat
+          label="False alarms"
+          value={ev.processed ? String(ev.falseAlarms) : "—"}
+          hint="Flags on things that weren't planted"
+          tone={ev.falseAlarms ? "warn" : undefined}
+        />
+        <Stat
+          label="Numbers read right"
+          value={ev.factsTotal ? `${ev.factsRight} of ${ev.factsTotal}` : "—"}
+          hint="Key numbers vs the answer key"
+          tone={ev.factsTotal && ev.factsRight < ev.factsTotal ? "warn" : undefined}
+        />
+        <Stat
+          label="Bands as expected"
+          value={ev.processed ? `${ev.bandMatches} of ${ev.processed}` : "—"}
+          hint="Expected bands are our own judgment"
+        />
+        <Stat
+          label="Per deck"
+          value={ev.avgSeconds != null ? `${Math.round(ev.avgSeconds)}s · $${ev.avgCostUsd!.toFixed(2)}` : "—"}
+          hint={ev.avgSeconds != null ? "Average time and list-price cost" : "Not measured for chat runs"}
+        />
+        <Stat
+          label="Page references right"
+          value={checked.length ? `${Math.round((right / checked.length) * 100)}%` : "—"}
+          hint={`${checked.length} checked by hand`}
+        />
+      </div>
+
+      {ev.byChat > 0 && (
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+          {ev.byChat === 1 ? "One deck was" : `${ev.byChat} decks were`} screened in a Claude chat without an API key, by the
+          same Claude that wrote the sample decks. That isn&apos;t a blind test, so don&apos;t quote these numbers yet. Run
+          the samples with an API key for a fair measure of accuracy, time and cost.
+        </p>
+      )}
+
+      {ev.processed < 10 && (
+        <p className="text-sm text-slate-600">
+          {10 - ev.processed} sample deck{10 - ev.processed > 1 ? "s are" : " is"} not processed yet.{" "}
+          <Link href="/deals" className="font-medium text-indigo-700">
+            Process {10 - ev.processed > 1 ? "them" : "it"} from Deals
+          </Link>
+          .
+        </p>
+      )}
+
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-sm">
+            <thead className="bg-slate-50 text-left text-xs text-slate-500">
+              <tr>
+                <th className="px-4 py-2.5 font-medium">Deck</th>
+                <th className="px-4 py-2.5 font-medium">What was planted</th>
+                <th className="px-4 py-2.5 font-medium">Caught</th>
+                <th className="px-4 py-2.5 font-medium">Missed or wrong</th>
+                <th className="px-4 py-2.5 font-medium">Band (expected)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 align-top">
+              {ev.decks.map((d) => {
+                const deal = store.getDeal(d.id);
+                return (
+                  <tr key={d.id}>
+                    <td className="px-4 py-3 font-medium">
+                      {deal ? (
+                        <Link href={`/deals/${d.id}`} className="text-indigo-700 hover:underline">
+                          {deal.form.companyName}
+                        </Link>
+                      ) : (
+                        (sampleById(d.id)?.form.companyName ?? d.id)
+                      )}
+                    </td>
+                    <td className="max-w-xs px-4 py-3 text-slate-700">{d.planted}</td>
+                    <td className="px-4 py-3">
+                      {!d.processed ? (
+                        <span className="text-slate-400">Not processed</span>
+                      ) : d.expected.length === 0 ? (
+                        <span className="text-slate-500">Nothing to catch</span>
+                      ) : (
+                        <ul className="space-y-0.5">
+                          {d.caught.map((c) => (
+                            <li key={c} className="text-emerald-700">
+                              ✓ {CHECK_LABELS[c]}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {d.processed && (
+                        <ul className="space-y-0.5">
+                          {d.missed.map((c) => (
+                            <li key={c} className="text-red-700">
+                              Missed: {CHECK_LABELS[c]}
+                            </li>
+                          ))}
+                          {d.falseAlarms.map((c) => (
+                            <li key={c} className="text-amber-700">
+                              False alarm: {CHECK_LABELS[c]}
+                            </li>
+                          ))}
+                          {d.factErrors.map((e) => (
+                            <li key={e.field} className="text-red-700">
+                              Read wrong: {e.field} (deck {e.expected}, AI {e.got})
+                            </li>
+                          ))}
+                          {!d.missed.length && !d.falseAlarms.length && !d.factErrors.length && (
+                            <li className="text-slate-400">None</li>
+                          )}
+                        </ul>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {d.band ? (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <BandBadge band={d.band} />
+                          {d.band !== d.expectedBand && (
+                            <span className="text-xs text-slate-500">expected {d.expectedBand}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500">expected {d.expectedBand}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <SectionTitle right={<span className="text-xs text-slate-500">{checked.length} of {facts.length} checked</span>}>
+          Hand check: is each fact on the page it cites?
+        </SectionTitle>
+        <p className="mb-4 text-sm text-slate-600">
+          Open the page link, compare it with the value, and mark it. Aim for 30. This is how the page accuracy above is
+          measured; it isn&apos;t done by the AI.
+        </p>
+        {facts.length === 0 ? (
+          <p className="text-sm text-slate-500">Process the sample decks first.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <tbody className="divide-y divide-slate-100">
+                {facts.map((f) => {
+                  const v = store.factChecks[f.key];
+                  return (
+                    <tr key={f.key}>
+                      <td className="py-1.5 pr-3 font-medium">{f.company}</td>
+                      <td className="py-1.5 pr-3 text-slate-500">{f.label}</td>
+                      <td className="py-1.5 pr-3">{f.value}</td>
+                      <td className="py-1.5 pr-3">
+                        <PageLink url={f.url} page={f.page} quote={f.quote} />
+                      </td>
+                      <td className="py-1.5 text-right">
+                        <CheckButtons value={v} onChange={(x) => store.setFactCheck(f.key, x)} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "warn" }) {
+  return (
+    <Card className="p-4">
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
+      <div className={cx("mt-1 text-2xl font-semibold tabular-nums", tone === "warn" && "text-amber-700")}>{value}</div>
+      {hint && <div className="mt-0.5 text-xs text-slate-500">{hint}</div>}
+    </Card>
+  );
+}
+
+function CheckButtons({ value, onChange }: { value?: FactCheck; onChange: (v: FactCheck | null) => void }) {
+  const btn = "rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset";
+  return (
+    <span className="inline-flex gap-1">
+      <button
+        onClick={() => onChange(value === "right" ? null : "right")}
+        className={cx(btn, value === "right" ? "bg-emerald-600 text-white ring-emerald-600" : "text-slate-600 ring-slate-300")}
+      >
+        Right
+      </button>
+      <button
+        onClick={() => onChange(value === "wrong" ? null : "wrong")}
+        className={cx(btn, value === "wrong" ? "bg-red-600 text-white ring-red-600" : "text-slate-600 ring-slate-300")}
+      >
+        Wrong
+      </button>
+    </span>
+  );
+}
+
+function factsOf(d: DealResult) {
+  const t = d.record.traction;
+  const r = d.record;
+  const list = [
+    { field: "mrr", label: "Monthly revenue", value: t.mrr.amount != null ? fmtMoney(t.mrr.amount, t.mrr.currency) : null, f: t.mrr },
+    { field: "arr", label: "Annual revenue", value: t.arr.amount != null ? fmtMoney(t.arr.amount, t.arr.currency) : null, f: t.arr },
+    { field: "growth", label: "Monthly growth", value: t.monthlyGrowthPct.value != null ? `${t.monthlyGrowthPct.value}%` : null, f: t.monthlyGrowthPct },
+    { field: "customers", label: "Customers", value: t.customers.value != null ? fmtNum(t.customers.value) : null, f: t.customers },
+    { field: "team", label: "Team size", value: t.teamSize.value != null ? fmtNum(t.teamSize.value) : null, f: t.teamSize },
+    { field: "burn", label: "Monthly burn", value: t.monthlyBurn.amount != null ? fmtMoney(t.monthlyBurn.amount, t.monthlyBurn.currency) : null, f: t.monthlyBurn },
+    { field: "round", label: "Round size", value: r.round.amount.amount != null ? fmtMoney(r.round.amount.amount, r.round.amount.currency ?? "USD") : null, f: r.round.amount },
+    { field: "founded", label: "Founded", value: r.company.foundedYear.value != null ? String(r.company.foundedYear.value) : null, f: r.company.foundedYear },
+  ];
+  return list
+    .filter((x) => x.value != null && x.f.page)
+    .map((x) => ({
+      key: `${d.id}:${x.field}`,
+      company: d.form.companyName,
+      label: x.label,
+      value: x.value!,
+      page: x.f.page,
+      quote: x.f.quote,
+      url: d.deck.url,
+    }));
+}
+
+/** The bar a fund would set before trusting the screener the way it trusts a new analyst. */
+function Verdict({ rows }: { rows: { bar: string; pass: boolean; now: string }[] }) {
+  const ok = rows.every((r) => r.pass);
+  const left = rows.filter((r) => !r.pass).length;
+  return (
+    <section className={cx("rounded-2xl p-5 ring-1", ok ? "bg-emerald-50 ring-emerald-200" : "bg-amber-50 ring-amber-200")}>
+      <p className={cx("text-xs font-semibold uppercase tracking-wide", ok ? "text-emerald-800" : "text-amber-800")}>Can we rely on it yet?</p>
+      <p className="mt-1 text-lg font-semibold text-slate-900">
+        {ok ? "Yes, with a person checking every flag." : `Not yet. ${left} of ${rows.length} bars still to clear, so don't quote these numbers.`}
+      </p>
+      <ul className="mt-3 grid gap-1.5 text-sm sm:grid-cols-2">
+        {rows.map((r) => (
+          <li key={r.bar} className="flex items-start gap-2">
+            <span aria-hidden className={cx("mt-0.5 font-bold", r.pass ? "text-emerald-600" : "text-slate-400")}>
+              {r.pass ? "✓" : "○"}
+            </span>
+            <span>
+              <span className="text-slate-900">{r.bar}</span>
+              <span className="block text-xs text-slate-500">Now: {r.now}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-xs text-slate-600">
+        These bars are our own starting point, set the way a fund would judge a new analyst: catch nearly everything, rarely cry wolf, read
+        numbers exactly. Running all 10 decks with an API key takes a few minutes and a few dollars.
+      </p>
+    </section>
+  );
+}
+
+/**
+ * The check code on all 10 test decks, fed each deck's correct numbers. Loads the sample sheets, then runs.
+ * It proves the maths and cross-checks; it does not prove the AI reads decks well (the scorecard above does).
+ */
+function ChecksScorecard() {
+  const [sheets, setSheets] = useState<Record<string, SheetRow[]> | null>(null);
+  useEffect(() => {
+    let live = true;
+    const files = SAMPLES.map((s) => s.sheetFile).filter((f): f is string => Boolean(f));
+    Promise.all(files.map((f) => fetch(`/samples/${f}`).then((r) => r.text()).then((t) => [f, parseSheet(t)] as const)))
+      .then((pairs) => live && setSheets(Object.fromEntries(pairs)))
+      .catch(() => live && setSheets({}));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const pv = useMemo(() => (sheets ? checksPreview((f) => sheets[f] ?? null) : null), [sheets]);
+  return (
+    <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div className="max-w-2xl">
+          <h2 className="font-semibold text-slate-900">Check code on all 10 test decks</h2>
+          <p className="mt-0.5 text-sm text-slate-600">
+            Runs now, in your browser, with no API key. Each deck&apos;s correct numbers go through the same checks a live pitch gets, and the result is compared with the answer key.
+            This proves the maths and cross-checks. It does not prove the AI reads decks well: that is the screener test above.
+          </p>
+        </div>
+        {pv && (
+          <div className="flex gap-4 text-right">
+            <Big n={`${pv.caught} of ${pv.planted}`} label="planted issues caught" />
+            <Big n={pv.falseAlarms} label="false alarms" />
+          </div>
+        )}
+      </div>
+      {!pv ? (
+        <p className="px-5 py-4 text-sm text-slate-500">Loading the sample sheets…</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <tr className="[&>th]:whitespace-nowrap [&>th]:px-4 [&>th]:py-2">
+                <th>Deck</th>
+                <th>What was planted</th>
+                <th>Caught</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {pv.decks.map((d) => {
+                const aiOnly = d.missed.length > 0 && d.missed.every((m) => m === "founder_vs_profile");
+                return (
+                  <tr key={d.id}>
+                    <td className="whitespace-nowrap px-4 py-2 font-semibold text-slate-900">
+                      <Link href={`/deals/${d.id}`} className="hover:underline">
+                        {d.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-xs text-slate-600">{d.planted}</td>
+                    <td className="whitespace-nowrap px-4 py-2 font-mono text-xs tabular-nums text-slate-900">
+                      {d.expected.length ? `${d.caught.length} of ${d.expected.length}` : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2">
+                      {d.falseAlarms.length ? (
+                        <span className="rounded border border-red-200 bg-red-50 px-1.5 py-px text-[11px] font-semibold text-red-700">{d.falseAlarms.length} false alarm</span>
+                      ) : !d.expected.length ? (
+                        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-px text-[11px] font-semibold text-emerald-700">✓ Clean, no false alarm</span>
+                      ) : !d.missed.length ? (
+                        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-px text-[11px] font-semibold text-emerald-700">✓ All caught</span>
+                      ) : aiOnly ? (
+                        <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-px text-[11px] font-semibold text-slate-700" title="The founder-profile check compares the deck with a profile, which needs the AI's reading.">
+                          Needs the AI: {d.missed.map((m) => CHECK_LABELS[m]).join(", ")}
+                        </span>
+                      ) : (
+                        <span className="rounded border border-red-200 bg-red-50 px-1.5 py-px text-[11px] font-semibold text-red-700">Missed {d.missed.length}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="border-t border-slate-100 px-5 py-2 text-[11px] text-slate-500">
+            {pv.aiOnly ? `${pv.aiOnly} planted issue needs the AI (founder claims against a profile), so code alone can't catch it. ` : ""}
+            The same run is part of the automated tests.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Big({ n, label }: { n: React.ReactNode; label: string }) {
+  return (
+    <div>
+      <p className="font-mono text-2xl font-semibold tabular-nums text-slate-900">{n}</p>
+      <p className="text-[11px] uppercase tracking-wider text-slate-500">{label}</p>
+    </div>
+  );
+}

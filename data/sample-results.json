@@ -1,0 +1,576 @@
+{
+ "ledgerly": {
+  "id": "ledgerly",
+  "source": "sample",
+  "receivedAt": "2026-10-26T09:12:00Z",
+  "processedAt": "2026-10-28T21:50:58.821Z",
+  "model": "Claude, in a chat on this account (no API key)",
+  "processedBy": "chat",
+  "form": {
+   "companyName": "Ledgerly",
+   "website": "ledgerly.example",
+   "country": "India",
+   "sector": "B2B software",
+   "stage": "Seed",
+   "amountUsd": 2000000,
+   "founders": [
+    {
+     "name": "Ananya Rao",
+     "profileUrl": "https://profiles.example/ananya-rao"
+    },
+    {
+     "name": "Vikram Joshi",
+     "profileUrl": "https://profiles.example/vikram-joshi"
+    }
+   ],
+   "email": "ananya@ledgerly.example"
+  },
+  "deck": {
+   "fileName": "ledgerly.pdf",
+   "url": "/samples/ledgerly.pdf"
+  },
+  "record": {
+   "oneLiner": "Ledgerly automates accounts payable for mid-size Indian manufacturers, from invoice capture to payment.",
+   "company": {
+    "name": {
+     "value": "Ledgerly",
+     "page": 1,
+     "quote": "Ledgerly"
+    },
+    "website": {
+     "value": "ledgerly.example",
+     "page": 1,
+     "quote": "ledgerly.example"
+    },
+    "country": {
+     "value": "India",
+     "page": 1,
+     "quote": "Pune, India · Founded 2022"
+    },
+    "city": {
+     "value": "Pune",
+     "page": 1,
+     "quote": "Pune, India · Founded 2022"
+    },
+    "sector": {
+     "value": "Accounts payable automation for manufacturers",
+     "page": 1,
+     "quote": "Accounts payable on autopilot for Indian manufacturers"
+    },
+    "businessModel": {
+     "value": "Monthly subscription priced by invoice volume, ₹25,000 to ₹1.5 lakh a month",
+     "page": 5,
+     "quote": "Monthly subscription priced by invoice volume: ₹25,000 to ₹1.5 lakh a month"
+    },
+    "stage": {
+     "value": "Seed",
+     "page": 1,
+     "quote": "Seed round · October 2026"
+    },
+    "foundedYear": {
+     "value": 2022,
+     "asOf": null,
+     "page": 1,
+     "quote": "Pune, India · Founded 2022"
+    },
+    "description": {
+     "value": "One inbox for every supplier invoice, from capture to payment: reads invoices, matches them to purchase orders and receipts, reconciles GST credit and prepares payment runs.",
+     "page": 3,
+     "quote": "One inbox for every supplier invoice, from capture to payment."
+    }
+   },
+   "round": {
+    "amount": {
+     "amount": 2000000,
+     "currency": "USD",
+     "asOf": null,
+     "page": 9,
+     "quote": "Raising $2M Seed on a SAFE"
+    },
+    "instrument": {
+     "value": "SAFE",
+     "page": 9,
+     "quote": "Raising $2M Seed on a SAFE"
+    },
+    "valuation": {
+     "amount": null,
+     "currency": null,
+     "asOf": null,
+     "page": null,
+     "quote": null
+    },
+    "useOfFunds": {
+     "value": "45% product and AI, 35% sales in Maharashtra and Gujarat, 20% customer success",
+     "page": 9,
+     "quote": "45% product and AI"
+    },
+    "priorFunding": {
+     "value": null,
+     "page": null,
+     "quote": null
+    }
+   },
+   "traction": {
+    "mrr": {
+     "amount": null,
+     "currency": null,
+     "asOf": null,
+     "page": null,
+     "quote": null
+    },
+    "arr": {
+     "amount": 75000000,
+     "currency": "INR",
+     "asOf": "2026-09",
+     "page": 4,
+     "quote": "₹7.5 Cr ARR, September 2026"
+    },
+    "monthlyGrowthPct": {
+     "value": 7,
+     "asOf": null,
+     "page": 4,
+     "quote": "7% month-on-month growth"
+    },
+    "customers": {
+     "value": 92,
+     "asOf": null,
+     "page": 4,
+     "quote": "92 paying manufacturers"
+    },
+    "users": {
+     "value": null,
+     "asOf": null,
+     "page": null,
+     "quote": null
+    },
+    "retention": {
+     "value": "118% net revenue retention",
+     "page": 4,
+     "quote": "118% net revenue retention"
+    },
+    "grossMarginPct": {
+     "value": 78,
+     "asOf": null,
+     "page": 5,
+     "quote": "Gross margin 78%"
+    },
+    "monthlyBurn": {
+     "amount": 5500000,
+     "currency": "INR",
+     "asOf": null,
+     "page": 9,
+     "quote": "₹55 L monthly burn"
+    },
+    "cash": {
+     "amount": 62000000,
+     "currency": "INR",
+     "asOf": null,
+     "page": 9,
+     "quote": "₹6.2 Cr cash in bank"
+    },
+    "runwayMonths": {
+     "value": 11,
+     "asOf": null,
+     "page": 9,
+     "quote": "11 months runway"
+    },
+    "teamSize": {
+     "value": 24,
+     "asOf": null,
+     "page": 8,
+     "quote": "Team of 24 across Pune and Bengaluru"
+    }
+   },
+   "team": [
+    {
+     "name": "Ananya Rao",
+     "role": "Co-founder and CEO",
+     "page": 8,
+     "pastRoles": [
+      {
+       "company": "Kestrel Auto Components",
+       "title": "Finance Controller",
+       "startYear": 2015,
+       "endYear": 2022,
+       "page": 8,
+       "quote": "Finance Controller, Kestrel Auto Components (2015–2022)"
+      }
+     ]
+    },
+    {
+     "name": "Vikram Joshi",
+     "role": "Co-founder and CTO",
+     "page": 8,
+     "pastRoles": [
+      {
+       "company": "Brightpath Software",
+       "title": "Senior Engineer",
+       "startYear": 2016,
+       "endYear": 2022,
+       "page": 8,
+       "quote": "Senior Engineer, Brightpath Software (2016–2022)"
+      }
+     ]
+    }
+   ],
+   "market": {
+    "sizeClaim": {
+     "amount": 2100000000,
+     "currency": "USD",
+     "asOf": null,
+     "page": 6,
+     "quote": "A $2.1B yearly opportunity in India alone."
+    },
+    "sizeMethod": {
+     "value": "48,000 mid-size manufacturers in India times an average yearly finance operations software spend of $44,000",
+     "page": 6,
+     "quote": "48,000 mid-size manufacturers in India"
+    },
+    "competitors": [
+     {
+      "name": "Generic OCR tools",
+      "page": 7
+     },
+     {
+      "name": "ERP add-on modules",
+      "page": 7
+     },
+     {
+      "name": "Global AP automation suites",
+      "page": 7
+     }
+    ]
+   }
+  },
+  "sheet": [
+   {
+    "month": "2026-04",
+    "currency": "INR",
+    "revenue": 3420000,
+    "customers": 64,
+    "headcount": 21,
+    "netBurn": 5500000,
+    "cash": 89500000
+   },
+   {
+    "month": "2026-05",
+    "currency": "INR",
+    "revenue": 3700000,
+    "customers": 69,
+    "headcount": 22,
+    "netBurn": 5500000,
+    "cash": 84000000
+   },
+   {
+    "month": "2026-06",
+    "currency": "INR",
+    "revenue": 3870000,
+    "customers": 74,
+    "headcount": 22,
+    "netBurn": 5500000,
+    "cash": 78500000
+   },
+   {
+    "month": "2026-07",
+    "currency": "INR",
+    "revenue": 4240000,
+    "customers": 80,
+    "headcount": 23,
+    "netBurn": 5500000,
+    "cash": 73000000
+   },
+   {
+    "month": "2026-08",
+    "currency": "INR",
+    "revenue": 4430000,
+    "customers": 86,
+    "headcount": 23,
+    "netBurn": 5500000,
+    "cash": 67500000
+   },
+   {
+    "month": "2026-09",
+    "currency": "INR",
+    "revenue": 4800000,
+    "customers": 92,
+    "headcount": 24,
+    "netBurn": 5500000,
+    "cash": 62000000
+   }
+  ],
+  "registry": {
+   "legalName": "Ledgerly Technologies Private Limited",
+   "incorporated": "2022-06-14",
+   "country": "India",
+   "status": "Active",
+   "directors": [
+    "Ananya Rao",
+    "Vikram Joshi"
+   ],
+   "source": "Sample registry record (fictional)"
+  },
+  "profiles": [
+   {
+    "name": "Ananya Rao",
+    "headline": "Co-founder and CEO, Ledgerly",
+    "roles": [
+     {
+      "company": "Ledgerly",
+      "title": "Co-founder and CEO",
+      "start": "2022-06",
+      "end": null
+     },
+     {
+      "company": "Kestrel Auto Components",
+      "title": "Finance Controller",
+      "start": "2015-04",
+      "end": "2022-05"
+     },
+     {
+      "company": "Mehra & Iyer LLP",
+      "title": "Senior Audit Associate",
+      "start": "2011-07",
+      "end": "2015-03"
+     }
+    ],
+    "source": "Sample profile (fictional)"
+   },
+   {
+    "name": "Vikram Joshi",
+    "headline": "Co-founder and CTO, Ledgerly",
+    "roles": [
+     {
+      "company": "Ledgerly",
+      "title": "Co-founder and CTO",
+      "start": "2022-06",
+      "end": null
+     },
+     {
+      "company": "Brightpath Software",
+      "title": "Senior Software Engineer",
+      "start": "2016-07",
+      "end": "2022-03"
+     }
+    ],
+    "source": "Sample profile (fictional)"
+   }
+  ],
+  "flags": [
+   {
+    "checkId": "revenue_deck_vs_sheet",
+    "kind": "conflict",
+    "title": "Revenue in the deck is 30% higher than the monthly sheet",
+    "detail": "The deck states annual revenue of ₹7.5 Cr. The sheet shows ₹48 L for Sep 2026, which is ₹5.76 Cr a year.",
+    "sources": [
+     {
+      "label": "Deck",
+      "value": "₹7.5 Cr a year",
+      "page": 4,
+      "quote": "₹7.5 Cr ARR, September 2026"
+     },
+     {
+      "label": "Monthly sheet",
+      "value": "₹48 L in Sep 2026"
+     }
+    ]
+   }
+  ],
+  "ai": {
+   "summary": "Ledgerly sells accounts payable software to mid-size Indian manufacturers and is raising a $2M Seed on a SAFE. The monthly sheet shows ₹48 L revenue in September 2026 (about ₹5.76 Cr a year), growing about 7% a month, with 92 paying customers. The deck's ₹7.5 Cr ARR is 30% above what the sheet supports, so ask how it was calculated before the first call.",
+   "traction": {
+    "level": "Strong",
+    "reason": "The sheet confirms ₹48 L revenue in September 2026 and about 7% monthly growth over six months with 92 paying customers, which is strong for a Seed company. The deck's ₹7.5 Cr ARR is higher than the sheet supports, so this judgement uses the sheet.",
+    "evidence": [
+     "Revenue ₹48 L in Sep 2026 (sheet)",
+     "Average growth 7% a month, Apr to Sep 2026 (sheet)",
+     "92 paying customers (deck p.4, sheet)",
+     "118% net revenue retention (deck p.4)",
+     "Gross margin 78% (deck p.5)"
+    ]
+   },
+   "team": {
+    "level": "Strong",
+    "reason": "The CEO spent seven years as finance controller at an auto components maker, the buyer this product serves, and the CTO spent six years as a senior engineer building an invoicing platform. They have worked together since 2022 and shipped a product with 92 paying customers.",
+    "evidence": [
+     "Ananya Rao: Finance Controller, Kestrel Auto Components, 2015 to 2022 (deck p.8, profile)",
+     "Vikram Joshi: Senior Software Engineer, Brightpath Software, 2016 to 2022 (deck p.8, profile)",
+     "Both directors since incorporation in June 2022 (registry)"
+    ]
+   },
+   "founderChecks": [
+    {
+     "founder": "Ananya Rao",
+     "claim": "Finance Controller, Kestrel Auto Components (2015–2022)",
+     "verdict": "match",
+     "detail": "The profile shows Finance Controller at Kestrel Auto Components from April 2015 to May 2022."
+    },
+    {
+     "founder": "Vikram Joshi",
+     "claim": "Senior Engineer, Brightpath Software (2016–2022)",
+     "verdict": "match",
+     "detail": "The profile shows Senior Software Engineer at Brightpath Software from July 2016 to March 2022."
+    }
+   ],
+   "strengths": [
+    "Revenue of ₹48 L in September 2026 with about 7% monthly growth, confirmed by the sheet",
+    "92 paying manufacturers and 118% net revenue retention (deck p.4); 78% gross margin (deck p.5)",
+    "The CEO ran finance at an auto components maker for seven years, the buyer this product serves (deck p.8, profile)",
+    "Fits the fund's rules: India, B2B software, Seed, $2M round"
+   ],
+   "concerns": [
+    "The deck's ₹7.5 Cr ARR is 30% higher than the ₹5.76 Cr a year the sheet supports",
+    "11 months of runway at ₹55 L monthly burn (deck p.9, sheet)",
+    "The $2.1B market size assumes $44,000 of yearly spend per manufacturer (deck p.6), above Ledgerly's own price of ₹25,000 to ₹1.5 lakh a month (deck p.5)",
+    "No earlier funding or SAFE valuation cap stated"
+   ],
+   "founderQuestions": [
+    "Your deck shows ARR of ₹7.5 Cr for September 2026, while the monthly sheet shows ₹48 L of revenue that month, about ₹5.76 Cr a year. Could you share how the ₹7.5 Cr was calculated, for example whether it includes signed contracts that aren't live yet?",
+    "What valuation cap and discount are you proposing for the SAFE?",
+    "Have you raised any money before this round?",
+    "Over what period and across how many customers is the 118% net revenue retention measured?",
+    "With 11 months of runway, how long will the $2M round last at your hiring plan?"
+   ]
+  },
+  "scores": [
+   {
+    "key": "fit",
+    "label": "Fit with fund focus",
+    "level": "Strong",
+    "reason": "Fits the written rules: Seed, India, B2B software, $2M round.",
+    "evidence": [
+     "Form answers",
+     "Fund rules"
+    ],
+    "by": "Code"
+   },
+   {
+    "key": "traction",
+    "label": "Traction evidence",
+    "by": "AI",
+    "level": "Strong",
+    "reason": "The sheet confirms ₹48 L revenue in September 2026 and about 7% monthly growth over six months with 92 paying customers, which is strong for a Seed company. The deck's ₹7.5 Cr ARR is higher than the sheet supports, so this judgement uses the sheet.",
+    "evidence": [
+     "Revenue ₹48 L in Sep 2026 (sheet)",
+     "Average growth 7% a month, Apr to Sep 2026 (sheet)",
+     "92 paying customers (deck p.4, sheet)",
+     "118% net revenue retention (deck p.4)",
+     "Gross margin 78% (deck p.5)"
+    ]
+   },
+   {
+    "key": "consistency",
+    "label": "Claim consistency",
+    "level": "Mixed",
+    "reason": "1 conflict between the deck and other sources. A person should look before the first call.",
+    "evidence": [
+     "Revenue in the deck is 30% higher than the monthly sheet"
+    ],
+    "by": "Code"
+   },
+   {
+    "key": "team",
+    "label": "Team signals",
+    "by": "AI",
+    "level": "Strong",
+    "reason": "The CEO spent seven years as finance controller at an auto components maker, the buyer this product serves, and the CTO spent six years as a senior engineer building an invoicing platform. They have worked together since 2022 and shipped a product with 92 paying customers.",
+    "evidence": [
+     "Ananya Rao: Finance Controller, Kestrel Auto Components, 2015 to 2022 (deck p.8, profile)",
+     "Vikram Joshi: Senior Software Engineer, Brightpath Software, 2016 to 2022 (deck p.8, profile)",
+     "Both directors since incorporation in June 2022 (registry)"
+    ]
+   },
+   {
+    "key": "completeness",
+    "label": "Completeness",
+    "level": "Strong",
+    "reason": "All eight core facts are in the deck.",
+    "evidence": [
+     "8 of 8 core facts found"
+    ],
+    "by": "Code"
+   }
+  ],
+  "band": "Priority",
+  "bandReasons": [
+   "Fits the fund's focus",
+   "Traction is strong",
+   "Team is strong"
+  ],
+  "research": {
+   "competitors": [
+    {
+     "name": "Peakflo",
+     "whatTheyDo": "Procure-to-pay and accounts payable automation, with an offer aimed at manufacturers.",
+     "howDifferent": "Sells across several Asian markets; Ledgerly is India-only and adds monthly GST credit reconciliation.",
+     "namedInDeck": false,
+     "url": "https://peakflo.co/industries/manufacturing"
+    },
+    {
+     "name": "Taxilla",
+     "whatTheyDo": "Invoice-to-pay automation for India covering accounts payable, GST and vendor payments.",
+     "howDifferent": "Comes from GST compliance software, so it overlaps directly on GST; Ledgerly leads with three-way matching for manufacturers.",
+     "namedInDeck": false,
+     "url": "https://www.taxilla.com/accounts-payable-invoice-to-pay-automation-india"
+    },
+    {
+     "name": "Mysa",
+     "whatTheyDo": "Accounts payable and invoice management software for Indian businesses.",
+     "howDifferent": "A general tool for Indian businesses rather than one built for manufacturers' purchase orders and goods receipts.",
+     "namedInDeck": false,
+     "url": "https://www.mysa.io/blogs/top-accounts-payable-automation-software-for-india"
+    },
+    {
+     "name": "Procol",
+     "whatTheyDo": "Procurement software for Indian companies: sourcing, purchase orders and supplier management.",
+     "howDifferent": "Starts at purchasing rather than invoices; it could add invoice matching and move into Ledgerly's space.",
+     "namedInDeck": false,
+     "url": "https://go.procol.ai/?p=8896"
+    },
+    {
+     "name": "Tipalti",
+     "whatTheyDo": "Global accounts payable automation suite for multi-country payables.",
+     "howDifferent": "Fits the deck's 'global AP automation suites' row, which says they don't reconcile GST and aren't built for India (deck p.7).",
+     "namedInDeck": false,
+     "url": "https://tipalti.com"
+    }
+   ],
+   "marketSize": {
+    "low": 170000000,
+    "high": 1000000000,
+    "currency": "USD",
+    "whatItCounts": "Yearly spend if all 48,000 mid-size manufacturers the deck counts paid Ledgerly's own listed prices",
+    "steps": [
+     "48,000 mid-size manufacturers in India (deck p.6)",
+     "Ledgerly's price: ₹25,000 to ₹1.5 lakh a month, so ₹3 lakh to ₹18 lakh a year (deck p.5)",
+     "At about ₹85 to the dollar that is roughly $3,500 to $21,000 a year per customer",
+     "48,000 × $3,500 ≈ $170M; 48,000 × $21,000 ≈ $1.0B a year, before any share assumption"
+    ],
+    "deckClaimComment": "The deck's $2.1B uses $44,000 of yearly spend per manufacturer, about twice Ledgerly's top price. Using its own prices gives $170M to $1.0B a year, and Ledgerly would win only a share of that."
+   },
+   "redFlags": [],
+   "sources": [
+    {
+     "title": "Peakflo: procure-to-pay for manufacturing",
+     "url": "https://peakflo.co/industries/manufacturing"
+    },
+    {
+     "title": "Taxilla: invoice-to-pay automation in India",
+     "url": "https://www.taxilla.com/accounts-payable-invoice-to-pay-automation-india"
+    },
+    {
+     "title": "Mysa: top AP automation software for India",
+     "url": "https://www.mysa.io/blogs/top-accounts-payable-automation-software-for-india"
+    },
+    {
+     "title": "Open: best AP automation software in India (2026)",
+     "url": "https://open.money/blog/?p=24806"
+    },
+    {
+     "title": "Procol",
+     "url": "https://go.procol.ai/?p=8896"
+    }
+   ]
+  },
+  "runLog": []
+ }
+}

@@ -1,0 +1,56 @@
+{
+ "summary": "Ledgerly sells accounts payable software to mid-size Indian manufacturers and is raising a $2M Seed on a SAFE. The monthly sheet shows ₹48 L revenue in September 2026 (about ₹5.76 Cr a year), growing about 7% a month, with 92 paying customers. The deck's ₹7.5 Cr ARR is 30% above what the sheet supports, so ask how it was calculated before the first call.",
+ "traction": {
+  "level": "Strong",
+  "reason": "The sheet confirms ₹48 L revenue in September 2026 and about 7% monthly growth over six months with 92 paying customers, which is strong for a Seed company. The deck's ₹7.5 Cr ARR is higher than the sheet supports, so this judgement uses the sheet.",
+  "evidence": [
+   "Revenue ₹48 L in Sep 2026 (sheet)",
+   "Average growth 7% a month, Apr to Sep 2026 (sheet)",
+   "92 paying customers (deck p.4, sheet)",
+   "118% net revenue retention (deck p.4)",
+   "Gross margin 78% (deck p.5)"
+  ]
+ },
+ "team": {
+  "level": "Strong",
+  "reason": "The CEO spent seven years as finance controller at an auto components maker, the buyer this product serves, and the CTO spent six years as a senior engineer building an invoicing platform. They have worked together since 2022 and shipped a product with 92 paying customers.",
+  "evidence": [
+   "Ananya Rao: Finance Controller, Kestrel Auto Components, 2015 to 2022 (deck p.8, profile)",
+   "Vikram Joshi: Senior Software Engineer, Brightpath Software, 2016 to 2022 (deck p.8, profile)",
+   "Both directors since incorporation in June 2022 (registry)"
+  ]
+ },
+ "founderChecks": [
+  {
+   "founder": "Ananya Rao",
+   "claim": "Finance Controller, Kestrel Auto Components (2015–2022)",
+   "verdict": "match",
+   "detail": "The profile shows Finance Controller at Kestrel Auto Components from April 2015 to May 2022."
+  },
+  {
+   "founder": "Vikram Joshi",
+   "claim": "Senior Engineer, Brightpath Software (2016–2022)",
+   "verdict": "match",
+   "detail": "The profile shows Senior Software Engineer at Brightpath Software from July 2016 to March 2022."
+  }
+ ],
+ "strengths": [
+  "Revenue of ₹48 L in September 2026 with about 7% monthly growth, confirmed by the sheet",
+  "92 paying manufacturers and 118% net revenue retention (deck p.4); 78% gross margin (deck p.5)",
+  "The CEO ran finance at an auto components maker for seven years, the buyer this product serves (deck p.8, profile)",
+  "Fits the fund's rules: India, B2B software, Seed, $2M round"
+ ],
+ "concerns": [
+  "The deck's ₹7.5 Cr ARR is 30% higher than the ₹5.76 Cr a year the sheet supports",
+  "11 months of runway at ₹55 L monthly burn (deck p.9, sheet)",
+  "The $2.1B market size assumes $44,000 of yearly spend per manufacturer (deck p.6), above Ledgerly's own price of ₹25,000 to ₹1.5 lakh a month (deck p.5)",
+  "No earlier funding or SAFE valuation cap stated"
+ ],
+ "founderQuestions": [
+  "Your deck shows ARR of ₹7.5 Cr for September 2026, while the monthly sheet shows ₹48 L of revenue that month, about ₹5.76 Cr a year. Could you share how the ₹7.5 Cr was calculated, for example whether it includes signed contracts that aren't live yet?",
+  "What valuation cap and discount are you proposing for the SAFE?",
+  "Have you raised any money before this round?",
+  "Over what period and across how many customers is the 118% net revenue retention measured?",
+  "With 11 months of runway, how long will the $2M round last at your hiring plan?"
+ ]
+}

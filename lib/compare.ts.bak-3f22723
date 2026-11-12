@@ -1,0 +1,235 @@
+// The compare grid: companies as rows, standard metrics as columns, one currency.
+// Every cell keeps its sources and the code's working, so it can be opened and checked.
+import { fmtMoney, fmtMonth } from "./format";
+import { usd } from "./rules";
+import { sheetGrowth } from "./sheet";
+import { addMonths, companyHealth, reportStatus, runwayMonths, type CompanyBand } from "./portfolio/health";
+import type { PortfolioCompany } from "./portfolio/types";
+import { burnMultiple, dealFacts, growth3, misEvidence, portfolioFacts, type Evidence, type FactStatus } from "./provenance";
+import type { DealResult, SheetRow } from "./types";
+
+/** Sample exchange rates, fixed for the demo so the grid always reads the same. Units per US dollar. */
+export const FX: Record<string, number> = { USD: 1, INR: 84, AED: 3.6725, SAR: 3.75 };
+export const FX_NOTE = "Sample rates fixed for the demo: ₹84, AED 3.6725 and SAR 3.75 to one US dollar.";
+
+export type ColKey = "revenue" | "growth" | "burnMultiple" | "runway" | "plan" | "customers" | "round" | "reporting";
+
+export const COLUMNS: { key: ColKey; label: string; hint: string; better: "high" | "low" | null }[] = [
+  { key: "revenue", label: "Revenue a month", hint: "Latest month, in US dollars", better: "high" },
+  { key: "growth", label: "Growth", hint: "Average a month over the last 3 months, compounded", better: "high" },
+  { key: "burnMultiple", label: "Burn multiple", hint: "Net burn over 3 months ÷ new annual revenue in them. Lower is better", better: "low" },
+  { key: "runway", label: "Runway", hint: "Cash ÷ latest net burn", better: "high" },
+  { key: "plan", label: "Vs deck's plan", hint: "Reported revenue against the pitch deck's plan for that month", better: "high" },
+  { key: "customers", label: "Customers", hint: "Paying customers, latest month", better: "high" },
+  { key: "round", label: "Round", hint: "The fund's cheque and stake, or the round being raised", better: null },
+  { key: "reporting", label: "Reporting", hint: "Reporting health band, worked out by code", better: null },
+];
+
+export interface Cell {
+  sort: number | null;
+  text: string;
+  /** The same figure in the company's own currency, for money cells. */
+  local?: string;
+  sub?: string;
+  status: FactStatus | null;
+  evidence: Evidence[];
+  working: string[];
+  why?: string;
+}
+
+export interface CompareRow {
+  id: string;
+  name: string;
+  kind: "Portfolio" | "Pitch";
+  href: string;
+  sector: string;
+  currency: string;
+  band?: CompanyBand;
+  cells: Record<ColKey, Cell>;
+}
+
+const toUsd = (n: number, cur: string) => n / (FX[cur] ?? NaN);
+const usdText = (n: number) => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${Math.round(n)}`);
+const empty = (text = "—", why?: string): Cell => ({ sort: null, text, status: null, evidence: [], working: [], why });
+
+function moneyCell(value: number, cur: string, status: FactStatus, evidence: Evidence[], label: string): Cell {
+  const v = toUsd(value, cur);
+  return {
+    sort: v,
+    text: usdText(v),
+    local: fmtMoney(value, cur),
+    sub: label,
+    status,
+    evidence,
+    working: cur === "USD" ? [] : [`${fmtMoney(value, cur)} ÷ ${FX[cur]} = ${usdText(v)} (sample rate)`],
+  };
+}
+
+export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
+  const facts = portfolioFacts(c, today);
+  const fact = (k: string) => facts.find((f) => f.key === k)!;
+  const sent = c.reports.filter((r) => r.receivedAt && r.receivedAt.slice(0, 10) <= today && r.numbers.revenue);
+  const last = sent.at(-1);
+  const month = (m: string) => fmtMonth(m).split(" ")[0];
+
+  const revenue = last
+    ? moneyCell(last.numbers.revenue!.value, c.currency, fact("revenue").status === "Conflict" ? "Conflict" : "Reported", misEvidence(c, last, "revenue"), month(last.month))
+    : empty("No report");
+  const owed = last ? c.reports.filter((r) => r.month > last.month && reportStatus(r, today) === "missing") : [];
+  if (owed.length) {
+    revenue.sub = `${revenue.sub}; ${owed.map((r) => month(r.month)).join(", ")} not sent`;
+    revenue.status = "Missing";
+    revenue.why = `The latest reports (${owed.map((r) => fmtMonth(r.month)).join(", ")}) haven't arrived, so this is an older month.`;
+  }
+
+  const g = growth3(c, today);
+  const growth: Cell = g
+    ? {
+        sort: g.pct,
+        text: `${g.pct >= 0 ? "" : "−"}${Math.abs(g.pct).toFixed(1)}%`,
+        sub: `${month(g.from.month)} to ${month(g.to.month)}`,
+        status: g.to.numbers.revenue!.inFile != null ? "Conflict" : "Reported",
+        evidence: [...misEvidence(c, g.from, "revenue"), ...misEvidence(c, g.to, "revenue")],
+        working: fact("growth").working ?? [],
+      }
+    : empty("—", "Needs four months of reports.");
+
+  const b = burnMultiple(c, today);
+  const bm: Cell = b
+    ? {
+        sort: b.value,
+        text: b.value != null ? `${b.value.toFixed(1)}×` : "n/a",
+        sub: b.note ?? "3 months",
+        status: last?.numbers.revenue?.inFile != null ? "Conflict" : "Reported",
+        evidence: [],
+        working: b.working,
+      }
+    : empty("—", "Needs four months of reports.");
+
+  const rwFact = fact("runway");
+  const rwReport = [...c.reports].reverse().find((r) => r.receivedAt && r.receivedAt.slice(0, 10) <= today && runwayMonths(r) != null);
+  const rw = rwReport ? runwayMonths(rwReport)! : null;
+  const runway: Cell =
+    rw != null
+      ? { sort: rw, text: `${rw.toFixed(1)} mo`, sub: month(rwReport!.month), status: "Reported", evidence: rwFact.evidence, working: rwFact.working ?? [] }
+      : empty();
+
+  const pf = fact("plan");
+  const plan: Cell =
+    pf.status === "Claimed"
+      ? { sort: null, text: "Not yet", sub: pf.value, status: "Claimed", evidence: pf.evidence, working: [], why: pf.why }
+      : pf.status === "Missing"
+        ? { sort: null, text: "No report", sub: pf.sub, status: "Missing", evidence: pf.evidence, working: [], why: pf.why }
+        : { sort: parseFloat(pf.value.replace("−", "-")), text: pf.value, sub: pf.sub?.split(":")[0], status: pf.status, evidence: pf.evidence, working: pf.working ?? [] };
+
+  const cf = fact("customers");
+  const custReport = [...sent].reverse().find((r) => r.numbers.customers);
+  const customers: Cell = custReport
+    ? {
+        sort: custReport.numbers.customers!.value,
+        text: String(custReport.numbers.customers!.value),
+        sub: cf.status === "Missing" ? `${month(custReport.month)}; latest not sent` : month(custReport.month),
+        status: cf.status === "Missing" ? "Missing" : "Reported",
+        evidence: cf.evidence,
+        working: [],
+      }
+    : empty();
+
+  const band = companyHealth(c, today).band;
+  return {
+    id: c.id,
+    name: c.name,
+    kind: "Portfolio",
+    href: `/portfolio/${c.id}`,
+    sector: c.sector,
+    currency: c.currency,
+    band,
+    cells: {
+      revenue,
+      growth,
+      burnMultiple: bm,
+      runway,
+      plan,
+      customers,
+      round: {
+        sort: c.investment.amountUsd,
+        text: `${usd(c.investment.amountUsd)} · ${c.investment.ownershipPct}%`,
+        sub: `${c.investment.round}, ${fmtMonth(c.investment.date.slice(0, 7))}`,
+        status: null,
+        evidence: [{ source: "Fund's own record", value: `${c.investment.round}: ${usd(c.investment.amountUsd)} for ${c.investment.ownershipPct}%` }],
+        working: [],
+      },
+      reporting: { sort: null, text: band, status: null, evidence: [], working: [], why: "Reporting health, worked out by code from dates and counts." },
+    },
+  };
+}
+
+/** A screened pitch, from its deck and numbers sheet, worked out the same way as the portfolio. */
+export function dealRow(d: DealResult): CompareRow {
+  const facts = dealFacts(d);
+  const fact = (k: string) => facts.find((f) => f.key === k)!;
+  const sheet = (d.sheet ?? []).filter((r) => r.revenue != null);
+  const last = sheet.at(-1);
+  const cur = last?.currency || d.record.traction.arr.currency || "USD";
+  const month = (m: string) => fmtMonth(m).split(" ")[0];
+  const sheetEv = (r: SheetRow, v: string): Evidence => ({ source: "Numbers sheet", value: `${v} in ${fmtMonth(r.month)}`, file: "Monthly numbers sheet (CSV)" });
+
+  const revenue = last ? moneyCell(last.revenue!, cur, fact("revenue").status, fact("revenue").evidence, `${month(last.month)}, sheet`) : empty();
+
+  const from = last ? sheet.find((r) => r.month === addMonths(last.month, -3)) : undefined;
+  const g3 = last && from ? (Math.pow(last.revenue! / from.revenue!, 1 / 3) - 1) * 100 : null;
+  const growth: Cell =
+    g3 != null
+      ? {
+          sort: g3,
+          text: `${g3.toFixed(1)}%`,
+          sub: `${month(from!.month)} to ${month(last!.month)}`,
+          status: "Reported",
+          evidence: [sheetEv(from!, fmtMoney(from!.revenue, cur)), sheetEv(last!, fmtMoney(last!.revenue, cur))],
+          working: [`(${fmtMoney(last!.revenue, cur)} ÷ ${fmtMoney(from!.revenue, cur)}) ^ (1 ÷ 3) − 1 = ${g3.toFixed(1)}%`],
+        }
+      : sheetGrowth(d.sheet ?? [])
+        ? empty("—", "Needs four months in the sheet.")
+        : empty();
+
+  let bm: Cell = empty("—", "Needs four months of revenue and burn in the sheet.");
+  if (last && from) {
+    const window = [1, 2, 3].map((i) => sheet.find((r) => r.month === addMonths(last.month, i - 3)));
+    if (window.every((r) => r?.netBurn != null)) {
+      const burn = window.reduce((a, r) => a + r!.netBurn!, 0);
+      const added = (last.revenue! - from.revenue!) * 12;
+      const working = [
+        `Net burn ${month(window[0]!.month)} to ${month(last.month)}: ${window.map((r) => fmtMoney(r!.netBurn, cur)).join(" + ")} = ${fmtMoney(burn, cur)}`,
+        `New annual revenue: (${fmtMoney(last.revenue, cur)} − ${fmtMoney(from.revenue, cur)}) × 12 = ${fmtMoney(added, cur)}`,
+      ];
+      if (added > 0) working.push(`${fmtMoney(burn, cur)} ÷ ${fmtMoney(added, cur)} = ${(burn / added).toFixed(2)}×`);
+      bm = { sort: added > 0 ? burn / added : null, text: added > 0 ? `${(burn / added).toFixed(1)}×` : "n/a", sub: "3 months, sheet", status: "Reported", evidence: [], working };
+    }
+  }
+
+  const rf = fact("runway");
+  const runway: Cell = rf.status === "Missing" ? empty() : { sort: parseFloat(rf.value), text: `${parseFloat(rf.value).toFixed(1)} mo`, sub: rf.sub, status: rf.status, evidence: rf.evidence, working: rf.working ?? [] };
+
+  const cf = fact("customers");
+  const customers: Cell = cf.status === "Missing" ? empty() : { sort: parseFloat(cf.value.replace(/,/g, "")), text: cf.value, sub: cf.sub, status: cf.status, evidence: cf.evidence, working: [] };
+
+  const rd = fact("round");
+  return {
+    id: d.id,
+    name: d.form.companyName,
+    kind: "Pitch",
+    href: `/deals/${d.id}`,
+    sector: d.form.sector,
+    currency: cur,
+    cells: {
+      revenue,
+      growth,
+      burnMultiple: bm,
+      runway,
+      plan: empty("—", "Pitches have no plan to compare against yet."),
+      customers,
+      round: { sort: d.form.amountUsd, text: `Raising ${rd.value}`, sub: d.form.stage, status: rd.status, evidence: rd.evidence, working: [] },
+      reporting: empty("Pitch", "Not invested, so no reporting yet."),
+    },
+  };
+}

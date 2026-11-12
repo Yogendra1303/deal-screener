@@ -1,0 +1,308 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { usePortfolio } from "@/components/portfolio-store";
+import { Avatar } from "@/components/shell";
+import { useLinks } from "@/components/links-store";
+import { useStore } from "@/components/store";
+import { Card, cx } from "@/components/ui";
+import { useWorkspace } from "@/components/workspace";
+import { AGENTS, SOURCES, activityLog, type AgentStatus, type LogEntry, type SourceStatus } from "@/lib/agents";
+import { fmtDay } from "@/lib/dates";
+import { TEAM } from "@/lib/team";
+
+const SOURCE_TONE: Record<SourceStatus, string> = {
+  Connected: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  "Sample data": "bg-amber-50 text-amber-800 ring-amber-200",
+  "Needs an API key": "bg-slate-100 text-slate-700 ring-slate-200",
+  "Not connected": "bg-slate-100 text-slate-600 ring-slate-200",
+};
+
+const AGENT_TONE: Record<AgentStatus, string> = {
+  "Runs with API key": "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  "Code only": "bg-slate-100 text-slate-700 ring-slate-200",
+  "Not built yet": "bg-slate-100 text-slate-600 ring-slate-200",
+};
+
+
+export default function SourcesPage() {
+  const store = useStore();
+  const p = usePortfolio();
+  const w = useWorkspace();
+  const [kind, setKind] = useState<"all" | LogEntry["kind"]>("all");
+  const [limit, setLimit] = useState(15);
+  const links = useLinks();
+  // Analysts see the log for their own companies and pitches only.
+  const log = useMemo(() => {
+    const mine = (owner?: string) => w.role === "Partner" || owner === w.me;
+    return activityLog(
+      store.deals.filter((d) => mine(links.ownerOf(d.id))),
+      p.companies.filter((c) => mine(c.owner)),
+      w.questions.filter((q) => w.role === "Partner" || q.owner === w.me || q.askedBy === w.me),
+      p.today,
+    );
+  }, [store.deals, p.companies, w.questions, w.role, w.me, p.today, links]);
+  const shown = log.filter((e) => kind === "all" || e.kind === kind);
+
+  const status = (name: string) => {
+    const src = SOURCES.find((x) => x.name === name);
+    if (!src) return "Not connected";
+    return src.status === "Needs an API key" && store.server?.hasKey ? "Connected" : src.status;
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="max-w-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight">Where data comes from</h1>
+        <p className="mt-1 text-slate-600">
+          Every number in Fund Hub starts in a file someone sent or a public record. This page shows the route it takes, what the AI does,
+          what plain code checks, and what is real today versus planned.
+        </p>
+      </div>
+
+      <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 sm:p-6">
+        <h2 className="text-lg font-semibold tracking-tight text-slate-900">The route a number takes</h2>
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.1fr)_auto_minmax(0,1fr)] lg:items-stretch">
+          <FlowColumn title="1. Comes in" tone="bg-slate-100 ring-slate-200">
+            {FLOW_IN.map((g) => (
+              <div key={g.group}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{g.group}</p>
+                <ul className="mt-1.5 space-y-1.5">
+                  {g.items.map(([label, name]) => (
+                    <li key={label} className="flex items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-1.5 text-sm ring-1 ring-slate-200">
+                      <span className="text-slate-800">{label}</span>
+                      <StatusDotSmall status={status(name)} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </FlowColumn>
+          <Arrow />
+          <FlowColumn title="2. Fund Hub works on it" tone="bg-slate-900 text-white ring-slate-900">
+            {[
+              ["Read", "AI", "Reads pages, charts and tables into one standard record. Keeps the file, page and a short quote for every fact."],
+              ["Clean", "Code", "One company name, one currency, one meaning per metric (revenue is never GMV)."],
+              ["Check", "Code", "Compares deck, form, sheet, MIS and registry. Works out runway, growth and burn multiple."],
+              ["Label", "Code", "Every number becomes Checked, Reported, Claimed, Conflict or Missing."],
+            ].map(([t, by, d]) => (
+              <div key={t} className="rounded-xl bg-white/10 p-3">
+                <p className="flex items-center gap-2 font-semibold">
+                  {t}
+                  <span className={cx("rounded px-1.5 py-0.5 text-[10px] font-bold", by === "AI" ? "bg-white/25 text-slate-100" : "bg-white/15 text-white/80")}>{by}</span>
+                </p>
+                <p className="mt-0.5 text-xs leading-snug text-white/75">{d}</p>
+              </div>
+            ))}
+            <p className="text-xs text-white/60">AI never changes a founder&apos;s number. A conflict stays open until a person settles it with a source.</p>
+          </FlowColumn>
+          <Arrow />
+          <FlowColumn title="3. Shows up for the team" tone="bg-emerald-50 ring-emerald-100">
+            {[
+              ["Home cards", "Missing reports, low cash, numbers that don't match", "/"],
+              ["Pitch page", "Brief, diligence checklist, numbers with sources", "/deals"],
+              ["Data room", "What each founder sent, what's missing, what to ask", "/dataroom"],
+              ["Company page", "Health, reports owed, key numbers", "/portfolio"],
+              ["Compare", "Every company on the same measures", "/compare"],
+              ["Questions", "Partner and analyst ask about any number", "/"],
+            ].map(([t, d, href]) => (
+              <Link key={t} href={href} className="block rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200 hover:ring-indigo-300">
+                <p className="text-sm font-semibold text-slate-900">{t}</p>
+                <p className="text-xs text-slate-500">{d}</p>
+              </Link>
+            ))}
+          </FlowColumn>
+        </div>
+        <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+          {(["Connected", "Sample data", "Needs an API key", "Not connected"] as SourceStatus[]).map((st) => (
+            <span key={st} className="flex items-center gap-1.5">
+              <StatusDotSmall status={st} /> {st}
+            </span>
+          ))}
+        </p>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-base font-semibold text-slate-900">Agents</h2>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {AGENTS.map((a) => (
+            <Card key={a.name} className="flex flex-col p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-slate-900">{a.name}</h3>
+                  <p className="text-sm text-slate-600">{a.job}</p>
+                </div>
+                <span className={cx("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset", AGENT_TONE[a.status])}>{a.status}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1">
+                {a.reads.map((r) => (
+                  <span key={r} className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
+                    {r}
+                  </span>
+                ))}
+              </div>
+              <dl className="mt-3 space-y-1.5 text-sm">
+                <div>
+                  <dt className="text-xs font-medium text-slate-500">Suggests</dt>
+                  <dd className="text-slate-700">{a.suggests}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-slate-500">Who approves</dt>
+                  <dd className="text-slate-700">{a.approval}</dd>
+                </div>
+              </dl>
+              <p className="mt-auto border-t border-slate-100 pt-2 text-xs text-slate-500">{a.statusNote}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-base font-semibold text-slate-900">Each source in detail</h2>
+        <p className="mb-3 text-sm text-slate-500">What it gives, how it is read, and whether it is live in this prototype.</p>
+        <Card className="overflow-hidden">
+          <ul className="divide-y divide-slate-100">
+            {SOURCES.map((s) => (
+              <li key={s.name} className="grid gap-2 px-5 py-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)_150px] md:gap-5">
+                <div>
+                  <p className="font-medium text-slate-900">{s.name}</p>
+                  <p className="text-xs text-slate-500">{s.gives}</p>
+                </div>
+                <div className="text-sm">
+                  <p className="text-slate-700">{s.howRead}</p>
+                  <p className="text-xs text-slate-500">{s.note}</p>
+                </div>
+                <div className="md:text-right">
+                  <span className={cx("inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset", SOURCE_TONE[s.status])}>
+                    {s.status === "Needs an API key" && store.server?.hasKey ? "Connected" : s.status}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </section>
+
+      <section>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="text-base font-semibold text-slate-900">
+            Activity log <span className="text-sm font-normal text-slate-500">{shown.length}</span>
+          </h2>
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-xs" role="radiogroup" aria-label="Show">
+            {(
+              [
+                ["all", "Everything"],
+                ["agent", "Agents"],
+                ["code", "Code checks"],
+                ["person", "People"],
+              ] as const
+            ).map(([k, l]) => (
+              <button
+                key={k}
+                role="radio"
+                aria-checked={kind === k}
+                onClick={() => setKind(k)}
+                className={cx("rounded-md px-2.5 py-1 font-medium", kind === k ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900")}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Card className="divide-y divide-slate-100">
+          {shown.slice(0, limit).map((e, i) => (
+            <div key={`${e.date}-${i}`} className="flex gap-3 px-4 py-2.5 text-sm">
+              <span className="w-12 shrink-0 pt-0.5 text-xs tabular-nums text-slate-500">{fmtDay(e.date)}</span>
+              {TEAM.some((m) => m.name === e.actor) ? (
+                <Avatar name={e.actor} />
+              ) : (
+                <span
+                  aria-hidden
+                  className={cx(
+                    "grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-bold",
+                    e.kind === "agent" ? "bg-slate-200 text-slate-700" : "bg-slate-100 text-slate-700",
+                  )}
+                >
+                  {e.kind === "agent" ? "AI" : "{}"}
+                </span>
+              )}
+              <div className="min-w-0">
+                <span className="font-medium text-slate-900">{e.actor}</span>
+                <span className="text-slate-400"> · </span>
+                <Link href={e.href} className="font-medium text-indigo-700 hover:text-indigo-900">
+                  {e.company}
+                </Link>
+                <p className="text-slate-600">{e.text}</p>
+              </div>
+            </div>
+          ))}
+          {shown.length > limit && (
+            <button onClick={() => setLimit((n) => n + 30)} className="block w-full px-4 py-2.5 text-left text-xs font-medium text-indigo-700 hover:bg-slate-50">
+              Showing the latest {limit} of {shown.length}. Show more
+            </button>
+          )}
+        </Card>
+        <p className="mt-2 text-xs text-slate-500">Built from the records themselves, so it can&apos;t drift from what actually happened in the hub.</p>
+      </section>
+    </div>
+  );
+}
+
+const FLOW_IN: { group: string; items: [string, string][] }[] = [
+  {
+    group: "From founders",
+    items: [
+      ["Pitch link and document requests", "Founder links"],
+      ["Pitch deck", "Pitch decks (PDF)"],
+      ["Application form", "Application form"],
+      ["Numbers sheet", "Monthly numbers sheet (CSV or Excel)"],
+      ["Monthly MIS", "Monthly MIS from portfolio companies"],
+    ],
+  },
+  {
+    group: "From outside",
+    items: [
+      ["Company registry", "Company registries"],
+      ["Founder profiles", "Founder profiles"],
+      ["Web research", "Web research"],
+    ],
+  },
+  {
+    group: "From the fund",
+    items: [
+      ["Email and calendar", "Email and calendar"],
+      ["Data rooms", "Data rooms (Google Drive, SharePoint)"],
+    ],
+  },
+];
+
+const DOT_TONE: Record<SourceStatus, string> = {
+  Connected: "bg-emerald-500",
+  "Sample data": "bg-amber-400",
+  "Needs an API key": "bg-slate-600",
+  "Not connected": "bg-slate-300",
+};
+
+function StatusDotSmall({ status }: { status: SourceStatus }) {
+  return <span title={status} aria-label={status} className={cx("h-2.5 w-2.5 shrink-0 rounded-full", DOT_TONE[status])} />;
+}
+
+function FlowColumn({ title, tone, children }: { title: string; tone: string; children: React.ReactNode }) {
+  return (
+    <div className={cx("flex flex-col gap-3 rounded-2xl p-4 ring-1", tone)}>
+      <p className="text-sm font-semibold">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function Arrow() {
+  return (
+    <div aria-hidden className="flex items-center justify-center text-slate-300">
+      <svg viewBox="0 0 24 24" className="h-6 w-6 rotate-90 lg:rotate-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 12h14M13 6l6 6-6 6" />
+      </svg>
+    </div>
+  );
+}

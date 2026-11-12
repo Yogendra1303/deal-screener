@@ -1,0 +1,394 @@
+{
+  "ananyarao": {
+    "name": "Ananya Rao",
+    "headline": "Co-founder and CEO, Ledgerly",
+    "roles": [
+      {
+        "company": "Ledgerly",
+        "title": "Co-founder and CEO",
+        "start": "2022-06",
+        "end": null
+      },
+      {
+        "company": "Kestrel Auto Components",
+        "title": "Finance Controller",
+        "start": "2015-04",
+        "end": "2022-05"
+      },
+      {
+        "company": "Mehra & Iyer LLP",
+        "title": "Senior Audit Associate",
+        "start": "2011-07",
+        "end": "2015-03"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "vikramjoshi": {
+    "name": "Vikram Joshi",
+    "headline": "Co-founder and CTO, Ledgerly",
+    "roles": [
+      {
+        "company": "Ledgerly",
+        "title": "Co-founder and CTO",
+        "start": "2022-06",
+        "end": null
+      },
+      {
+        "company": "Brightpath Software",
+        "title": "Senior Software Engineer",
+        "start": "2016-07",
+        "end": "2022-03"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "rahulmenon": {
+    "name": "Rahul Menon",
+    "headline": "Co-founder and CEO, Mandiflow",
+    "roles": [
+      {
+        "company": "Mandiflow",
+        "title": "Co-founder and CEO",
+        "start": "2021-03",
+        "end": null
+      },
+      {
+        "company": "FreshKart Retail",
+        "title": "Category Head, Fruits and Vegetables",
+        "start": "2016-02",
+        "end": "2021-01"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "snehakulkarni": {
+    "name": "Sneha Kulkarni",
+    "headline": "Co-founder and COO, Mandiflow",
+    "roles": [
+      {
+        "company": "Mandiflow",
+        "title": "Co-founder and COO",
+        "start": "2021-03",
+        "end": null
+      },
+      {
+        "company": "Coastline Logistics",
+        "title": "Operations Manager",
+        "start": "2014-08",
+        "end": "2020-11"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "omarhaddad": {
+    "name": "Omar Haddad",
+    "headline": "Founder, Remitwell",
+    "roles": [
+      {
+        "company": "Remitwell",
+        "title": "Founder and CEO",
+        "start": "2023-02",
+        "end": null
+      },
+      {
+        "company": "Gulfstone Bank",
+        "title": "Senior Product Manager, Payments",
+        "start": "2019-03",
+        "end": "2022-06"
+      },
+      {
+        "company": "Fintrac Payments",
+        "title": "Product Analyst",
+        "start": "2016-01",
+        "end": "2019-02"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "mariasantos": {
+    "name": "Maria Santos",
+    "headline": "CTO, Remitwell",
+    "roles": [
+      {
+        "company": "Remitwell",
+        "title": "Co-founder and CTO",
+        "start": "2023-04",
+        "end": null
+      },
+      {
+        "company": "Paylane",
+        "title": "Staff Engineer",
+        "start": "2017-05",
+        "end": "2023-01"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "karanpatel": {
+    "name": "Karan Patel",
+    "headline": "Co-founder, Sunroof Grid",
+    "roles": [
+      {
+        "company": "Sunroof Grid",
+        "title": "Co-founder and CEO",
+        "start": "2024-01",
+        "end": null
+      },
+      {
+        "company": "Helios Power Systems",
+        "title": "Project Lead, Rooftop Solar",
+        "start": "2015-06",
+        "end": "2023-08"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "divyashah": {
+    "name": "Divya Shah",
+    "headline": "Co-founder, Sunroof Grid",
+    "roles": [
+      {
+        "company": "Sunroof Grid",
+        "title": "Co-founder and CFO",
+        "start": "2024-01",
+        "end": null
+      },
+      {
+        "company": "Greenbridge Capital",
+        "title": "Associate Director",
+        "start": "2017-09",
+        "end": "2023-10"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "faisalalharbi": {
+    "name": "Faisal Al-Harbi",
+    "headline": "CEO, Rostrly",
+    "roles": [
+      {
+        "company": "Rostrly",
+        "title": "Co-founder and CEO",
+        "start": "2022-05",
+        "end": null
+      },
+      {
+        "company": "Najd Hypermarkets",
+        "title": "Head of Retail Operations",
+        "start": "2014-09",
+        "end": "2022-02"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "linamansour": {
+    "name": "Lina Mansour",
+    "headline": "CTO, Rostrly",
+    "roles": [
+      {
+        "company": "Rostrly",
+        "title": "Co-founder and CTO",
+        "start": "2022-05",
+        "end": null
+      },
+      {
+        "company": "Cloudnest",
+        "title": "Engineering Manager",
+        "start": "2016-03",
+        "end": "2022-04"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "meerasingh": {
+    "name": "Meera Singh",
+    "headline": "Founder, Loomhaus",
+    "roles": [
+      {
+        "company": "Loomhaus",
+        "title": "Founder",
+        "start": "2025-03",
+        "end": null
+      },
+      {
+        "company": "Jaipur Weaves Studio",
+        "title": "Lead Textile Designer",
+        "start": "2014-06",
+        "end": "2024-12"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "arjunrathore": {
+    "name": "Arjun Rathore",
+    "headline": "Co-founder, Loomhaus",
+    "roles": [
+      {
+        "company": "Loomhaus",
+        "title": "Co-founder, Product and Brand",
+        "start": "2025-03",
+        "end": null
+      },
+      {
+        "company": "Urban Nest Home",
+        "title": "Brand Manager",
+        "start": "2017-01",
+        "end": "2024-11"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "priyanair": {
+    "name": "Priya Nair",
+    "headline": "Co-founder and CEO, Tutorbridge",
+    "roles": [
+      {
+        "company": "Tutorbridge",
+        "title": "Co-founder and CEO",
+        "start": "2023-07",
+        "end": null
+      },
+      {
+        "company": "Brightminds Schools",
+        "title": "Academic Director",
+        "start": "2012-06",
+        "end": "2022-12"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "sameerkhan": {
+    "name": "Sameer Khan",
+    "headline": "Co-founder and CTO, Tutorbridge",
+    "roles": [
+      {
+        "company": "Tutorbridge",
+        "title": "Co-founder and CTO",
+        "start": "2023-07",
+        "end": null
+      },
+      {
+        "company": "Quizly",
+        "title": "Engineering Lead",
+        "start": "2018-02",
+        "end": "2023-05"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "danielbrooks": {
+    "name": "Daniel Brooks",
+    "headline": "CEO, Clinicall",
+    "roles": [
+      {
+        "company": "Clinicall",
+        "title": "Co-founder and CEO",
+        "start": "2019-08",
+        "end": null
+      },
+      {
+        "company": "Harborview Cardiology Group",
+        "title": "VP Operations",
+        "start": "2012-03",
+        "end": "2019-06"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "graceliu": {
+    "name": "Grace Liu",
+    "headline": "CTO, Clinicall",
+    "roles": [
+      {
+        "company": "Clinicall",
+        "title": "Co-founder and CTO",
+        "start": "2019-08",
+        "end": null
+      },
+      {
+        "company": "Medisync",
+        "title": "Principal Engineer",
+        "start": "2013-01",
+        "end": "2019-07"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "ahmedsaleh": {
+    "name": "Ahmed Saleh",
+    "headline": "CEO, Parkwise",
+    "roles": [
+      {
+        "company": "Parkwise",
+        "title": "Co-founder and CEO",
+        "start": "2022-01",
+        "end": null
+      },
+      {
+        "company": "CityPark Operations",
+        "title": "General Manager",
+        "start": "2014-02",
+        "end": "2021-10"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "rohandesai": {
+    "name": "Rohan Desai",
+    "headline": "CTO, Parkwise",
+    "roles": [
+      {
+        "company": "Parkwise",
+        "title": "Co-founder and CTO",
+        "start": "2022-01",
+        "end": null
+      },
+      {
+        "company": "Visionlane",
+        "title": "Senior Engineer, Computer Vision",
+        "start": "2016-05",
+        "end": "2021-11"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "nikhilbansal": {
+    "name": "Nikhil Bansal",
+    "headline": "CEO, Freightnest",
+    "roles": [
+      {
+        "company": "Freightnest",
+        "title": "Co-founder and CEO",
+        "start": "2022-09",
+        "end": null
+      },
+      {
+        "company": "Seabridge Forwarding",
+        "title": "Regional Director, Middle East",
+        "start": "2012-04",
+        "end": "2021-12"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  },
+  "aisharahman": {
+    "name": "Aisha Rahman",
+    "headline": "CPO, Freightnest",
+    "roles": [
+      {
+        "company": "Freightnest",
+        "title": "Co-founder and CPO",
+        "start": "2022-09",
+        "end": null
+      },
+      {
+        "company": "Cargolink",
+        "title": "Product Manager",
+        "start": "2017-03",
+        "end": "2022-07"
+      }
+    ],
+    "source": "Sample profile (fictional)"
+  }
+}

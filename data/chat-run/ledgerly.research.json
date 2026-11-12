@@ -1,0 +1,75 @@
+{
+ "competitors": [
+  {
+   "name": "Peakflo",
+   "whatTheyDo": "Procure-to-pay and accounts payable automation, with an offer aimed at manufacturers.",
+   "howDifferent": "Sells across several Asian markets; Ledgerly is India-only and adds monthly GST credit reconciliation.",
+   "namedInDeck": false,
+   "url": "https://peakflo.co/industries/manufacturing"
+  },
+  {
+   "name": "Taxilla",
+   "whatTheyDo": "Invoice-to-pay automation for India covering accounts payable, GST and vendor payments.",
+   "howDifferent": "Comes from GST compliance software, so it overlaps directly on GST; Ledgerly leads with three-way matching for manufacturers.",
+   "namedInDeck": false,
+   "url": "https://www.taxilla.com/accounts-payable-invoice-to-pay-automation-india"
+  },
+  {
+   "name": "Mysa",
+   "whatTheyDo": "Accounts payable and invoice management software for Indian businesses.",
+   "howDifferent": "A general tool for Indian businesses rather than one built for manufacturers' purchase orders and goods receipts.",
+   "namedInDeck": false,
+   "url": "https://www.mysa.io/blogs/top-accounts-payable-automation-software-for-india"
+  },
+  {
+   "name": "Procol",
+   "whatTheyDo": "Procurement software for Indian companies: sourcing, purchase orders and supplier management.",
+   "howDifferent": "Starts at purchasing rather than invoices; it could add invoice matching and move into Ledgerly's space.",
+   "namedInDeck": false,
+   "url": "https://go.procol.ai/?p=8896"
+  },
+  {
+   "name": "Tipalti",
+   "whatTheyDo": "Global accounts payable automation suite for multi-country payables.",
+   "howDifferent": "Fits the deck's 'global AP automation suites' row, which says they don't reconcile GST and aren't built for India (deck p.7).",
+   "namedInDeck": false,
+   "url": "https://tipalti.com"
+  }
+ ],
+ "marketSize": {
+  "low": 170000000,
+  "high": 1000000000,
+  "currency": "USD",
+  "whatItCounts": "Yearly spend if all 48,000 mid-size manufacturers the deck counts paid Ledgerly's own listed prices",
+  "steps": [
+   "48,000 mid-size manufacturers in India (deck p.6)",
+   "Ledgerly's price: ₹25,000 to ₹1.5 lakh a month, so ₹3 lakh to ₹18 lakh a year (deck p.5)",
+   "At about ₹85 to the dollar that is roughly $3,500 to $21,000 a year per customer",
+   "48,000 × $3,500 ≈ $170M; 48,000 × $21,000 ≈ $1.0B a year, before any share assumption"
+  ],
+  "deckClaimComment": "The deck's $2.1B uses $44,000 of yearly spend per manufacturer, about twice Ledgerly's top price. Using its own prices gives $170M to $1.0B a year, and Ledgerly would win only a share of that."
+ },
+ "redFlags": [],
+ "sources": [
+  {
+   "title": "Peakflo: procure-to-pay for manufacturing",
+   "url": "https://peakflo.co/industries/manufacturing"
+  },
+  {
+   "title": "Taxilla: invoice-to-pay automation in India",
+   "url": "https://www.taxilla.com/accounts-payable-invoice-to-pay-automation-india"
+  },
+  {
+   "title": "Mysa: top AP automation software for India",
+   "url": "https://www.mysa.io/blogs/top-accounts-payable-automation-software-for-india"
+  },
+  {
+   "title": "Open: best AP automation software in India (2026)",
+   "url": "https://open.money/blog/?p=24806"
+  },
+  {
+   "title": "Procol",
+   "url": "https://go.procol.ai/?p=8896"
+  }
+ ]
+}

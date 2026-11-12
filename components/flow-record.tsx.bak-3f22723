@@ -1,0 +1,474 @@
+"use client";
+
+// One company from the deal-flow history, told as a row of slides: every message both ways, what the
+// fund decided, and what the monthly watch found since. Read from the email thread and the deck's first pages.
+import Link from "next/link";
+import { Delta, Sparkline, changeText } from "./charts";
+import { BackLink } from "./company";
+import { DeckList, LabelPill, Monogram, TempPill, slugOf, useDealFlow, type FeedKind } from "./flow";
+import { FitPill } from "./funnel";
+import { useStore } from "./store";
+import { KeyStrip, LABEL, StatusSelect, Tag, cx } from "./ui";
+import { CheckSummary } from "./checks-ui";
+import { DealDocs } from "./docs";
+import { archiveById, type Archive } from "@/lib/archive";
+import { fmtMoney, fmtNum } from "@/lib/format";
+import { rowFor, sheetGrowth } from "@/lib/sheet";
+import { fmtDay } from "@/lib/dates";
+import { FLOW_NOTE, LOOK_NOW, VIA_HELP, flowById } from "@/lib/flow";
+import { daysBetween } from "@/lib/portfolio/health";
+import { usd } from "@/lib/rules";
+import { PARTNER } from "@/lib/team";
+
+type From = "Founder" | "Us" | "Watch";
+
+interface Slide {
+  at: string;
+  from: From;
+  title: string;
+  body?: React.ReactNode;
+  tone: string;
+  signal?: FeedKind;
+}
+
+const SIGNAL_TONE: Record<string, string> = {
+  "Raised elsewhere": "from-red-600 to-red-700",
+  "Pitched again": "from-slate-600 to-slate-700",
+  "Trigger met": "from-emerald-600 to-emerald-700",
+  "Team grew": "from-emerald-600 to-emerald-700",
+  "Shut down": "from-slate-400 to-slate-500",
+};
+
+const FROM_TEXT: Record<From, string> = { Founder: "From the founder", Us: "From us", Watch: "Monthly watch" };
+
+export function FlowRecord({ id }: { id: string }) {
+  const store = useStore();
+  const { rows, market, today } = useDealFlow();
+  const c = flowById(id);
+  const r = rows.find((x) => x.id === id);
+  if (!c) return null;
+  if (!r)
+    return (
+      <div className="mx-auto max-w-lg rounded-xl bg-white p-8 text-center text-sm text-slate-600 shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+        <p className="font-semibold text-slate-900">{c.name} is an archived sample deal, hidden in this workspace mode.</p>
+        <p className="mt-1">
+          Restore the full demo data under{" "}
+          <Link href="/workspace" className="font-medium text-indigo-700 hover:text-indigo-900">
+            Workspace &amp; Reset
+          </Link>{" "}
+          to open it.
+        </p>
+      </div>
+    );
+  const d = r.decision;
+  const m = market.find((x) => x.sector === c.sector);
+  const last = c.decks[c.decks.length - 1];
+
+  const slides: Slide[] = [
+    ...c.decks.map((k, i) => ({
+      at: k.at,
+      from: "Founder" as const,
+      title: i === 0 ? "Sent a deck" : "Sent a new deck",
+      body: (
+        <>
+          {k.stage}, raising {usd(k.askUsd)}.
+          <span className="mt-1 block text-slate-400">{VIA_HELP[k.via]}.</span>
+        </>
+      ),
+      tone: "from-slate-800 to-slate-900",
+    })),
+    ...(c.meetingAt ? [{ at: c.meetingAt, from: "Us" as const, title: "Met the founder", body: `${c.owner?.split(" ")[0] ?? "The team"} held a first meeting.`, tone: "from-emerald-600 to-emerald-700" }] : []),
+    ...(d
+      ? [
+          {
+            at: d.at,
+            from: "Us" as const,
+            title: d.status === "Passed" ? "Passed, with the reason" : "Put on hold",
+            body: (
+              <>
+                {d.reason}.{d.note && <span className="mt-1 block">{d.note}</span>}
+                <span className="mt-1 block text-slate-400">Look again when: {d.trigger}</span>
+              </>
+            ),
+            tone: "from-slate-700 to-slate-900",
+          },
+        ]
+      : []),
+    ...r.signals.map((s) => ({
+      at: s.at,
+      from: (s.source === "Founder email" ? "Founder" : "Watch") as From,
+      title: s.kind,
+      signal: s.kind,
+      body: (
+        <>
+          {s.text}
+          <span className="mt-1 block text-slate-400">{s.source}</span>
+        </>
+      ),
+      tone: SIGNAL_TONE[s.kind] ?? "from-slate-400 to-slate-500",
+    })),
+  ].sort((a, b) => a.at.localeCompare(b.at));
+
+  const unanswered = !d && !c.meetingAt && r.status === "New";
+  if (unanswered)
+    slides.push({ at: today, from: "Us", title: "No reply yet", body: `${daysBetween(c.decks[0].at, today)} days since the first deck, and nobody has opened it.`, tone: "from-red-500 to-red-600" });
+
+  const fromFounder = slides.filter((s) => s.from === "Founder").length;
+  const fromUs = slides.filter((s) => s.from === "Us" && s.title !== "No reply yet").length;
+  const news = r.signals.filter((s) => s.source !== "Founder email").length;
+  const similar = rows.filter((x) => x.sub === c.sub && x.id !== c.id);
+  const subject = encodeURIComponent(`${c.name}: following up from ${PARTNER.name.split(" ")[0]}'s fund`);
+  const reengage = r.look.parts.some(([k]) => k === "Trigger met" || k === "Check date passed");
+  const a = archiveById(id);
+  const t = a?.record.traction ?? null!;
+  const arr = a ? (t.arr.amount ?? (t.mrr.amount != null ? t.mrr.amount * 12 : null)) : null;
+
+  return (
+    <div className="space-y-5">
+      <BackLink href="/deals" label="Pitches" />
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-slate-200 bg-slate-100/80 px-3 py-2 text-xs text-slate-600">
+        <span className="font-semibold uppercase tracking-wider text-slate-800">Archived deal record</span>
+        <span>Received {fmtDay(c.decks[0].at)} {c.decks[0].at.slice(0, 4)}</span>
+        <span>· Checked by code on arrival</span>
+        <span className="text-slate-500">· Deck and sheet figures are sample data made for the demo</span>
+      </div>
+
+      <section className="rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)] sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
+            <Monogram name={c.name} sector={c.sector} size="lg" />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight">{c.name}</h1>
+                <LabelPill label={r.label} />
+              </div>
+              <p className="mt-0.5 text-slate-600">
+                {c.sub} in {c.city}. {last.stage}, raising {usd(last.askUsd)}.
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {r.fits ? "Fits the fund's rules" : "Outside the fund's rules"}
+                {c.owner ? ` · ${c.owner}` : " · No owner"} · {fromFounder + fromUs} messages · {c.decks.length} {c.decks.length > 1 ? "decks" : "deck"} · {news} news since
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="deal-status" className="text-xs text-slate-500">
+              Status
+            </label>
+            <StatusSelect id="deal-status" value={store.statusOf(id)} onChange={(s) => store.setStatus(id, s)} />
+          </div>
+        </div>
+        {a && (
+          <KeyStrip
+            className="mt-4 lg:grid-cols-6"
+            items={[
+              ["Round ask", <span key="a" className="font-mono">{usd(a.record.round.amount.amount ?? last.askUsd)}</span>],
+              ["Implied ARR", <span key="b" className="font-mono">{arr ? fmtMoney(arr, "USD") : "—"}</span>],
+              ["MoM growth", <span key="c" className="font-mono">{t.monthlyGrowthPct.value != null ? `${t.monthlyGrowthPct.value}%` : "Not stated"}</span>],
+              ["Runway", <span key="d" className="font-mono">{t.runwayMonths.value != null ? `${t.runwayMonths.value} months` : "Not stated"}</span>],
+              ["Team size", <span key="e" className="font-mono">{t.teamSize.value ?? "Not stated"}</span>],
+              ["Customers", <span key="f" className="font-mono">{t.customers.value != null ? fmtNum(t.customers.value) : "Not stated"}</span>],
+            ]}
+          />
+        )}
+      </section>
+
+      {a && (
+        <section className="space-y-2.5 rounded-xl bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+          <DealDocs id={r.id} name={r.name} className="" />
+          <CheckSummary cover={a.cover} />
+        </section>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <section className="rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)] sm:p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Founder credibility</h2>
+              <p className="text-xs text-slate-500">
+                Source: {VIA_TEXT[last.via] ?? last.via} · {a?.deckFile ?? last.file}
+              </p>
+            </div>
+            <FitPill level={c.fit} />
+          </div>
+          <div className="mt-3 border-l-2 border-slate-200 pl-3">
+            <p className="text-sm font-semibold text-slate-900">{c.founder || "On file in the original email"}</p>
+            {c.email && <p className="text-xs text-slate-500">{c.email}</p>}
+            <p className="mt-1 text-xs text-slate-600">{FIT_TEXT[c.fit]}</p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {c.repeat && <Tag>Repeat founder</Tag>}
+            {c.tenPlus && <Tag>10+ years in the industry</Tag>}
+            {c.warm && <Tag tone="clear">{c.warm.split(" ")[0]} knows them</Tag>}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {c.email && (
+              <a href={`mailto:${c.email}?subject=${subject}`} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+                Write to the founder
+              </a>
+            )}
+            {(r.status === "Passed" || r.status === "On hold") && (
+              <button onClick={() => store.setDecision(id, null)} className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                Reopen
+              </button>
+            )}
+          </div>
+        </section>
+        <section className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h2 className="text-sm font-semibold text-slate-900">Decision on file</h2>
+            <p className="text-xs text-slate-500">What the fund decided, and when to look again.</p>
+          </div>
+          {d ? (
+            <dl className="grid grid-cols-2 gap-px bg-slate-100 text-sm">
+              {(
+                [
+                  ["Decision", <Tag key="s" tone={d.status === "Passed" ? "neutral" : "review"}>{d.status}</Tag>],
+                  ["Reason", d.reason],
+                  ["Decided", <span key="a" className="font-mono">{d.at}</span>],
+                  ["By", d.by],
+                  ["Next check", <span key="c" className="font-mono">{d.checkOn ?? "None"}</span>],
+                  [
+                    "Re-engage",
+                    reengage ? <Tag key="r" tone="review">⏰ Due now</Tag> : <Tag key="r">Not yet</Tag>,
+                  ],
+                ] as [string, React.ReactNode][]
+              ).map(([k, v]) => (
+                <div key={k} className="bg-white px-4 py-2.5">
+                  <dt className={LABEL}>{k}</dt>
+                  <dd className="mt-0.5 font-semibold tracking-tight text-slate-900">{v}</dd>
+                </div>
+              ))}
+              <div className="col-span-2 bg-white px-4 py-2.5">
+                <dt className={LABEL}>Look again when</dt>
+                <dd className="mt-0.5 text-slate-700">{d.trigger}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="px-4 py-4 text-sm text-slate-600">
+              {c.meetingAt ? `Met the founder on ${fmtDay(c.meetingAt)}. No pass or hold recorded.` : "No decision yet. It is still open."}
+            </p>
+          )}
+        </section>
+      </div>
+
+      {a && <EvidenceTable a={a} />}
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+        <div className="rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-base font-semibold text-slate-900">The story so far</h2>
+            <span className="text-xs text-slate-500">
+              {slides.length} {slides.length === 1 ? "event" : "events"}, oldest first
+            </span>
+          </div>
+          <ol className="mt-4">
+            {slides.map((s, i) => (
+              <li key={i} className="relative grid grid-cols-[84px_20px_minmax(0,1fr)] gap-x-3 pb-5 last:pb-0">
+                <span className="pt-0.5 text-right text-xs tabular-nums text-slate-500">
+                  {fmtDay(s.at)} {s.at.slice(0, 4)}
+                </span>
+                <span className="relative flex justify-center">
+                  {i < slides.length - 1 && <span aria-hidden className="absolute top-4 bottom-[-20px] w-px bg-slate-200" />}
+                  <span aria-hidden className={cx("relative mt-1 h-3 w-3 rounded-full bg-gradient-to-br ring-4 ring-white", s.tone)} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{FROM_TEXT[s.from]}</p>
+                  <p className="text-sm font-semibold text-slate-900">{s.title}</p>
+                  <div className="mt-0.5 text-sm text-slate-600">{s.body}</div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+        {r.look.event ? (
+          <aside className={cx("rounded-2xl p-5 ring-1", r.look.now ? "bg-amber-50 ring-amber-200" : "bg-white ring-slate-200/70")}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Where it stands</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{r.look.now ? "Look again now" : "Worth a look"}</p>
+            <p className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-3xl font-semibold tabular-nums text-slate-900">{r.look.points}</span>
+              <span className="text-sm text-slate-500">points, worked out by code</span>
+            </p>
+            <ul className="mt-3 space-y-1 border-t border-slate-200/70 pt-3 text-xs text-slate-600">
+              {r.look.parts.map(([k, n]) => (
+                <li key={k} className="flex justify-between gap-2">
+                  <span>{k}</span>
+                  <span className="tabular-nums">+{n}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-[11px] text-slate-500">{LOOK_NOW}+ points with recent news means look again now.</p>
+          </aside>
+        ) : (
+          <aside className="rounded-2xl bg-white p-5 text-sm text-slate-600 ring-1 ring-slate-200/70">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Where it stands</p>
+            <p className="mt-1 font-semibold text-slate-900">Nothing new since the decision</p>
+            <p className="mt-1 text-xs text-slate-500">If a trigger is met, the company raises, or the founder pitches again, it shows here with look-again points.</p>
+          </aside>
+        )}
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-5 lg:items-start">
+        <section className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)] lg:col-span-3">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h2 className="text-sm font-semibold text-slate-900">Decks on file</h2>
+            <p className="text-xs text-slate-500">Every version the founder sent, with what changed between them.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className={cx(LABEL, "border-b border-slate-200 bg-slate-50 text-left")}>
+                <tr>
+                  <th className="px-3 py-2 font-medium">Received</th>
+                  <th className="px-3 py-2 font-medium">File</th>
+                  <th className="px-3 py-2 font-medium">Stage</th>
+                  <th className="px-3 py-2 text-right font-medium">Ask</th>
+                  <th className="hidden px-3 py-2 font-medium xl:table-cell">Arrived by</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {c.decks.map((k, i) => {
+                  const prev = c.decks[i - 1];
+                  const askMove = prev ? k.askUsd / prev.askUsd - 1 : 0;
+                  return (
+                    <tr key={k.at + k.file}>
+                      <td className="whitespace-nowrap px-3 py-2 font-mono text-xs tabular-nums text-slate-700">{k.at}</td>
+                      <td className="max-w-[12rem] truncate px-3 py-2 font-mono text-xs text-slate-900" title={k.file}>
+                        {k.file}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-700">
+                        {k.stage}
+                        {prev && prev.stage !== k.stage && <Tag tone="clear" className="ml-1.5">was {prev.stage}</Tag>}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums text-slate-900">
+                        {usd(k.askUsd)}
+                        {prev && Math.abs(askMove) >= 0.05 && <span className={cx("ml-1.5 text-[11px]", askMove > 0 ? "text-emerald-700" : "text-red-700")}>{changeText(askMove)}</span>}
+                      </td>
+                      <td className="hidden whitespace-nowrap px-3 py-2 text-xs text-slate-600 xl:table-cell">{k.via}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500">
+            The latest deck&apos;s numbers are the ones checked above. Earlier versions are kept so changes in ask and stage show up.
+          </p>
+        </section>
+        {m && (
+          <Link href={`/sectors/${slugOf(c.sector)}`} className="block rounded-2xl bg-white p-5 lg:col-span-2 shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-base font-semibold text-slate-900">{c.sector} right now</h2>
+              <TempPill t={m.temp} />
+            </div>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2">
+                  <span className="text-2xl font-semibold tabular-nums text-slate-900">{m.counts.slice(-3).reduce((a, b) => a + b, 0)}</span>
+                  <Delta value={m.inboundChange} />
+                </p>
+                <p className="text-xs text-slate-500">decks in the last 3 months</p>
+              </div>
+              <Sparkline values={m.counts} width={120} height={40} tone={m.inboundChange >= 0.05 ? "up" : m.inboundChange <= -0.05 ? "down" : "indigo"} />
+            </div>
+            <p className="mt-3 text-sm font-medium text-slate-700">Open the {c.sector} page →</p>
+          </Link>
+        )}
+      </div>
+
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold text-slate-900">Others in {c.sub.toLowerCase()}</h2>
+        <DeckList rows={similar} pageSize={5} group={false} empty="No other company in this sub-category." />
+      </section>
+
+      <p className="text-xs text-slate-400">Read from the email thread and the deck. The deck and sheet figures are sample data from a fixed recipe; the checks on them are the same code that checks live pitches. {FLOW_NOTE}</p>
+    </div>
+  );
+}
+
+const VIA_TEXT: Record<string, string> = {
+  "Pitch email": "Pitch email",
+  "Partner email": "Email to the partner",
+  "Website link": "Pitch form on the website",
+  "Analyst link": "Analyst's pitch link",
+  Intro: "Warm intro",
+};
+
+const FIT_TEXT: Record<string, string> = {
+  Strong: "Years working directly on this problem, or built a company in the same space before.",
+  Mixed: "Related experience, but not directly in this problem for long.",
+  Weak: "Little past work tied to this problem.",
+};
+
+const pctGap = (deck: number, other: number) => Math.abs(deck - other) / Math.abs(other);
+
+/** Deck against sheet, form and its own maths, one metric per row, with the result from the checks. */
+function EvidenceTable({ a }: { a: Archive }) {
+  const t = a.record.traction;
+  const sheet = a.sheet;
+  const lineOf = (id: string) => a.cover.lines.find((l) => l.id === id)!;
+  const deckMonthly = t.mrr.amount ?? (t.arr.amount != null ? t.arr.amount / 12 : null);
+  const rev = sheet ? rowFor(sheet, "revenue", a.asOf) : null;
+  const g = sheet ? sheetGrowth(sheet) : null;
+  const cust = sheet ? rowFor(sheet, "customers", null) : null;
+  const team = sheet ? rowFor(sheet, "headcount", null) : null;
+  const money = (n: number | null | undefined) => (n == null ? null : fmtMoney(n, "USD"));
+  const rows: { metric: string; id: string; deck: string | null; other: string | null; otherSource: string; gap: number | null }[] = [
+    { metric: t.mrr.amount == null && deckMonthly != null ? "Monthly revenue (annual ÷ 12)" : "Monthly revenue", id: "revenue_deck_vs_sheet", deck: money(deckMonthly), other: money(rev?.revenue), otherSource: "📊 Sheet", gap: deckMonthly != null && rev?.revenue ? pctGap(deckMonthly, rev.revenue) : null },
+    { metric: "Monthly growth", id: "growth_deck_vs_sheet", deck: t.monthlyGrowthPct.value != null ? `${t.monthlyGrowthPct.value}%` : null, other: g ? `${g.pct.toFixed(1)}%` : null, otherSource: "📊 Sheet", gap: t.monthlyGrowthPct.value != null && g ? pctGap(t.monthlyGrowthPct.value, g.pct) : null },
+    { metric: "Customers", id: "customers_deck_vs_sheet", deck: t.customers.value != null ? fmtNum(t.customers.value) : null, other: cust?.customers != null ? fmtNum(cust.customers) : null, otherSource: "📊 Sheet", gap: t.customers.value != null && cust?.customers ? pctGap(t.customers.value, cust.customers) : null },
+    { metric: "Team size", id: "team_deck_vs_sheet", deck: t.teamSize.value != null ? String(t.teamSize.value) : null, other: team?.headcount != null ? String(team.headcount) : null, otherSource: "📊 Sheet", gap: t.teamSize.value != null && team?.headcount ? pctGap(t.teamSize.value, team.headcount) : null },
+    { metric: "Annual revenue vs monthly × 12", id: "arr_vs_mrr_maths", deck: money(t.arr.amount), other: t.mrr.amount != null ? money(t.mrr.amount * 12) : null, otherSource: "📄 Deck maths", gap: t.arr.amount && t.mrr.amount ? pctGap(t.arr.amount, t.mrr.amount * 12) : null },
+    { metric: "Runway", id: "runway_maths", deck: t.runwayMonths.value != null ? `${t.runwayMonths.value} months` : null, other: t.cash.amount && t.monthlyBurn.amount ? `${(t.cash.amount / t.monthlyBurn.amount).toFixed(1)} months` : null, otherSource: "📄 Cash ÷ burn", gap: t.runwayMonths.value != null && t.cash.amount && t.monthlyBurn.amount ? pctGap(t.runwayMonths.value, t.cash.amount / t.monthlyBurn.amount) : null },
+    { metric: "Round size", id: "round_deck_vs_form", deck: money(a.record.round.amount.amount), other: money(a.form.amountUsd), otherSource: "📝 Form", gap: a.record.round.amount.amount && a.form.amountUsd ? pctGap(a.record.round.amount.amount, a.form.amountUsd) : null },
+  ];
+  const th = "whitespace-nowrap px-3 py-2 text-left align-middle font-medium";
+  return (
+    <section className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+      <div className="border-b border-slate-100 px-4 py-3">
+        <h2 className="text-sm font-semibold text-slate-900">Evidence: deck against the other sources</h2>
+        <p className="text-xs text-slate-500">Each number in the deck, next to where it was checked. A gap over 10% is flagged. Sample figures.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className={cx(LABEL, "border-b border-slate-200 bg-slate-50")}>
+            <tr>
+              <th className={th}>Metric</th>
+              <th className={cx(th, "text-right")}>📄 Deck says</th>
+              <th className={cx(th, "text-right")}>Checked against</th>
+              <th className={cx(th, "text-right")}>Gap</th>
+              <th className={th}>Result</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((x) => {
+              const l = lineOf(x.id);
+              return (
+                <tr key={x.id} className={cx(l.ran && !l.passed && "bg-red-50/50")}>
+                  <td className="px-3 py-2 font-medium text-slate-900">{x.metric}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-xs tabular-nums text-slate-900">{x.deck ?? <span className="font-sans text-amber-700">Not stated</span>}</td>
+                  <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-slate-700">
+                    {x.other ? (
+                      <>
+                        <span className="whitespace-nowrap">{x.other}</span>
+                        <span className="block font-sans text-[11px] text-slate-400">{x.otherSource}</span>
+                      </>
+                    ) : (
+                      <span className="font-sans text-[11px] text-slate-400">{l.why ?? "—"}</span>
+                    )}
+                  </td>
+                  <td className={cx("whitespace-nowrap px-3 py-2 text-right font-mono text-xs tabular-nums", l.ran && !l.passed ? "font-semibold text-red-700" : "text-slate-500")}>
+                    {l.ran && x.gap != null ? `${Math.round(x.gap * 100)}%` : "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2">
+                    {!l.ran ? <Tag>Not run</Tag> : l.passed ? <Tag tone="clear">✓ Matches</Tag> : <Tag tone="alert">🚨 Flagged</Tag>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}

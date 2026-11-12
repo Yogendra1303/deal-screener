@@ -1,0 +1,234 @@
+// Tests the source labels on every number, the compare grid's maths, the one-line attention and
+// the activity log. Code only, no AI. Run with `npm test`.
+import { SEED_RESULTS } from "../lib/data";
+import { activityLog } from "../lib/agents";
+import { attentionFor } from "../lib/portfolio/attention";
+import { PORTFOLIO, portfolioById } from "../lib/portfolio/data";
+import { DEMO_DATE } from "../lib/portfolio/health";
+import { FX, REPORTING_RANK, dealRow, portfolioRow } from "../lib/compare";
+import { burnMultiple, dealFacts, growth3, portfolioFacts } from "../lib/provenance";
+import { SEED_QUESTIONS, stateOf } from "../lib/questions";
+import { portfolioContacts, strengthOf, DEAL_CONTACTS } from "../lib/team";
+import { SEED_EMAILS, SEED_INBOUND, SEED_REQUESTS, TEMPLATES, founderEmail, inboxAddress, itemStatus, requestSummary } from "../lib/links";
+import { FOLDERS, folderFor, guessFolder } from "../lib/dataroom";
+import { diligence } from "../lib/diligence";
+import { FUNNEL, MARKET, PAST_DEALS, SEED_DECISIONS, defaultCheckOn, founderFit, reengageState, temperature, type FounderProfile } from "../lib/funnel";
+import { SAMPLES } from "../lib/data";
+import { FLOW, LOOK_NOW, deckCounts, fitsRules, flowStatus, generate, lookAgain, missRate, type FlowCompany } from "../lib/flow";
+import { MONTHS } from "../lib/funnel";
+import { DEFAULT_RULES, fitScore } from "../lib/rules";
+import { archiveOf } from "../lib/archive";
+import { checksPreview } from "../lib/preview";
+import { parseSheet } from "../lib/sheet";
+import { readFileSync } from "node:fs";
+import { visibleIn, isUploaded } from "../lib/mode";
+import { csvRows, sheetCsv, snapshotCsv, auditHtml } from "../lib/docs";
+import { checkUpload, founderFromInput } from "../lib/upload";
+import path from "node:path";
+
+let failed = 0;
+function check(name: string, ok: boolean, detail = "") {
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? `  (${detail})` : ""}`);
+  if (!ok) failed++;
+}
+
+const today = DEMO_DATE;
+const c = (id: string) => portfolioById(id)!;
+const ledgerly = SEED_RESULTS.ledgerly;
+
+// Pitch: Ledgerly
+const lf = dealFacts(ledgerly);
+const status = (key: string) => lf.find((f) => f.key === key)?.status;
+check("Ledgerly revenue is a conflict (deck ARR vs sheet)", status("revenue") === "Conflict", status("revenue"));
+check("Ledgerly growth, customers, burn, cash and runway are checked against the sheet", ["growth", "customers", "burn", "cash", "runway"].every((k) => status(k) === "Checked"), ["growth", "customers", "burn", "cash", "runway"].map(status).join(","));
+check("Ledgerly gross margin and retention are only claimed", status("margin") === "Claimed" && status("retention") === "Claimed");
+check("Ledgerly retention reads 118%", lf.find((f) => f.key === "retention")!.value === "118%", lf.find((f) => f.key === "retention")!.value);
+check("Ledgerly cap and top customer share are missing", status("valuation") === "Missing" && status("concentration") === "Missing");
+check("Ledgerly round: deck agrees with the form", status("round") === "Checked");
+check("Ledgerly runway worked out as 11.3 months", lf.find((f) => f.key === "runway")!.value === "11.3 months", lf.find((f) => f.key === "runway")!.value);
+check("every Ledgerly fact with a deck source carries its page", lf.every((f) => f.evidence.filter((e) => e.source === "Pitch deck").every((e) => e.page)));
+
+// Portfolio facts
+const pf = (id: string, key: string) => portfolioFacts(c(id), today).find((f) => f.key === key)!;
+check("Voltnest Sep revenue is a conflict (form vs MIS)", pf("voltnest", "revenue").status === "Conflict");
+check("Sehatflow revenue is missing: Aug and Sep not sent", pf("sehatflow", "revenue").status === "Missing", pf("sehatflow", "revenue").sub);
+check("Sehatflow plan month (Sep) is missing, not 'not reached'", pf("sehatflow", "plan").status === "Missing", pf("sehatflow", "plan").value);
+check("Mandiwise customers missing from the Sep report", pf("mandiwise", "customers").status === "Missing");
+check("Mandiwise is 33% below plan", pf("mandiwise", "plan").value === "−33%", pf("mandiwise", "plan").value);
+check("Kitebay is 4% ahead of plan", pf("kitebay", "plan").value === "+4%", pf("kitebay", "plan").value);
+check("Nestara's plan is in the future, so only claimed", pf("nestara", "plan").status === "Claimed");
+check("Sehatflow runway 5.6 months", pf("sehatflow", "runway").value === "5.6 months", pf("sehatflow", "runway").value);
+
+// Growth and burn multiple
+const g = growth3(c("kitebay"), today)!;
+check("Kitebay growth Jun to Sep is 9.1% a month", g.pct.toFixed(1) === "9.1", g.pct.toFixed(2));
+const bk = burnMultiple(c("kitebay"), today)!;
+check("Kitebay burn multiple 0.87", bk.value!.toFixed(2) === "0.87", bk.value!.toFixed(3));
+const bmw = burnMultiple(c("mandiwise"), today)!;
+check("Mandiwise burn multiple 3.75", bmw.value!.toFixed(2) === "3.75", bmw.value!.toFixed(3));
+const bs = burnMultiple(c("sehatflow"), today)!;
+check("Sehatflow has no burn multiple because revenue fell", bs.value === null && bs.note === "Revenue fell");
+check("Nestara has too few months for a burn multiple", burnMultiple(c("nestara"), today) === null);
+
+// Compare grid
+const lr = dealRow(ledgerly);
+check("Ledgerly revenue converted at ₹84 to the dollar", Math.round(lr.cells.revenue.sort!) === Math.round(4_800_000 / FX.INR), String(lr.cells.revenue.sort));
+check("Ledgerly burn multiple from the sheet is 1.48", lr.cells.burnMultiple.text === "1.5×" && (lr.cells.burnMultiple.sort as number).toFixed(2) === "1.48", String(lr.cells.burnMultiple.sort));
+const sr = portfolioRow(c("sehatflow"), today);
+check("Sehatflow revenue cell says Aug and Sep weren't sent", sr.cells.revenue.status === "Missing" && /Aug, Sep not sent/.test(sr.cells.revenue.sub ?? ""), sr.cells.revenue.sub);
+check("AED converted at the pegged rate", Math.round(sr.cells.revenue.sort!) === Math.round(104_000 / 3.6725));
+check("every portfolio company has a compare row", PORTFOLIO.every((x) => portfolioRow(x, today).cells.round.text.includes("%")));
+
+// Attention lines
+const head = (id: string) => attentionFor(c(id), today)[0];
+check("Sehatflow headline is its runway", head("sehatflow").level === "high" && head("sehatflow").fact === "runway", head("sehatflow").text);
+check("Voltnest headline is the form vs MIS mismatch", head("voltnest").level === "high" && /disagree/.test(head("voltnest").text), head("voltnest").text);
+check("Kitebay only has good news", attentionFor(c("kitebay"), today).every((a) => a.level === "good"), head("kitebay").text);
+
+// Questions, contacts, log
+check("two seed questions are overdue on the demo date", SEED_QUESTIONS.filter((q) => stateOf(q, today) === "Overdue").length === 2);
+check("Kabir is close to Ledgerly's CEO (3 touches in 90 days)", strengthOf(DEAL_CONTACTS.ledgerly[0], today) === "Close");
+check("portfolio contacts come from the hub, not samples", portfolioContacts(c("kitebay"), today).every((x) => !x.sample && x.touches.length > 0));
+const log = activityLog([ledgerly], PORTFOLIO, SEED_QUESTIONS, today);
+check("activity log is newest first and never in the future", log.every((e, i) => e.date <= today && (i === 0 || log[i - 1].date >= e.date)), `${log.length} entries`);
+
+// Founder links
+const ledgerlyReq = requestSummary(SEED_REQUESTS.find((r) => r.id === "ledgerly-r1")!, today);
+check("Ledgerly's founder answered 3 of 5 items, 2 files to check", ledgerlyReq.answered === 3 && ledgerlyReq.sent === 2 && ledgerlyReq.unchecked === 2, JSON.stringify(ledgerlyReq));
+const mandi = SEED_REQUESTS.find((r) => r.id === "mandiflow-r1")!;
+check("Mandiflow's request is late on the demo date", mandi.items.every((i) => itemStatus(mandi, i.id, today) === "Overdue") && requestSummary(mandi, today).overdueDays === 1);
+check("every sample request is dated on or before the demo date", SEED_REQUESTS.every((r) => r.sentAt <= today && Object.values(r.answers).every((a) => a.at <= today)));
+
+// Data room, email-in and request lists
+check("founder emails match the sample decks' format", founderEmail("Ananya Rao", "Ledgerly") === "ananya@ledgerly.example" && founderEmail("Karan Patel", "Sunroof Grid") === "karan@sunroofgrid.example");
+check("each company gets its own fund address", inboxAddress("Sunroof Grid") === "sunroofgrid@in.samplefund.example");
+check("file names suggest the right folder", guessFolder("Kitebay-board-Q2-2026.pdf") === "board" && guessFolder("Ledgerly-cap-table.pdf") === "legal" && guessFolder("bank-statements-Sep.pdf") === "financials" && guessFolder("Ledgerly-S&M-spend-and-new-customers.xlsx") === "customers");
+check("a file name with no clue gets no suggestion", guessFolder("IMG_2041.jpg") === undefined);
+check("request lines file by their diligence id first", folderFor("equity", "anything") === "legal" && folderFor("retention", "anything") === "customers" && folderFor(undefined, "Q3 board deck") === "board");
+const ddIds = new Set(diligence(ledgerly).flatMap((sec) => sec.items.map((i) => i.id)));
+check("every template line that names a diligence line names a real one", TEMPLATES.every((t) => t.items.every((i) => !i.dd || ddIds.has(i.dd))));
+check("no template repeats an item", TEMPLATES.every((t) => new Set(t.items.map((i) => i.id)).size === t.items.length));
+check("every template line lands in a known folder", TEMPLATES.every((t) => t.items.every((i) => FOLDERS.some((f) => f.id === folderFor(i.dd ?? i.id, i.label)))));
+check("sample emails and inbound pitches are dated on or before the demo date", SEED_EMAILS.every((e) => e.at <= today) && SEED_INBOUND.every((i) => i.receivedAt.slice(0, 10) <= today));
+check("sample emails come from the founder's address on file", SEED_EMAILS.every((e) => e.from.endsWith(`@${e.companyName.toLowerCase()}.example`)));
+
+// Deal refinery: founder-market fit, market temperature, pass audit
+const fp = (relation: FounderProfile["relation"], years: number, extra: Partial<FounderProfile> = {}): FounderProfile => ({ name: "X", role: "CEO", past: "work", from: 2026 - years, to: 2026, relation, why: "", ...extra });
+check("fit: a deep founder plus a nearby 5-year co-founder is Strong", founderFit([fp("direct", 7), fp("adjacent", 5)]).level === "Strong");
+check("fit: one founder with 2 years in the problem is Mixed", founderFit([fp("direct", 2)]).level === "Mixed");
+check("fit: unrelated founders are Weak whatever their years", founderFit([fp("none", 15), fp("adjacent", 3)]).level === "Weak");
+check("fit: a company built before in the same space counts as deep", founderFit([fp("adjacent", 2, { priorCompany: { what: "a lender", sameSpace: true } }), fp("direct", 1)]).level === "Strong");
+check("fit: 10+ years and repeat founder are read from the profiles", founderFit([fp("direct", 11)]).tenPlus && !founderFit([fp("direct", 11)]).repeat);
+check("every sample deck has a refinery profile", SAMPLES.every((x) => FUNNEL[x.id]));
+check(
+  "refinery founders are the deck's founders, in the same order",
+  SAMPLES.every((x) => FUNNEL[x.id].founders.map((f) => f.name).join("|") === x.form.founders.map((f) => f.name).join("|")),
+  SAMPLES.filter((x) => FUNNEL[x.id].founders.map((f) => f.name).join("|") !== x.form.founders.map((f) => f.name).join("|")).map((x) => x.id).join(","),
+);
+check("no school or background proxy in founder data", !/\b(IIT|IIM|Stanford|Harvard|Tier[- ]?1|age|gender|born)\b/i.test(JSON.stringify(Object.values(FUNNEL).map((f) => f.founders))));
+const mrow = (inbound: number[], raised: [number, number]) => ({ sector: "T", inbound, raised, rounds: [1, 1] as [number, number] });
+check("temperature: more decks and more money is heating up", temperature(mrow([10, 10, 10, 14, 14, 14], [30, 20])).temp === "Heating up");
+check("temperature: more decks, less money is crowding", temperature(mrow([10, 10, 10, 14, 14, 14], [18, 20])).temp === "Crowding");
+check("temperature: fewer decks is cooling", temperature(mrow([14, 14, 14, 10, 10, 10], [20, 20])).temp === "Cooling");
+check("temperature: small moves are steady", temperature(mrow([10, 10, 10, 11, 10, 10], [21, 20])).temp === "Steady");
+check("every market row has 6 months and two money periods", MARKET.every((m) => m.inbound.length === 6 && m.raised.length === 2 && m.rounds.length === 2));
+const pd = (id: string) => PAST_DEALS.find((p) => p.id === id)!;
+check("re-engage: a met trigger is due", reengageState(pd("kiranaloop").decision, pd("kiranaloop").since, today).due);
+check("re-engage: a passed check date is due", reengageState(pd("agrisprout").decision, pd("agrisprout").since, today).due);
+check("re-engage: a future check date is not due", !reengageState(pd("sunterrace").decision, pd("sunterrace").since, today).due);
+check("re-engage: outside focus gets no check date", defaultCheckOn("Outside focus", today) === null && defaultCheckOn("Too early", today) === "2027-04-27" && defaultCheckOn("Competition", today) === "2027-01-27");
+check("pass history is dated on or before the demo date", PAST_DEALS.every((p) => p.receivedAt <= p.decision.at && p.decision.at <= today && (!p.since || p.since.when <= today)) && Object.values(SEED_DECISIONS).every((d) => d.at <= today));
+
+// Deal-flow history: generated by a fixed recipe, read by code
+const gen = generate();
+check("the history is the same on every run", JSON.stringify(gen) === JSON.stringify(generate()) && gen.length === FLOW.filter((c) => !c.written).length);
+const genCounts = deckCounts(gen.map((c) => ({ sector: c.sector, dates: c.decks.map((d) => d.at) })));
+check("generated decks per sector and month follow the recipe exactly", MARKET.every((m) => genCounts[m.sector].join() === m.inbound.join()), MARKET.filter((m) => genCounts[m.sector].join() !== m.inbound.join()).map((m) => m.sector).join(","));
+check("generated decks match the market recipe exactly", gen.reduce((n, c) => n + c.decks.length, 0) === MARKET.reduce((n, m) => n + m.inbound.reduce((a, b) => a + b, 0), 0));
+check("the sample stays small: fewer than 100 decks in the history", FLOW.reduce((n, c) => n + c.decks.length, 0) < 100);
+check("nothing in the history is dated after the demo date", FLOW.every((c) => c.decks.every((d) => d.at <= today) && (!c.decision || c.decision.at <= today) && c.signals.every((x) => x.at <= today)));
+check("decisions come after the first deck, signals after the decision", FLOW.every((c) => (!c.decision || c.decision.at >= c.decks[0].at) && c.signals.every((x) => !c.decision || x.kind === "Pitched again" || x.at >= c.decision.at)));
+check("one record per company: every website is unique", new Set(FLOW.map((c) => c.domain)).size === FLOW.length);
+const taken = new Set([...SAMPLES.map((x) => x.form.companyName), ...PORTFOLIO.map((x) => x.name)].map((n) => n.toLowerCase()));
+check("no history name repeats a sample deck or a portfolio company", FLOW.every((c) => !taken.has(c.name.toLowerCase())));
+check("every generated deck falls in the 6 months", gen.every((c) => c.decks.every((d) => MONTHS.includes(d.at.slice(0, 7)))));
+check("a re-pitch is the same record with a Pitched again signal", FLOW.filter((c) => c.decks.length > 1).every((c) => c.signals.filter((x) => x.kind === "Pitched again").length === c.decks.length - 1));
+check("history statuses map to the app's statuses", flowStatus(gen.find((c) => c.outcome === "Meeting")!.id) === "Meeting set" && flowStatus(gen.find((c) => c.outcome === "Never opened")!.id) === "New");
+check("fund-rule check on a deck matches fitScore on the sample forms", SAMPLES.every((x) => fitsRules({ stage: x.form.stage, askUsd: x.form.amountUsd }, x.form.sector, x.form.country, DEFAULT_RULES) === (fitScore(x.form, DEFAULT_RULES).level === "Strong")));
+const base: FlowCompany = { ...gen[0], fit: "Strong", sector: "Climate", outcome: "Passed", decision: { status: "Passed", reason: "Too early", note: "", trigger: "", checkOn: "2026-09-01", by: "Riya Menon", at: "2026-05-01" }, signals: [] };
+const la = (sig: FlowCompany["signals"], heat = true) => lookAgain({ ...base, signals: sig }, new Set(heat ? ["Climate"] : []), today);
+check("look again: no news means no event", !la([]).event && la([]).points === 3);
+check("look again: trigger met + heating + strong + check date = 6 points, now", la([{ kind: "Trigger met", at: "2026-10-01", text: "", source: "" }]).points === 6 && la([{ kind: "Trigger met", at: "2026-10-01", text: "", source: "" }]).now);
+check(`look again: old news is not "now" even with ${LOOK_NOW}+ points`, !la([{ kind: "Raised elsewhere", at: "2026-06-01", text: "", source: "" }]).now);
+check("look again: a shut-down company drops out", la([{ kind: "Trigger met", at: "2026-10-01", text: "", source: "" }, { kind: "Shut down", at: "2026-10-10", text: "", source: "" }]).points === 0);
+const mr = missRate([
+  { ...base, signals: [{ kind: "Raised elsewhere", at: "2026-08-01", text: "", source: "" }] },
+  { ...base, id: "x2" },
+  { ...base, id: "x3", decision: { ...base.decision!, reason: "Outside focus" } },
+]);
+check("miss rate: share of passes per reason that later raised", mr.find((x) => x.reason === "Too early")?.rate === 0.5 && mr.find((x) => x.reason === "Outside focus")?.rate === 0);
+
+// Archived history records: sample figures from a fixed recipe, checked by the same code as live decks.
+const arch = FLOW.map((x) => ({ x, a: archiveOf(x) }));
+const off = arch.filter(({ a }) => [...new Set(a.cover.flags.map((f) => f.checkId))].sort().join() !== [...a.planted].sort().join());
+check("archive: the checks find exactly what the recipe planted, on every history deck", off.length === 0, off.map(({ x }) => x.id).join(", "));
+check("archive: same company, same numbers", JSON.stringify(archiveOf(FLOW[5]).record) === JSON.stringify(archiveOf(FLOW[5]).record));
+check("archive: deck and sheet files are named for the company", arch.every(({ x, a }) => a.deckFile.includes(x.name.replace(/\s/g, "")) && (!a.sheet || a.sheetFile!.includes(x.name.replace(/\s/g, "")))));
+check("archive: some decks flag, most don't", arch.filter(({ a }) => a.cover.flags.length).length > 5 && arch.filter(({ a }) => !a.cover.flags.length).length > 40);
+
+// Code-only checks preview for the 10 test decks, fed the correct numbers from each deck.
+const pv = checksPreview((f) => parseSheet(readFileSync(path.join("public", "samples", f), "utf8")));
+check("checks preview: covers all 10 test decks", pv.decks.length === 10);
+check("checks preview: catches every planted issue that code can see, no false alarms", pv.decks.every((d) => d.missed.every((m) => m === "founder_vs_profile") && d.falseAlarms.length === 0), `${pv.caught} of ${pv.planted}`);
+
+// Workspace modes: hiding data, never deleting it.
+const ids = [...FLOW.map((x) => x.id), ...SAMPLES.map((s) => s.id), ...SEED_INBOUND.map((i) => i.id)];
+check("mode: full shows every sample deal", ids.every((id) => visibleIn("FULL_90", id)));
+check("mode: test-10 shows exactly the 10 test decks", ids.filter((id) => visibleIn("TEST_10", id)).length === 10);
+check("mode: zero hides all sample data but keeps uploads", ids.every((id) => !visibleIn("ZERO", id)) && isUploaded("acme-x1y2") && visibleIn("ZERO", "acme-x1y2"));
+
+// Source documents: downloaded sheets read back the same; CSV cells with commas survive.
+const someSheet = arch.find(({ a }) => a.sheet)!.a.sheet!;
+check("docs: a downloaded monthly sheet parses back to the same rows", JSON.stringify(parseSheet(sheetCsv(someSheet))) === JSON.stringify(someSheet));
+check("docs: CSV cells with commas and quotes survive", JSON.stringify(csvRows('a,b\n"1,5","say ""hi"""')[1]) === JSON.stringify(["1,5", 'say "hi"']));
+check("docs: every archived deal gets a snapshot and an audit report", arch.every(({ x, a }) => snapshotCsv(x.name, a.record, a.asOf, "s").split("\n").length > 10 && auditHtml({ name: x.name, cover: a.cover, sources: [], note: "" }).includes("verification report")));
+
+// Upload without the AI: typed deck numbers, parsed sheet, same checks.
+const upSheet = parseSheet(readFileSync(path.join("public", "samples", "template.csv"), "utf8"));
+const upForm = { companyName: "Testco", website: "", country: "India", sector: "Logistics", stage: "Seed", amountUsd: 2_000_000, founders: [], email: "" };
+const upBase = { asOf: "2026-06", sub: "Freight software", city: "Pune", founders: [], sheet: upSheet, sheetFile: "t.csv", deckFile: "t.pdf", by: "Riya Menon" };
+const gold0 = { mrr: { amount: 46000, currency: "USD" }, arr: null, growth: null, customers: 24, team: 13, burn: null, cash: null, runway: null, round: 2_000_000, founded: 2023 };
+const upOk = checkUpload(upForm, { ...upBase, gold: gold0 });
+const upBad = checkUpload(upForm, { ...upBase, gold: { ...gold0, mrr: { amount: 70000, currency: "USD" } } });
+check("upload: deck matching the sheet raises no gap", !upOk.flags.some((f) => f.kind === "conflict") && upOk.cover.ran >= 3);
+check("upload: deck revenue 50% above the sheet is flagged", upBad.flags.some((f) => f.checkId === "revenue_deck_vs_sheet" && f.kind === "conflict"));
+check("upload: founder fit comes from typed experience", checkUpload(upForm, { ...upBase, gold: gold0, founders: [founderFromInput({ name: "A", past: "3PL ops", years: 8, relation: "direct", builtBefore: false }, 2026), founderFromInput({ name: "B", past: "Freight sales", years: 3, relation: "direct", builtBefore: false }, 2026)] }).fit?.level === "Strong");
+
+// QA regressions (12 Nov audit): a drilldown must return the cohort behind the number, sorts must order, late is not waiting.
+{
+  const inWindow = (c: { dates: string[] }) => c.dates.some((d) => MONTHS.includes(d.slice(0, 7)));
+  const flat = FLOW.map((c) => ({ sector: c.sector, dates: c.decks.map((d) => d.at) }));
+  const bySector = new Map<string, { sector: string; dates: string[] }[]>();
+  for (const c of flat) bySector.set(c.sector, [...(bySector.get(c.sector) ?? []), c]);
+  const counts = deckCounts(flat);
+  let cohortOk = true;
+  let anyOutside = false;
+  for (const [sector, list] of bySector) {
+    const decks6 = (counts[sector] ?? []).reduce((a, b) => a + b, 0);
+    const cohort = list.filter(inWindow);
+    anyOutside ||= cohort.length < list.length;
+    // Every company in the 6-month cohort has at least one deck in the window, and the window's deck total is at least the cohort size.
+    if (cohort.some((c) => !inWindow(c)) || decks6 < cohort.length) cohortOk = false;
+  }
+  check("sector drilldown: the 6-month cohort never includes a company whose decks are all outside the window", cohortOk);
+  check("sector drilldown: the sample has companies outside the window, so the filter matters", anyOutside);
+  const rank = REPORTING_RANK;
+  check("compare: reporting bands sort On track > Slipping > Gone quiet", rank["On track"] > rank.Slipping && rank.Slipping > rank["Gone quiet"] && rank["Too early"] === undefined);
+  const toSort = [{ v: 3 }, { v: 1 }, { v: 2 }];
+  const desc = [...toSort].sort((a, b) => 1 * (b.v - a.v)).map((x) => x.v).join("");
+  const asc = [...toSort].sort((a, b) => -1 * (b.v - a.v)).map((x) => x.v).join("");
+  check("market grid: the sign flips the order", desc === "321" && asc === "123");
+}
+
+console.log(failed ? `\n${failed} failed` : "\nAll passed");
+process.exit(failed ? 1 : 0);

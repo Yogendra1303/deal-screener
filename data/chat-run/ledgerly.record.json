@@ -1,0 +1,213 @@
+{
+ "oneLiner": "Ledgerly automates accounts payable for mid-size Indian manufacturers, from invoice capture to payment.",
+ "company": {
+  "name": {
+   "value": "Ledgerly",
+   "page": 1,
+   "quote": "Ledgerly"
+  },
+  "website": {
+   "value": "ledgerly.example",
+   "page": 1,
+   "quote": "ledgerly.example"
+  },
+  "country": {
+   "value": "India",
+   "page": 1,
+   "quote": "Pune, India · Founded 2022"
+  },
+  "city": {
+   "value": "Pune",
+   "page": 1,
+   "quote": "Pune, India · Founded 2022"
+  },
+  "sector": {
+   "value": "Accounts payable automation for manufacturers",
+   "page": 1,
+   "quote": "Accounts payable on autopilot for Indian manufacturers"
+  },
+  "businessModel": {
+   "value": "Monthly subscription priced by invoice volume, ₹25,000 to ₹1.5 lakh a month",
+   "page": 5,
+   "quote": "Monthly subscription priced by invoice volume: ₹25,000 to ₹1.5 lakh a month"
+  },
+  "stage": {
+   "value": "Seed",
+   "page": 1,
+   "quote": "Seed round · October 2026"
+  },
+  "foundedYear": {
+   "value": 2022,
+   "asOf": null,
+   "page": 1,
+   "quote": "Pune, India · Founded 2022"
+  },
+  "description": {
+   "value": "One inbox for every supplier invoice, from capture to payment: reads invoices, matches them to purchase orders and receipts, reconciles GST credit and prepares payment runs.",
+   "page": 3,
+   "quote": "One inbox for every supplier invoice, from capture to payment."
+  }
+ },
+ "round": {
+  "amount": {
+   "amount": 2000000,
+   "currency": "USD",
+   "asOf": null,
+   "page": 9,
+   "quote": "Raising $2M Seed on a SAFE"
+  },
+  "instrument": {
+   "value": "SAFE",
+   "page": 9,
+   "quote": "Raising $2M Seed on a SAFE"
+  },
+  "valuation": {
+   "amount": null,
+   "currency": null,
+   "asOf": null,
+   "page": null,
+   "quote": null
+  },
+  "useOfFunds": {
+   "value": "45% product and AI, 35% sales in Maharashtra and Gujarat, 20% customer success",
+   "page": 9,
+   "quote": "45% product and AI"
+  },
+  "priorFunding": {
+   "value": null,
+   "page": null,
+   "quote": null
+  }
+ },
+ "traction": {
+  "mrr": {
+   "amount": null,
+   "currency": null,
+   "asOf": null,
+   "page": null,
+   "quote": null
+  },
+  "arr": {
+   "amount": 75000000,
+   "currency": "INR",
+   "asOf": "2026-09",
+   "page": 4,
+   "quote": "₹7.5 Cr ARR, September 2026"
+  },
+  "monthlyGrowthPct": {
+   "value": 7,
+   "asOf": null,
+   "page": 4,
+   "quote": "7% month-on-month growth"
+  },
+  "customers": {
+   "value": 92,
+   "asOf": null,
+   "page": 4,
+   "quote": "92 paying manufacturers"
+  },
+  "users": {
+   "value": null,
+   "asOf": null,
+   "page": null,
+   "quote": null
+  },
+  "retention": {
+   "value": "118% net revenue retention",
+   "page": 4,
+   "quote": "118% net revenue retention"
+  },
+  "grossMarginPct": {
+   "value": 78,
+   "asOf": null,
+   "page": 5,
+   "quote": "Gross margin 78%"
+  },
+  "monthlyBurn": {
+   "amount": 5500000,
+   "currency": "INR",
+   "asOf": null,
+   "page": 9,
+   "quote": "₹55 L monthly burn"
+  },
+  "cash": {
+   "amount": 62000000,
+   "currency": "INR",
+   "asOf": null,
+   "page": 9,
+   "quote": "₹6.2 Cr cash in bank"
+  },
+  "runwayMonths": {
+   "value": 11,
+   "asOf": null,
+   "page": 9,
+   "quote": "11 months runway"
+  },
+  "teamSize": {
+   "value": 24,
+   "asOf": null,
+   "page": 8,
+   "quote": "Team of 24 across Pune and Bengaluru"
+  }
+ },
+ "team": [
+  {
+   "name": "Ananya Rao",
+   "role": "Co-founder and CEO",
+   "page": 8,
+   "pastRoles": [
+    {
+     "company": "Kestrel Auto Components",
+     "title": "Finance Controller",
+     "startYear": 2015,
+     "endYear": 2022,
+     "page": 8,
+     "quote": "Finance Controller, Kestrel Auto Components (2015–2022)"
+    }
+   ]
+  },
+  {
+   "name": "Vikram Joshi",
+   "role": "Co-founder and CTO",
+   "page": 8,
+   "pastRoles": [
+    {
+     "company": "Brightpath Software",
+     "title": "Senior Engineer",
+     "startYear": 2016,
+     "endYear": 2022,
+     "page": 8,
+     "quote": "Senior Engineer, Brightpath Software (2016–2022)"
+    }
+   ]
+  }
+ ],
+ "market": {
+  "sizeClaim": {
+   "amount": 2100000000,
+   "currency": "USD",
+   "asOf": null,
+   "page": 6,
+   "quote": "A $2.1B yearly opportunity in India alone."
+  },
+  "sizeMethod": {
+   "value": "48,000 mid-size manufacturers in India times an average yearly finance operations software spend of $44,000",
+   "page": 6,
+   "quote": "48,000 mid-size manufacturers in India"
+  },
+  "competitors": [
+   {
+    "name": "Generic OCR tools",
+    "page": 7
+   },
+   {
+    "name": "ERP add-on modules",
+    "page": 7
+   },
+   {
+    "name": "Global AP automation suites",
+    "page": 7
+   }
+  ]
+ }
+}

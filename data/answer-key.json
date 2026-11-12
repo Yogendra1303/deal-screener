@@ -1,0 +1,273 @@
+{
+  "ledgerly": {
+    "issues": [
+      "revenue_deck_vs_sheet"
+    ],
+    "band": "Priority",
+    "planted": "Deck states annual revenue of ₹7.5 Cr; the sheet supports ₹5.76 Cr (30% higher in the deck).",
+    "gold": {
+      "mrr": null,
+      "arr": {
+        "amount": 75000000,
+        "currency": "INR"
+      },
+      "growth": 7,
+      "customers": 92,
+      "team": 24,
+      "burn": {
+        "amount": 5500000,
+        "currency": "INR"
+      },
+      "cash": {
+        "amount": 62000000,
+        "currency": "INR"
+      },
+      "runway": 11,
+      "round": 2000000,
+      "founded": 2022
+    }
+  },
+  "mandiflow": {
+    "issues": [
+      "growth_deck_vs_sheet",
+      "customers_deck_vs_sheet"
+    ],
+    "band": "Review",
+    "planted": "Deck claims 25% monthly growth and 1,200 restaurants; the sheet shows about 9% and 760.",
+    "gold": {
+      "mrr": {
+        "amount": 6200000,
+        "currency": "INR"
+      },
+      "arr": null,
+      "growth": 25,
+      "customers": 1200,
+      "team": 38,
+      "burn": {
+        "amount": 4500000,
+        "currency": "INR"
+      },
+      "cash": {
+        "amount": 59000000,
+        "currency": "INR"
+      },
+      "runway": 13,
+      "round": 5000000,
+      "founded": 2021
+    }
+  },
+  "remitwell": {
+    "issues": [
+      "founder_vs_profile"
+    ],
+    "band": "Review",
+    "planted": "CEO claims VP Product at Gulfstone Bank 2016–2022; the profile shows Senior Product Manager from 2019.",
+    "gold": {
+      "mrr": {
+        "amount": 18000,
+        "currency": "USD"
+      },
+      "arr": null,
+      "growth": 7,
+      "customers": 21,
+      "team": 11,
+      "burn": {
+        "amount": 85000,
+        "currency": "USD"
+      },
+      "cash": {
+        "amount": 700000,
+        "currency": "USD"
+      },
+      "runway": 8,
+      "round": 2500000,
+      "founded": 2023
+    }
+  },
+  "sunroof-grid": {
+    "issues": [
+      "founded_vs_registry",
+      "team_deck_vs_sheet"
+    ],
+    "band": "Review",
+    "planted": "Deck says founded 2019 with a 45-person team; registry shows 2024 and the sheet shows 17 staff.",
+    "gold": {
+      "mrr": {
+        "amount": 1800000,
+        "currency": "INR"
+      },
+      "arr": null,
+      "growth": 6,
+      "customers": 120,
+      "team": 45,
+      "burn": {
+        "amount": 3000000,
+        "currency": "INR"
+      },
+      "cash": {
+        "amount": 45000000,
+        "currency": "INR"
+      },
+      "runway": 15,
+      "round": 1800000,
+      "founded": 2019
+    }
+  },
+  "rostrly": {
+    "issues": [
+      "arr_vs_mrr_maths",
+      "runway_maths"
+    ],
+    "band": "Review",
+    "planted": "MRR $85K but ARR stated as $1.4M; runway stated 18 months while $1.2M cash ÷ $150K burn is 8.",
+    "gold": {
+      "mrr": {
+        "amount": 85000,
+        "currency": "USD"
+      },
+      "arr": {
+        "amount": 1400000,
+        "currency": "USD"
+      },
+      "growth": 5,
+      "customers": 46,
+      "team": 31,
+      "burn": {
+        "amount": 150000,
+        "currency": "USD"
+      },
+      "cash": {
+        "amount": 1200000,
+        "currency": "USD"
+      },
+      "runway": 18,
+      "round": 4000000,
+      "founded": 2022
+    }
+  },
+  "loomhaus": {
+    "issues": [
+      "missing_core_facts"
+    ],
+    "band": "Review",
+    "planted": "No revenue, customer, growth, burn or team-size numbers anywhere in the deck.",
+    "gold": {
+      "mrr": null,
+      "arr": null,
+      "growth": null,
+      "customers": null,
+      "team": null,
+      "burn": null,
+      "cash": null,
+      "runway": null,
+      "round": 600000,
+      "founded": 2025
+    }
+  },
+  "tutorbridge": {
+    "issues": [
+      "round_deck_vs_form"
+    ],
+    "band": "Outside focus",
+    "planted": "Deck asks for $2M; the application form says $1.2M. Edtech is outside the fund's focus.",
+    "gold": {
+      "mrr": {
+        "amount": 1400000,
+        "currency": "INR"
+      },
+      "arr": null,
+      "growth": 10,
+      "customers": 3400,
+      "team": 22,
+      "burn": {
+        "amount": 4000000,
+        "currency": "INR"
+      },
+      "cash": {
+        "amount": 50000000,
+        "currency": "INR"
+      },
+      "runway": 12,
+      "round": 2000000,
+      "founded": 2023
+    }
+  },
+  "clinicall": {
+    "issues": [],
+    "band": "Outside focus",
+    "planted": "Nothing planted. Outside focus on country, stage and round size.",
+    "gold": {
+      "mrr": null,
+      "arr": {
+        "amount": 6800000,
+        "currency": "USD"
+      },
+      "growth": 4,
+      "customers": 140,
+      "team": 85,
+      "burn": {
+        "amount": 1100000,
+        "currency": "USD"
+      },
+      "cash": {
+        "amount": 14000000,
+        "currency": "USD"
+      },
+      "runway": 13,
+      "round": 25000000,
+      "founded": 2019
+    }
+  },
+  "parkwise": {
+    "issues": [],
+    "band": "Priority",
+    "planted": "Nothing planted. Clean control deck.",
+    "gold": {
+      "mrr": {
+        "amount": 64000,
+        "currency": "USD"
+      },
+      "arr": null,
+      "growth": 9.5,
+      "customers": 18,
+      "team": 16,
+      "burn": {
+        "amount": 95000,
+        "currency": "USD"
+      },
+      "cash": {
+        "amount": 1100000,
+        "currency": "USD"
+      },
+      "runway": 11,
+      "round": 1500000,
+      "founded": 2022
+    }
+  },
+  "freightnest": {
+    "issues": [],
+    "band": "Priority",
+    "planted": "Near-miss only: deck says about 140 customers, the sheet shows 134 (4% gap, under the 10% threshold).",
+    "gold": {
+      "mrr": {
+        "amount": 58000,
+        "currency": "USD"
+      },
+      "arr": null,
+      "growth": 8,
+      "customers": 140,
+      "team": 19,
+      "burn": {
+        "amount": 120000,
+        "currency": "USD"
+      },
+      "cash": {
+        "amount": 1500000,
+        "currency": "USD"
+      },
+      "runway": 12,
+      "round": 2000000,
+      "founded": 2022
+    }
+  }
+}

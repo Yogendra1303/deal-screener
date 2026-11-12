@@ -1,0 +1,111 @@
+{
+  "ledgerly": {
+    "legalName": "Ledgerly Technologies Private Limited",
+    "incorporated": "2022-06-14",
+    "country": "India",
+    "status": "Active",
+    "directors": [
+      "Ananya Rao",
+      "Vikram Joshi"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "mandiflow": {
+    "legalName": "Mandiflow Agritech Private Limited",
+    "incorporated": "2021-03-09",
+    "country": "India",
+    "status": "Active",
+    "directors": [
+      "Rahul Menon",
+      "Sneha Kulkarni"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "remitwell": {
+    "legalName": "Remitwell Technologies FZ-LLC",
+    "incorporated": "2023-02-08",
+    "country": "UAE",
+    "status": "Active",
+    "directors": [
+      "Omar Haddad"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "sunroofgrid": {
+    "legalName": "Sunroof Grid Energy Private Limited",
+    "incorporated": "2024-01-22",
+    "country": "India",
+    "status": "Active",
+    "directors": [
+      "Karan Patel",
+      "Divya Shah"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "rostrly": {
+    "legalName": "Rostrly Information Technology Company",
+    "incorporated": "2022-05-10",
+    "country": "Saudi Arabia",
+    "status": "Active",
+    "directors": [
+      "Faisal Al-Harbi",
+      "Lina Mansour"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "loomhaus": {
+    "legalName": "Loomhaus Home Private Limited",
+    "incorporated": "2025-03-03",
+    "country": "India",
+    "status": "Active",
+    "directors": [
+      "Meera Singh",
+      "Arjun Rathore"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "tutorbridge": {
+    "legalName": "Tutorbridge Learning Private Limited",
+    "incorporated": "2023-07-17",
+    "country": "India",
+    "status": "Active",
+    "directors": [
+      "Priya Nair",
+      "Sameer Khan"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "clinicall": {
+    "legalName": "Clinicall, Inc.",
+    "incorporated": "2019-08-15",
+    "country": "USA",
+    "status": "Active",
+    "directors": [
+      "Daniel Brooks",
+      "Grace Liu"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "parkwise": {
+    "legalName": "Parkwise Technologies FZ-LLC",
+    "incorporated": "2022-01-18",
+    "country": "UAE",
+    "status": "Active",
+    "directors": [
+      "Ahmed Saleh",
+      "Rohan Desai"
+    ],
+    "source": "Sample registry record (fictional)"
+  },
+  "freightnest": {
+    "legalName": "Freightnest Technologies FZCO",
+    "incorporated": "2022-09-05",
+    "country": "UAE",
+    "status": "Active",
+    "directors": [
+      "Nikhil Bansal",
+      "Aisha Rahman"
+    ],
+    "source": "Sample registry record (fictional)"
+  }
+}
