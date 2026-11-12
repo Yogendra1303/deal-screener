@@ -335,7 +335,7 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
     if (!groups.length || groups[groups.length - 1].head !== head) groups.push({ head, items: [] });
     groups[groups.length - 1].items.push(r);
   }
-  const th = "whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left align-middle text-xs font-semibold uppercase tracking-wider text-slate-600";
+  const th = "whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3.5 py-2.5 text-left align-middle text-xs font-semibold uppercase tracking-wider text-slate-600";
   const cols = 9 + (owners ? 1 : 0) + (sort === "look" ? 1 : 0);
   const flip = (key: ColSort["key"]) => setCol((c) => (c?.key === key ? (c.dir === -1 ? { key, dir: 1 } : null) : { key, dir: -1 }));
   return (
@@ -345,7 +345,7 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
           <thead className="border-b border-slate-200 bg-slate-50">
             <tr className="text-left">
               {sort === "look" && <th className={cx(th, "w-12 text-right")}>Pts</th>}
-              <th className={cx(th, "w-full min-w-[160px]")}>Company</th>
+              <th className={cx(th, "w-full min-w-[140px]")}>Company</th>
               <th className={cx(th, "hidden @3xl:table-cell")}>Sector · Stage</th>
               <th className={cx(th, "hidden text-right @md:table-cell")} aria-sort={col?.key === "ask" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
                 <SortButton k="ask" col={col} onFlip={flip} right>
@@ -358,15 +358,15 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
               <th className={cx(th, "hidden min-w-[140px] whitespace-nowrap @xl:table-cell")} title="What the code checks found: gaps over 10%, missing facts, or all matched. The badges are the files on record; click one to preview or download it.">
                 Checks
               </th>
-              <th className={cx(th, "min-w-[125px] whitespace-nowrap")}>Status</th>
+              <th className={cx(th, "min-w-[125px] whitespace-nowrap pr-4")}>Status</th>
               <th className={cx(th, "hidden @5xl:table-cell")}>Latest signal</th>
               {owners && <th className={cx(th, "hidden w-12 @2xl:table-cell")}>Owner</th>}
-              <th className={cx(th, "text-right whitespace-nowrap")} aria-sort={col?.key === "in" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
+              <th className={cx(th, "hidden text-right whitespace-nowrap @2xl:table-cell")} aria-sort={col?.key === "in" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
                 <SortButton k="in" col={col} onFlip={flip} right>
                   In
                 </SortButton>
               </th>
-              <th className={cx(th, "w-8 px-2")} aria-hidden />
+              <th className={cx(th, "hidden w-8 px-2 @2xl:table-cell")} aria-hidden />
             </tr>
           </thead>
           {groups.map((g) => (
@@ -405,11 +405,11 @@ const FIT_TAG: Record<FitLevel, ToneKey> = { Strong: "clear", Mixed: "review", W
 function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boolean; owner: boolean; onOpen: (r: FlowRow, code: string) => void }) {
   const router = useRouter();
   const sig = r.look.latest ?? r.signals.at(-1);
-  const td = "px-4 py-3 align-middle";
+  const td = "px-3.5 py-3 align-middle";
   return (
     <tr onClick={() => router.push(r.href)} className="group cursor-pointer border-b border-slate-100 last:border-0 transition-colors hover:bg-slate-50/80">
       {showPoints && <td className={cx(td, "text-right font-mono text-xs font-semibold tabular-nums text-slate-900")}>{r.look.points}</td>}
-      <td className={cx(td, "w-full min-w-[160px]")}>
+      <td className={cx(td, "w-full min-w-[140px]")}>
         <Link href={r.href} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 whitespace-nowrap font-medium leading-tight tracking-tight text-slate-900 hover:text-blue-600 hover:underline">
           {r.name}
           {r.live && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" title="Live pitch" />}
@@ -428,13 +428,13 @@ function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boo
       <td className={cx(td, "hidden min-w-[140px] whitespace-nowrap @xl:table-cell")}>
         <ChecksCell cover={r.cover} sources={r.sources} onOpen={(code) => onOpen(r, code)} />
       </td>
-      <td className={cx(td, "min-w-[125px] whitespace-nowrap")}>
+      <td className={cx(td, "min-w-[125px] whitespace-nowrap pr-4")}>
         <LabelPill label={r.label} />
       </td>
       <td className={cx(td, "hidden max-w-[12rem] whitespace-nowrap @5xl:table-cell")}>{sig ? <SignalBadge kind={sig.kind} /> : <span className="text-xs text-slate-500">—</span>}</td>
       {owner && <td className={cx(td, "hidden whitespace-nowrap @2xl:table-cell")}>{r.owner ? <Avatar name={r.owner} size="xs" /> : <span className="text-xs text-slate-500">—</span>}</td>}
-      <td className={cx(td, "text-right font-mono text-xs whitespace-nowrap tabular-nums text-slate-500")}>{fmtDay(r.last)}</td>
-      <td className={cx(td, "w-8 px-2 text-slate-400 transition-colors group-hover:text-slate-700")} aria-hidden>
+      <td className={cx(td, "hidden text-right font-mono text-xs whitespace-nowrap tabular-nums text-slate-500 @2xl:table-cell")}>{fmtDay(r.last)}</td>
+      <td className={cx(td, "hidden w-8 px-2 text-slate-400 transition-colors group-hover:text-slate-700 @2xl:table-cell")} aria-hidden>
         →
       </td>
     </tr>
@@ -569,17 +569,17 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
   const picked = pick ? rows.filter((r) => (!pick.sector || r.sector === pick.sector) && r.dates.some((d) => (pick.ym ? d.startsWith(pick.ym) : MONTHS.includes(d.slice(0, 7))))) : [];
   const label = pick ? [pick.sector ?? "Every sector", pick.ym ? fmtMonth(pick.ym) : "last 6 months"].join(", ") : "";
   return (
-    <section className="rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
-      <div className="flex flex-wrap items-end justify-between gap-2 px-5 pt-5">
+    <section className="rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-end justify-between gap-4 px-5 pt-5">
         <div>
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           <p className="text-sm text-slate-500">
             {total} decks in 6 months. Darker is busier. Click a square, a month or a total to see those decks and what they hold.
           </p>
         </div>
-        <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+        <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
           Fewer
-          <span className="flex overflow-hidden rounded">
+          <span className="flex overflow-hidden rounded-sm ring-1 ring-slate-200">
             {HEAT.map((c) => (
               <span key={c} className="h-2.5 w-4" style={{ background: c }} />
             ))}
@@ -587,22 +587,22 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
           More
         </span>
       </div>
-      <div className="mt-3 overflow-x-auto px-3 pb-2 sm:px-5">
-        <table className="w-full min-w-[640px] border-separate border-spacing-1 text-xs">
+      <div className="mt-4 overflow-x-auto px-3 sm:px-5">
+        <table className="w-full min-w-[680px] border-separate border-spacing-1.5 text-xs">
           <thead>
-            <tr className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-              <th className="w-36 text-left font-medium">Sector</th>
+            <tr className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <th className="w-36 pb-1 text-left font-semibold">Sector</th>
               {MONTHS.map((ym, i) => (
-                <th key={ym} className="font-medium">
+                <th key={ym} className="pb-1 font-semibold">
                   <button onClick={() => setPick({ ym })} className="w-full rounded py-1 uppercase hover:bg-slate-100 hover:text-slate-700" title={`Every deck in ${fmtMonth(ym)}: ${monthTotals[i]}`}>
                     {fmtMonth(ym).slice(0, 3)}
                   </button>
                 </th>
               ))}
-              <th className="font-medium">Total</th>
-              <th className="text-right font-medium" title="Decks, last 3 months against the 3 before">Decks</th>
-              <th className="text-right font-medium" title="Money raised in the sector, last 90 days against the 90 before (sample data)">Money</th>
-              <th className="pl-2 text-left font-medium">Reading</th>
+              <th className="px-1 pb-1 font-semibold">Total</th>
+              <th className="pl-6 pr-3 pb-1 text-right font-semibold" title="Decks, last 3 months against the 3 before">Decks</th>
+              <th className="px-3 pb-1 text-right font-semibold" title="Early-stage capital raised in the sector, last 90 days against the 90 before">Money</th>
+              <th className="pl-4 pb-1 text-left font-semibold">Reading</th>
             </tr>
           </thead>
           <tbody>
@@ -610,8 +610,8 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
               const sum = m.counts.reduce((a, b) => a + b, 0);
               return (
                 <tr key={m.sector}>
-                  <td className="truncate pr-1">
-                    <Link href={`/sectors/${slugOf(m.sector)}`} className="font-medium text-slate-700 hover:text-indigo-700">
+                  <td className="truncate pr-2">
+                    <Link href={`/sectors/${slugOf(m.sector)}`} className="font-medium text-slate-800 hover:text-blue-600">
                       {m.sector}
                     </Link>
                   </td>
@@ -627,33 +627,33 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
                       </button>
                     </td>
                   ))}
-                  <td>
+                  <td className="px-1">
                     <button onClick={() => setPick({ sector: m.sector })} className="block h-8 w-full rounded-md bg-slate-100 text-[11px] font-semibold tabular-nums text-slate-800 hover:bg-slate-200">
                       {sum}
                     </button>
                   </td>
-                  <td className="text-right">
-                    <Delta value={m.inboundChange} className="px-1 text-[10px]" from={windowCounts(m.counts)} />
+                  <td className="pl-6 pr-3 text-right">
+                    <Delta value={m.inboundChange} className="px-1.5 text-[11px]" from={windowCounts(m.counts)} />
                   </td>
-                  <td className="text-right" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]}`}>
-                    <Delta value={m.moneyChange} className="px-1 text-[10px]" />
+                  <td className="px-3 text-right" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]}`}>
+                    <Delta value={m.moneyChange} className="px-1.5 text-[11px]" />
                   </td>
-                  <td className="pl-2">
+                  <td className="pl-4">
                     <TempPill t={m.temp} />
                   </td>
                 </tr>
               );
             })}
             <tr>
-              <td className="text-[11px] font-medium text-slate-500">All sectors</td>
+              <td className="pt-1 text-xs font-semibold text-slate-600">All sectors</td>
               {monthTotals.map((n, i) => (
-                <td key={MONTHS[i]}>
+                <td key={MONTHS[i]} className="pt-1">
                   <button onClick={() => setPick({ ym: MONTHS[i] })} className="block h-8 w-full rounded-md bg-slate-100 text-[11px] font-semibold tabular-nums text-slate-800 hover:bg-slate-200">
                     {n}
                   </button>
                 </td>
               ))}
-              <td>
+              <td className="px-1 pt-1">
                 <button onClick={() => setPick({})} className="block h-8 w-full rounded-md bg-slate-900 text-[11px] font-semibold tabular-nums text-white hover:bg-slate-800">
                   {total}
                 </button>
@@ -663,9 +663,25 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
           </tbody>
         </table>
       </div>
-      <p className="px-5 pb-4 text-[11px] text-slate-400">
-        Decks and Money compare the last 3 months with the 3 before. {TEMP_RULE_TEXT} {FLOW_NOTE}
-      </p>
+      <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 px-5 pt-4 pb-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+        <div className="flex flex-wrap items-center gap-8 text-xs text-slate-600">
+          <span className="flex items-center gap-1.5">
+            <span className="font-semibold uppercase tracking-wider text-slate-700">Decks</span>
+            <span className="text-slate-500">Last 3m vs prior 3m</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="font-semibold uppercase tracking-wider text-slate-700">Money</span>
+            <span className="text-slate-500">90d sector seed/A volume</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="font-semibold uppercase tracking-wider text-slate-700">Reading</span>
+            <span className="text-slate-500">±15% momentum threshold</span>
+          </span>
+        </div>
+        <p className="text-xs leading-relaxed text-slate-500">
+          {TEMP_RULE_TEXT} {FLOW_NOTE}
+        </p>
+      </div>
       {pick && (
         <Panel
           t={listSpec("cell", {
@@ -739,7 +755,7 @@ export function NewsList({ rows, limit = 5, sector, title = "News", subtitle }: 
     ),
   };
   return (
-    <section className="flex min-w-0 flex-col rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+    <section className="flex min-w-0 flex-col rounded-lg border border-slate-200 bg-white">
       <div className="flex items-baseline justify-between gap-2 px-5 pt-5">
         <div>
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
@@ -788,7 +804,7 @@ export function LookAgainList({ rows, limit = 4, sector, owner }: { rows: FlowRo
   const list = rows.filter((r) => r.look.event && (!sector || r.sector === sector) && (!owner || r.owner === owner)).sort(lookOrder);
   const spec = listSpec("look", { title: "Look again", icon: "decide", tone: "watch", explain: "Passed or held companies with news since, highest points first.", clear: "Nothing to look at again.", how: lookHow, rows: list, sort: "look" });
   return (
-    <section className="flex min-w-0 flex-col rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+    <section className="flex min-w-0 flex-col rounded-lg border border-slate-200 bg-white">
       <div className="flex items-baseline justify-between gap-2 px-5 pt-5">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Look again</h2>

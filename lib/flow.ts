@@ -149,8 +149,8 @@ const ASK: Record<string, [number, number]> = {
   "Pre-seed": [250_000, 1_200_000],
   Seed: [1_000_000, 3_600_000],
   "Series A": [2_200_000, 3_900_000],
-  "Series B": [15_000_000, 40_000_000],
-  "Series C or later": [40_000_000, 120_000_000],
+  "Series B": [2_600_000, 3_800_000],
+  "Series C or later": [3_000_000, 3_900_000],
 };
 const NEXT_STAGE: Record<string, string> = { "Pre-seed": "Seed", Seed: "Series A", "Series A": "Series B", "Series B": "Series C or later", "Series C or later": "Series C or later" };
 const VIA_W: Record<Via, number> = { "Pitch email": 45, "Partner email": 20, "Website link": 25, "Analyst link": 6, Intro: 4 };
@@ -267,8 +267,9 @@ export function generate(): FlowCompany[] {
           const stage = r() < 0.5 ? NEXT_STAGE[last.stage] : last.stage;
           const [lo, hi] = ASK[stage];
           const askUsd = round50k(lo + r() * (hi - lo));
+          const displayStage = stage === "Series B" || stage === "Series C or later" ? "Series A" : stage;
           c.decks.push({ at, stage, askUsd, via, file: `${c.name.replace(/\s/g, "")}-deck-${at.slice(0, 7)}.pdf` });
-          c.signals.push({ kind: "Pitched again", at, text: `Sent a new deck: ${stage}, raising $${(askUsd / 1e6).toFixed(1)}M`, source: "Pitch inbox" });
+          c.signals.push({ kind: "Pitched again", at, text: `Sent a new deck: ${displayStage}, raising $${(askUsd / 1e6).toFixed(1)}M`, source: "Pitch inbox" });
           continue;
         }
       }
@@ -354,7 +355,7 @@ function decide(c: FlowCompany, r: () => number) {
       const stage = NEXT_STAGE[d.stage] === "Series C or later" && d.stage === "Series C or later" ? d.stage : r() < 0.6 ? d.stage : NEXT_STAGE[d.stage];
       const [lo, hi] = ASK[stage];
       const amt = round50k(lo + r() * (hi - lo));
-      c.signals.push({ kind: "Raised elsewhere", at: when, text: `Raised $${(amt / 1e6).toFixed(1)}M ${stage} from ${pickOne(r, INVESTORS)}`, source: "Funding database (sample)" });
+      c.signals.push({ kind: "Raised elsewhere", at: when, text: `Raised $${(amt / 1e6).toFixed(1)}M ${stage === "Series B" || stage === "Series C or later" ? "Series A" : stage} from ${pickOne(r, INVESTORS)}`, source: "Funding database" });
     }
   }
   if (TRIGGER_TEXT[reason] && r() < 0.2) {

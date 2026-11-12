@@ -47,8 +47,8 @@ export default function MarketPage() {
         <Cell label="Decks, last 3 months">
           <ChangeLine n={recent} change={recent / Math.max(1, before) - 1} from={[before, recent]} />
         </Cell>
-        <Cell label="Raised in market, 90d" hint="Tracked sector rounds over the last 90 days">
-          <ChangeLine n={`$${(raised / 1000).toFixed(2)}B`} change={raised / raisedBefore - 1} />
+        <Cell label="Raised in market, 90d" hint="Tracked early-stage sector rounds over the last 90 days">
+          <ChangeLine n={raised >= 1000 ? `$${(raised / 1000).toFixed(2)}B` : `$${raised}M`} change={raised / raisedBefore - 1} />
         </Cell>
         {(
           [

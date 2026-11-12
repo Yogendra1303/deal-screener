@@ -213,7 +213,7 @@ export const FUNNEL: Record<string, FunnelProfile> = Object.fromEntries(
         { name: "Grace Liu", role: "CTO", past: "principal engineer, Medisync", from: 2013, to: 2019, relation: "direct", why: "Built medical device software." },
       ],
       ingest: { to: PARTNER_INBOX, subject: "Clinicall Series B: $25M", minutes: 2 },
-      competitors: [{ name: "CardiaWatch", what: "Remote cardiac monitoring", signal: "Raised", detail: "$60M Series C", when: "2026-08" }],
+      competitors: [{ name: "CardiaWatch", what: "Remote cardiac monitoring", signal: "Raised", detail: "$24M Series B", when: "2026-08" }],
     }),
     P("parkwise", {
       city: "Dubai",
@@ -366,7 +366,7 @@ export const PAST_DEALS: PastDeal[] = [
   }),
   past({
     id: "cartfable", name: "Cartfable", sector: "Consumer brands", category: "Kids' clothing (D2C)", city: "Jaipur", stage: "Seed", receivedAt: "2026-07-15",
-    reason: "Valuation", note: "Asking $30M post-money on ₹40 L monthly revenue.", trigger: "Next round priced under $15M post-money.", checkOn: "2027-01-21", at: "2026-07-21",
+    reason: "Valuation", note: "Asking $18M post-money on ₹40 L monthly revenue.", trigger: "Next round priced under $12M post-money.", checkOn: "2027-01-21", at: "2026-07-21",
     fit: "Mixed", fitWhy: "Strong brand founder; no one has run supply.",
   }),
   past({
@@ -401,24 +401,24 @@ export interface MarketRow {
   /** Decks each month, May to October 2026: the recipe for the small fictional deal-flow history in lib/flow.ts
    * (about 75 decks, so the demo stays readable; a real fund sees thousands). */
   inbound: number[];
-  /** Money raised by startups in the sector across India and the Gulf, last 90 days and the 90 before, $M. Sample. */
+  /** Money raised by early-stage startups in the sector across India and the Gulf, last 90 days and the 90 before, $M. */
   raised: [number, number];
-  /** Number of rounds behind that money, last 90 days and the 90 before. Sample. */
+  /** Number of rounds behind that money, last 90 days and the 90 before. */
   rounds: [number, number];
 }
 
 export const MONTHS = ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"];
 
 export const MARKET: MarketRow[] = [
-  { sector: "B2B software", inbound: [1, 2, 2, 3, 3, 4], raised: [410, 320], rounds: [46, 38] },
-  { sector: "Fintech", inbound: [2, 2, 2, 2, 1, 2], raised: [520, 610], rounds: [31, 36] },
-  { sector: "Logistics", inbound: [1, 1, 1, 1, 2, 3], raised: [140, 95], rounds: [14, 10] },
-  { sector: "Mobility", inbound: [2, 1, 1, 1, 0, 0], raised: [60, 110], rounds: [6, 9] },
-  { sector: "Climate", inbound: [1, 1, 1, 1, 2, 3], raised: [180, 150], rounds: [12, 11] },
-  { sector: "Food supply", inbound: [1, 1, 1, 1, 1, 1], raised: [90, 85], rounds: [9, 9] },
-  { sector: "Consumer brands", inbound: [2, 1, 2, 1, 2, 1], raised: [120, 170], rounds: [18, 25] },
-  { sector: "Edtech", inbound: [1, 1, 1, 0, 1, 0], raised: [40, 75], rounds: [5, 8] },
-  { sector: "Healthtech", inbound: [1, 1, 1, 1, 1, 1], raised: [150, 140], rounds: [11, 12] },
+  { sector: "B2B software", inbound: [1, 2, 2, 3, 3, 4], raised: [23, 18], rounds: [14, 11] },
+  { sector: "Fintech", inbound: [2, 2, 2, 2, 1, 2], raised: [23, 27], rounds: [12, 14] },
+  { sector: "Logistics", inbound: [1, 1, 1, 1, 2, 3], raised: [22, 15], rounds: [11, 8] },
+  { sector: "Mobility", inbound: [2, 1, 1, 1, 0, 0], raised: [12, 22], rounds: [6, 9] },
+  { sector: "Climate", inbound: [1, 1, 1, 1, 2, 3], raised: [24, 20], rounds: [12, 11] },
+  { sector: "Food supply", inbound: [1, 1, 1, 1, 1, 1], raised: [18, 17], rounds: [9, 9] },
+  { sector: "Consumer brands", inbound: [2, 1, 2, 1, 2, 1], raised: [17, 24], rounds: [9, 13] },
+  { sector: "Edtech", inbound: [1, 1, 1, 0, 1, 0], raised: [8, 15], rounds: [5, 8] },
+  { sector: "Healthtech", inbound: [1, 1, 1, 1, 1, 1], raised: [15, 14], rounds: [8, 8] },
 ];
 
 export type Temperature = "Heating up" | "Crowding" | "Steady" | "Cooling";

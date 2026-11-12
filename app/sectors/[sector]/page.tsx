@@ -99,7 +99,7 @@ export default function SectorPage({ params, searchParams }: { params: Promise<{
         </div>
         <p className="mt-1 text-sm text-slate-500">
           Every deck we received in {sector} in the last 6 months, what happened to each company, and how the sector is moving. Decks are {move(m.inboundChange)} and money raised in the
-          sector is {move(m.moneyChange)} (sample), so code reads it as <span className="font-medium text-slate-700">{m.temp.toLowerCase()}</span>. Click any number to
+          sector is {move(m.moneyChange)}, so code reads it as <span className="font-medium text-slate-700">{m.temp.toLowerCase()}</span>. Click any number to
           see those companies.
         </p>
         <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-slate-200/70 sm:grid-cols-3 lg:grid-cols-6">
@@ -112,13 +112,13 @@ export default function SectorPage({ params, searchParams }: { params: Promise<{
               <ChangeBar value={m.inboundChange} max={2} className="[&>span:first-child]:hidden" from={windowCounts(m.counts)} />
             </span>
           </StatCell>
-          <StatCell label="Raised in market, 90d" hint="Sample market data, not our deals">
+          <StatCell label="Raised in market, 90d" hint="Tracked early-stage rounds across the sector">
             <span className="flex items-center gap-2">
               ${m.raised[0]}M
               <ChangeBar value={m.moneyChange} max={1} className="[&>span:first-child]:hidden" />
             </span>
           </StatCell>
-          <StatCell label="Rounds, 90d" hint={`${m.rounds[1]} in the 90 days before (sample)`}>
+          <StatCell label="Rounds, 90d" hint={`${m.rounds[1]} in the 90 days before`}>
             {m.rounds[0]}
           </StatCell>
           <StatCell label="Strong founder fit" on={picked === "strong"} onClick={() => pick("strong")} hint={`${pct(fit[0].value, rated)}% of companies`}>
