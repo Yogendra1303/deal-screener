@@ -588,21 +588,21 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
         </span>
       </div>
       <div className="mt-4 overflow-x-auto px-3 sm:px-5">
-        <table className="w-full min-w-[680px] border-separate border-spacing-1.5 text-xs">
+        <table className="w-full min-w-[740px] table-fixed border-separate border-spacing-x-1.5 border-spacing-y-1.5 text-xs">
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-              <th className="w-36 pb-1 text-left font-semibold">Sector</th>
+              <th className="w-36 pb-1.5 text-left font-semibold">Sector</th>
               {MONTHS.map((ym, i) => (
-                <th key={ym} className="pb-1 font-semibold">
+                <th key={ym} className="pb-1.5 text-center font-semibold">
                   <button onClick={() => setPick({ ym })} className="w-full rounded py-1 uppercase hover:bg-slate-100 hover:text-slate-700" title={`Every deck in ${fmtMonth(ym)}: ${monthTotals[i]}`}>
                     {fmtMonth(ym).slice(0, 3)}
                   </button>
                 </th>
               ))}
-              <th className="px-1 pb-1 font-semibold">Total</th>
-              <th className="pl-6 pr-3 pb-1 text-right font-semibold" title="Decks, last 3 months against the 3 before">Decks</th>
-              <th className="px-3 pb-1 text-right font-semibold" title="Early-stage capital raised in the sector, last 90 days against the 90 before">Money</th>
-              <th className="pl-4 pb-1 text-left font-semibold">Reading</th>
+              <th className="w-16 pb-1.5 text-center font-semibold">Total</th>
+              <th className="w-[120px] pl-6 pb-1.5 text-left font-semibold" title="Decks, last 3 months against the 3 before">Decks</th>
+              <th className="w-28 pl-4 pb-1.5 text-left font-semibold" title="Early-stage capital raised in the sector, last 90 days against the 90 before">Money</th>
+              <th className="w-32 pl-4 pb-1.5 text-left font-semibold">Reading</th>
             </tr>
           </thead>
           <tbody>
@@ -627,18 +627,18 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
                       </button>
                     </td>
                   ))}
-                  <td className="px-1">
+                  <td>
                     <button onClick={() => setPick({ sector: m.sector })} className="block h-8 w-full rounded-md bg-slate-100 text-[11px] font-semibold tabular-nums text-slate-800 hover:bg-slate-200">
                       {sum}
                     </button>
                   </td>
-                  <td className="pl-6 pr-3 text-right">
-                    <Delta value={m.inboundChange} className="px-1.5 text-[11px]" from={windowCounts(m.counts)} />
+                  <td className="pl-6 text-left">
+                    <Delta value={m.inboundChange} className="w-[72px] justify-center px-1.5 text-[11px]" from={windowCounts(m.counts)} />
                   </td>
-                  <td className="px-3 text-right" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]}`}>
-                    <Delta value={m.moneyChange} className="px-1.5 text-[11px]" />
+                  <td className="pl-4 text-left" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]}`}>
+                    <Delta value={m.moneyChange} className="w-[72px] justify-center px-1.5 text-[11px]" />
                   </td>
-                  <td className="pl-4">
+                  <td className="pl-4 text-left">
                     <TempPill t={m.temp} />
                   </td>
                 </tr>
@@ -653,7 +653,7 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
                   </button>
                 </td>
               ))}
-              <td className="px-1 pt-1">
+              <td className="pt-1">
                 <button onClick={() => setPick({})} className="block h-8 w-full rounded-md bg-slate-900 text-[11px] font-semibold tabular-nums text-white hover:bg-slate-800">
                   {total}
                 </button>
