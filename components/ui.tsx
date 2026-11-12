@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { STATUSES, type Band, type DealResult, type DealStatus, type Level, type Score } from "@/lib/types";
 
 export function cx(...parts: (string | false | null | undefined)[]) {
@@ -133,25 +134,78 @@ export function DropdownSelect<T extends string = string>({
   required?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
   const normalized: DropdownOption<T>[] = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   const selected = normalized.find((o) => o.value === value);
 
   useEffect(() => {
     if (!open) return;
+    const updatePosition = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (!r) return;
+      const minW = Math.max(r.width, 180);
+      const left = align === "right" ? Math.max(8, r.right - minW) : Math.min(window.innerWidth - minW - 8, r.left);
+      setCoords({ top: r.bottom + 4, left, width: minW });
+    };
+    updatePosition();
     const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
     window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
     return () => {
       document.removeEventListener("mousedown", onDocClick);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
     };
-  }, [open]);
+  }, [open, align]);
+
+  const menu =
+    open && coords ? (
+      <ul
+        ref={menuRef}
+        role="listbox"
+        aria-label={ariaLabel}
+        style={{ top: coords.top, left: coords.left, minWidth: coords.width }}
+        className="fixed z-[200] max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-xl shadow-slate-900/10"
+      >
+        {normalized.map((opt) => {
+          const isSelected = opt.value === value;
+          return (
+            <li
+              key={opt.value}
+              role="option"
+              aria-selected={isSelected}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className={cx(
+                "flex cursor-pointer items-center justify-between gap-2 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 hover:bg-slate-50",
+                isSelected && "bg-blue-50 text-blue-700",
+              )}
+            >
+              <span className="truncate">{opt.label}</span>
+              {isSelected && (
+                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    ) : null;
 
   return (
     <div ref={ref} className={cx("relative inline-block text-left", className)} onClick={(e) => e.stopPropagation()}>
@@ -176,42 +230,7 @@ export function DropdownSelect<T extends string = string>({
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
-      {open && (
-        <ul
-          role="listbox"
-          aria-label={ariaLabel}
-          className={cx(
-            "absolute z-50 mt-1 max-h-64 min-w-[11rem] w-full overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/50",
-            align === "right" ? "right-0" : "left-0",
-          )}
-        >
-          {normalized.map((opt) => {
-            const isSelected = opt.value === value;
-            return (
-              <li
-                key={opt.value}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                className={cx(
-                  "flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 hover:bg-slate-50",
-                  isSelected && "bg-blue-50/60 text-blue-700",
-                )}
-              >
-                <span className="truncate">{opt.label}</span>
-                {isSelected && (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {typeof document !== "undefined" && menu ? createPortal(menu, document.body) : menu}
     </div>
   );
 }

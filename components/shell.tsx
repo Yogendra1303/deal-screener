@@ -121,23 +121,23 @@ function UserCard() {
   const router = useRouter();
   const displayName = w.userName || w.me;
   return (
-    <div className="space-y-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <Avatar name={displayName} size="sm" />
-            <span className="truncate text-sm font-semibold leading-tight text-slate-900">{displayName}</span>
+    <div className="space-y-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
+      <div className="flex items-start gap-2.5">
+        <Avatar name={displayName} size="sm" />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="whitespace-nowrap text-sm font-semibold leading-tight text-slate-900">{displayName}</span>
+            <span
+              className={cx(
+                "inline-flex shrink-0 items-center rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide leading-tight",
+                w.role === "Partner" ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800",
+              )}
+            >
+              {w.role}
+            </span>
           </div>
-          <span
-            className={cx(
-              "inline-flex shrink-0 items-center rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide leading-tight",
-              w.role === "Partner" ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800",
-            )}
-          >
-            {w.role}
-          </span>
+          {w.userEmail && <div className="truncate text-xs leading-tight text-slate-500">{w.userEmail}</div>}
         </div>
-        {w.userEmail && <div className="truncate pl-8 text-xs leading-tight text-slate-500">{w.userEmail}</div>}
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-slate-200 pt-2">
         <DropdownSelect<Role>
@@ -353,12 +353,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
     );
 
   return (
-    <div className="min-h-full lg:pl-[272px]">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[272px] border-r border-slate-200 bg-white lg:block">
+    <div className="min-h-full lg:pl-72">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-slate-200 bg-white lg:block">
         <Sidebar />
       </aside>
 
-      <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-10">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-3 lg:hidden">
           <button
             type="button"

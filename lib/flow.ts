@@ -147,8 +147,8 @@ const CITIES: [string, string, number][] = [
 const STAGE_W: Record<string, number> = { "Pre-seed": 30, Seed: 40, "Series A": 20, "Series B": 7, "Series C or later": 3 };
 const ASK: Record<string, [number, number]> = {
   "Pre-seed": [250_000, 1_200_000],
-  Seed: [1_000_000, 4_500_000],
-  "Series A": [4_000_000, 15_000_000],
+  Seed: [1_000_000, 3_600_000],
+  "Series A": [2_200_000, 3_900_000],
   "Series B": [15_000_000, 40_000_000],
   "Series C or later": [40_000_000, 120_000_000],
 };
@@ -303,6 +303,15 @@ export function generate(): FlowCompany[] {
         signals: [],
       });
       decide(out[out.length - 1], r);
+      const created = out[out.length - 1];
+      if (created.outcome === "Waiting" || created.outcome === "Never opened" || created.outcome === "Meeting") {
+        for (const d of created.decks) {
+          if (d.askUsd >= 4_000_000) {
+            d.stage = "Seed";
+            d.askUsd = 3_200_000;
+          }
+        }
+      }
     }
   });
   return out;

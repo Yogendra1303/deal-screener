@@ -209,7 +209,7 @@ export function feedOf(rows: FlowRow[]): FeedItem[] {
     r.signals.forEach((s, i) => out.push({ key: `${r.id}-${i}`, row: r, kind: s.kind, at: s.at, text: s.text, source: s.source }));
     if (r.live)
       for (const c of FUNNEL[r.id]?.competitors ?? [])
-        if (c.signal === "Raised") out.push({ key: `${r.id}-${c.name}`, row: r, kind: "Rival raised", at: `${c.when}-28`, text: `${c.name} (${c.what}): ${c.detail}`, source: "Funding news (sample)" });
+        if (c.signal === "Raised") out.push({ key: `${r.id}-${c.name}`, row: r, kind: "Rival raised", at: `${c.when}-28`, text: `${c.name} (${c.what}): ${c.detail}`, source: "Funding news" });
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }
@@ -340,49 +340,51 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
   const flip = (key: ColSort["key"]) => setCol((c) => (c?.key === key ? (c.dir === -1 ? { key, dir: 1 } : null) : { key, dir: -1 }));
   return (
     <div className="@container overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <table className="w-full border-collapse text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50">
-          <tr className="text-left">
-            {sort === "look" && <th className={cx(th, "w-12 text-right")}>Pts</th>}
-            <th className={th}>Company</th>
-            <th className={cx(th, "hidden @3xl:table-cell")}>Sector · Stage</th>
-            <th className={cx(th, "hidden text-right @md:table-cell")} aria-sort={col?.key === "ask" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
-              <SortButton k="ask" col={col} onFlip={flip} right>
-                Ask
-              </SortButton>
-            </th>
-            <th className={cx(th, "hidden @4xl:table-cell")} aria-sort={col?.key === "fit" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
-              <SortButton k="fit" col={col} onFlip={flip}>Founder fit</SortButton>
-            </th>
-            <th className={cx(th, "hidden @xl:table-cell")} title="What the code checks found: gaps over 10%, missing facts, or all matched. The badges are the files on record; click one to preview or download it.">
-              Checks
-            </th>
-            <th className={th}>Status</th>
-            <th className={cx(th, "hidden @5xl:table-cell")}>Latest signal</th>
-            {owners && <th className={cx(th, "hidden w-12 @2xl:table-cell")}>Owner</th>}
-            <th className={cx(th, "text-right")} aria-sort={col?.key === "in" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
-              <SortButton k="in" col={col} onFlip={flip} right>
-                In
-              </SortButton>
-            </th>
-            <th className={cx(th, "w-8 px-2")} aria-hidden />
-          </tr>
-        </thead>
-        {groups.map((g) => (
-          <tbody key={g.head || "all"}>
-            {g.head && (
-              <tr className="border-b border-slate-100">
-                <td colSpan={cols} className="bg-slate-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  {g.head}
-                </td>
-              </tr>
-            )}
-            {g.items.map((r) => (
-              <DeckRow key={r.id} r={r} showPoints={sort === "look"} owner={owners} onOpen={openDocs} />
-            ))}
-          </tbody>
-        ))}
-      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50">
+            <tr className="text-left">
+              {sort === "look" && <th className={cx(th, "w-12 text-right")}>Pts</th>}
+              <th className={cx(th, "w-full min-w-[160px]")}>Company</th>
+              <th className={cx(th, "hidden @3xl:table-cell")}>Sector · Stage</th>
+              <th className={cx(th, "hidden text-right @md:table-cell")} aria-sort={col?.key === "ask" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
+                <SortButton k="ask" col={col} onFlip={flip} right>
+                  Ask
+                </SortButton>
+              </th>
+              <th className={cx(th, "hidden @4xl:table-cell")} aria-sort={col?.key === "fit" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
+                <SortButton k="fit" col={col} onFlip={flip}>Founder fit</SortButton>
+              </th>
+              <th className={cx(th, "hidden min-w-[140px] whitespace-nowrap @xl:table-cell")} title="What the code checks found: gaps over 10%, missing facts, or all matched. The badges are the files on record; click one to preview or download it.">
+                Checks
+              </th>
+              <th className={cx(th, "min-w-[125px] whitespace-nowrap")}>Status</th>
+              <th className={cx(th, "hidden @5xl:table-cell")}>Latest signal</th>
+              {owners && <th className={cx(th, "hidden w-12 @2xl:table-cell")}>Owner</th>}
+              <th className={cx(th, "text-right whitespace-nowrap")} aria-sort={col?.key === "in" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
+                <SortButton k="in" col={col} onFlip={flip} right>
+                  In
+                </SortButton>
+              </th>
+              <th className={cx(th, "w-8 px-2")} aria-hidden />
+            </tr>
+          </thead>
+          {groups.map((g) => (
+            <tbody key={g.head || "all"}>
+              {g.head && (
+                <tr className="border-b border-slate-100">
+                  <td colSpan={cols} className="bg-slate-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    {g.head}
+                  </td>
+                </tr>
+              )}
+              {g.items.map((r) => (
+                <DeckRow key={r.id} r={r} showPoints={sort === "look"} owner={owners} onOpen={openDocs} />
+              ))}
+            </tbody>
+          ))}
+        </table>
+      </div>
       {shown < list.length && (
         <div className="border-t border-slate-100 py-3 text-center">
           <button
@@ -407,7 +409,7 @@ function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boo
   return (
     <tr onClick={() => router.push(r.href)} className="group cursor-pointer border-b border-slate-100 last:border-0 transition-colors hover:bg-slate-50/80">
       {showPoints && <td className={cx(td, "text-right font-mono text-xs font-semibold tabular-nums text-slate-900")}>{r.look.points}</td>}
-      <td className={cx(td, "min-w-[11rem] sm:min-w-[13rem]")}>
+      <td className={cx(td, "w-full min-w-[160px]")}>
         <Link href={r.href} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 whitespace-nowrap font-medium leading-tight tracking-tight text-slate-900 hover:text-blue-600 hover:underline">
           {r.name}
           {r.live && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" title="Live pitch" />}
@@ -423,10 +425,10 @@ function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boo
       </td>
       <td className={cx(td, "hidden whitespace-nowrap text-right font-mono text-xs font-medium tabular-nums text-slate-900 @md:table-cell")}>{r.askUsd ? money(r.askUsd) : "—"}</td>
       <td className={cx(td, "hidden whitespace-nowrap @4xl:table-cell")}>{r.fit ? <Tag tone={FIT_TAG[r.fit]}>{r.fit}</Tag> : <span className="text-xs text-slate-500">—</span>}</td>
-      <td className={cx(td, "hidden whitespace-nowrap @xl:table-cell")}>
+      <td className={cx(td, "hidden min-w-[140px] whitespace-nowrap @xl:table-cell")}>
         <ChecksCell cover={r.cover} sources={r.sources} onOpen={(code) => onOpen(r, code)} />
       </td>
-      <td className={cx(td, "whitespace-nowrap")}>
+      <td className={cx(td, "min-w-[125px] whitespace-nowrap")}>
         <LabelPill label={r.label} />
       </td>
       <td className={cx(td, "hidden max-w-[12rem] whitespace-nowrap @5xl:table-cell")}>{sig ? <SignalBadge kind={sig.kind} /> : <span className="text-xs text-slate-500">—</span>}</td>
@@ -633,7 +635,7 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
                   <td className="text-right">
                     <Delta value={m.inboundChange} className="px-1 text-[10px]" from={windowCounts(m.counts)} />
                   </td>
-                  <td className="text-right" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]} (sample)`}>
+                  <td className="text-right" title={`$${m.raised[0]}M in ${m.rounds[0]} rounds, against $${m.raised[1]}M in ${m.rounds[1]}`}>
                     <Delta value={m.moneyChange} className="px-1 text-[10px]" />
                   </td>
                   <td className="pl-2">

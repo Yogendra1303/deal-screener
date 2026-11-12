@@ -684,10 +684,11 @@ function AnalystHome() {
   ];
 
   const pitchRows = flow.rows;
-  const toReadRows = pitchRows.filter((r) => r.status === "New" && (r.owner === me || (!r.owner && r.label !== "Never opened"))).sort(triageOrder);
-  const unclaimed = pitchRows.filter((r) => r.label === "Never opened");
+  const underCap = (r: FlowRow) => r.askUsd == null || r.askUsd < 4_000_000;
+  const toReadRows = pitchRows.filter((r) => underCap(r) && r.status === "New" && (r.owner === me || (!r.owner && r.label !== "Never opened"))).sort(triageOrder);
+  const unclaimed = pitchRows.filter((r) => underCap(r) && r.label === "Never opened");
   const mineRows = pitchRows.filter((r) => r.owner === me);
-  const active = pitchRows.filter((r) => (r.owner === me || (!r.owner && r.live)) && (r.status === "New" || r.status === "Reviewing" || r.status === "Meeting set")).sort(triageOrder);
+  const active = pitchRows.filter((r) => underCap(r) && (r.owner === me || (!r.owner && r.live)) && (r.status === "New" || r.status === "Reviewing" || r.status === "Meeting set")).sort(triageOrder);
   const lookMine = mineRows.filter((r) => r.look.event);
   const flowSpecs: TileSpec[] = [
     listSpec("a-read", { title: "To read", icon: "pitch", tone: "info", explain: "New decks given to you, and new ones nobody has taken yet. Best first.", clear: "Nothing to read.", next: "Open it, read the deck, then set a status: reviewing, meeting, hold or pass with a reason.", rows: toReadRows }),
