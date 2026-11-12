@@ -69,9 +69,8 @@ const SETTINGS: { href: string; label: string; icon: IconName; match: (p: string
   { href: "/method", label: "How numbers work", icon: "method", match: (p) => p.startsWith("/method") },
   { href: "/sources", label: "Where data comes from", icon: "sources", match: (p) => p.startsWith("/sources") },
   { href: "/rules", label: "Fund rules", icon: "rules", match: (p) => p.startsWith("/rules") },
-  { href: "/results", label: "Screener test", icon: "test", match: (p) => p.startsWith("/results") },
   { href: "/resources", label: "Founder support", icon: "library", match: (p) => p.startsWith("/resources") },
-  { href: "/workspace", label: "Workspace & Reset", icon: "reset", match: (p) => p.startsWith("/workspace") },
+  { href: "/workspace", label: "Workspace settings", icon: "reset", match: (p) => p.startsWith("/workspace") },
 ];
 
 export function Avatar({ name, size = "sm" }: { name: string; size?: "xs" | "sm" | "md" }) {
@@ -96,7 +95,7 @@ function Brand() {
       <span className="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-sm font-bold text-white">F</span>
       <span className="leading-tight">
         <span className="block text-[15px] font-semibold text-slate-900">Fund Hub</span>
-        <span className="block text-[11px] text-slate-500">Prototype · sample data</span>
+        <span className="block text-[11px] text-slate-500">Fund I · Active Workspace</span>
       </span>
     </Link>
   );
@@ -266,50 +265,16 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function SidebarFooter() {
-  const p = usePortfolio();
-  const w = useWorkspace();
-  const links = useLinks();
-  const store = useStore();
   const db = useDbInfo();
-  const [armed, setArmed] = useState(false);
-  const changed = p.changed || w.questionsChanged || links.changed || store.changed;
   return (
-    <div className="space-y-2 border-t border-slate-200 pt-3 pb-16 text-[11px] leading-snug text-slate-500">
-      <p>
-        Demo date <span className="font-medium text-slate-700">{fmtDate(p.today)}</span>. Every company, person and number is fictional.
+    <div className="space-y-1.5 border-t border-slate-200 pt-3 pb-16 text-[11px] leading-snug text-slate-500">
+      <p className="flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span className="font-medium text-slate-700">
+          {db ? DB_TEXT[db.driver].short : "Session active · Cloud sync ready"}
+        </span>
       </p>
       <p>AI sorts and explains. People decide.</p>
-      {db && (
-        <p title={DB_TEXT[db.driver].help}>
-          Saves: <span className="font-medium text-slate-700">{DB_TEXT[db.driver].short}</span>
-        </p>
-      )}
-      {armed ? (
-        <div className="space-y-1.5 rounded-md border border-rose-200 bg-rose-50 p-2">
-          <p className="text-rose-800">Delete every change {db?.driver === "none" ? "in this browser" : "for everyone"}? Sample data comes back as shipped.</p>
-          <div className="flex gap-1.5">
-            <button
-              onClick={async () => {
-                setArmed(false);
-                await resetEverything({ store, p, w, links });
-              }}
-              className="rounded-md bg-rose-600 px-2 py-1 font-semibold text-white hover:bg-rose-700"
-            >
-              Yes, reset
-            </button>
-            <button onClick={() => setArmed(false)} className="rounded-md border border-slate-300 bg-white px-2 py-1 font-semibold text-slate-700">
-              Keep
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setArmed(true)}
-          className={cx("block w-full rounded-md border px-2.5 py-1.5 text-left font-semibold", changed ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "border-slate-100 bg-slate-50 text-slate-400")}
-        >
-          Reset to factory defaults
-        </button>
-      )}
     </div>
   );
 }
@@ -370,7 +335,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <span className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">for founders</span>
             </span>
             <Link href="/founder" className="hidden text-xs text-slate-500 hover:text-slate-900 sm:inline">
-              Founder portal · sample data
+              Founder portal
             </Link>
           </div>
         </header>

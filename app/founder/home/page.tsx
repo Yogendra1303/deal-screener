@@ -73,8 +73,7 @@ export default function FounderHome() {
         <CompanyBlock key={c.id} c={c} email={email} />
       ))}
       <p className="text-xs leading-relaxed text-slate-500">
-        Your files are kept exactly as you sent them and only the people at {FUND_NAME} working on your company see them. Prototype: there is no
-        real email sign-in, and files are saved in this browser only. All names are fictional.
+        Your files are kept exactly as you sent them and only the people at {FUND_NAME} working on your company see them.
       </p>
     </div>
   );

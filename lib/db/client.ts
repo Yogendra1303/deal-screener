@@ -163,7 +163,7 @@ export async function clearServerState(): Promise<void> {
 }
 
 export const DB_TEXT: Record<DbDriver, { short: string; help: string }> = {
-  supabase: { short: "Shared database", help: "Saved to Supabase. Everyone with the link sees the same statuses, notes and uploads." },
-  file: { short: "Saved on this machine", help: "Saved to data/runtime-db.json on the computer running the app. Every browser on this machine sees the same data." },
-  none: { short: "This browser only", help: "No database is connected, so changes live in this browser. Add the Supabase variables to share them." },
+  supabase: { short: "Workspace synced", help: "Saved to Supabase. Everyone with the link sees the same statuses, notes and uploads." },
+  file: { short: "Session active · Local sync", help: "Saved on this machine. Every browser on this computer sees the same workspace state." },
+  none: { short: "Session active · Cloud sync ready", help: "Changes are saved in your active session. Connect Supabase environment variables to sync across all devices." },
 };

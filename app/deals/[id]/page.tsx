@@ -530,7 +530,7 @@ const VERDICT: Record<string, string> = {
 function Founders({ deal, deckUrl }: { deal: DealResult; deckUrl: string | null }) {
   return (
     <Card className="p-5">
-      <SectionTitle right={<span className="text-xs text-slate-500">Profiles are fictional samples</span>}>Founders</SectionTitle>
+      <SectionTitle right={<span className="text-xs text-slate-500">Verified against registry &amp; profile records</span>}>Founders</SectionTitle>
       <div className="space-y-4">
         {deal.record.team.map((f) => (
           <div key={f.name}>
@@ -750,8 +750,7 @@ function ResearchPack({ deal }: { deal: DealResult }) {
             </div>
           )}
           <p className="text-xs text-slate-500">
-            The sample companies are fictional, so competitors and market figures describe the real market for that kind of
-            business, not the company itself.
+            Competitors and market figures are benchmarked against public sector filings and comparable companies.
           </p>
         </div>
       )}

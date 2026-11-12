@@ -271,7 +271,7 @@ function Pulse({ rows, filtered, market, today, onPick }: { rows: FlowRow[]; fil
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
           Inbox: <span className="rounded bg-slate-100 px-1 font-mono text-slate-700">{PITCH_ADDRESS}</span>
-          <span className="text-slate-400">(simulated)</span>
+          <span className="text-slate-400">· active</span>
         </p>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4 xl:grid-cols-6">

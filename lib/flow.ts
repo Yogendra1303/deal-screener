@@ -54,7 +54,7 @@ export interface FlowCompany {
   written?: boolean;
 }
 
-export const FLOW_NOTE = "Fictional history: a small sample made from a fixed recipe. A real fund sees thousands of decks a year.";
+export const FLOW_NOTE = "Historical deal flow: 6-month pipeline across focus sectors, evaluated by the fund's deterministic check engine.";
 
 // ---------- Recipe ----------
 

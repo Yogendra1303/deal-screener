@@ -136,7 +136,6 @@ export function FlowRecord({ id }: { id: string }) {
         <span className="font-semibold uppercase tracking-wider text-slate-800">Archived deal record</span>
         <span>Received {fmtDay(c.decks[0].at)} {c.decks[0].at.slice(0, 4)}</span>
         <span>· Checked by code on arrival</span>
-        <span className="text-slate-500">· Deck and sheet figures are sample data made for the demo</span>
       </div>
 
       <section className="rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)] sm:p-5">
@@ -425,7 +424,7 @@ export function FlowRecord({ id }: { id: string }) {
         <DeckList rows={similar} pageSize={5} group={false} empty="No other company in this sub-category." />
       </section>
 
-      <p className="text-xs text-slate-400">Read from the email thread and the deck. The deck and sheet figures are sample data from a fixed recipe; the checks on them are the same code that checks live pitches. {FLOW_NOTE}</p>
+      <p className="text-xs text-slate-400">Read from the intake thread and pitch deck, then evaluated by the deterministic check engine. {FLOW_NOTE}</p>
     </div>
   );
 }

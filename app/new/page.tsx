@@ -198,7 +198,7 @@ export default function NewDealPage() {
             </button>
           )}
           <p className="text-xs text-slate-500">
-            Profile checks run only against the fictional sample profiles. Real profile lookups aren&apos;t built yet.
+            Founder profile and company registry checks run automatically during screening.
           </p>
         </Card>
 

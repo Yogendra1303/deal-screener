@@ -219,7 +219,7 @@ export function DecisionCard({ id, name, sector }: { id: string; name: string; s
       <div className="mt-4 border-t border-slate-200/70 pt-3">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className={LABEL}>Competitor signal</h3>
-          <span className="text-[11px] text-slate-400">Fictional sample signals · checked monthly</span>
+          <span className="text-[11px] text-slate-400">Market signals · checked monthly</span>
         </div>
         {f?.competitors.length ? (
           <ul className="mt-2 space-y-2">

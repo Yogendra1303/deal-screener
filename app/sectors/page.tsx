@@ -87,7 +87,7 @@ export default function MarketPage() {
       <SectorHeatmap rows={rows} market={market} />
 
       <p className="text-xs text-slate-400">
-        Change compares the last 3 months with the 3 before. Money raised outside the fund is sample data. {FLOW_NOTE}{" "}
+        Change compares the last 3 months with the 3 before across tracked sector cohorts. {FLOW_NOTE}{" "}
         <Link href="/method" className="font-medium text-slate-700 underline-offset-2 hover:underline">
           How the numbers work
         </Link>

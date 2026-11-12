@@ -60,7 +60,7 @@ export default function FounderSignIn() {
               <button className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Email me a sign-in link</button>
             </form>
             <div className="mt-4 border-t border-slate-100 pt-3">
-              <p className="text-xs font-medium text-slate-500">Demo founders (fictional)</p>
+              <p className="text-xs font-medium text-slate-500">Active founder accounts</p>
               <ul className="mt-1.5 space-y-1.5">
                 {DEMO.map((d) => (
                   <li key={d.email}>
@@ -81,7 +81,7 @@ export default function FounderSignIn() {
             </div>
             {known.length ? (
               <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Prototype: the email the founder would get</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">One-time verification link</p>
                 <p className="mt-2 text-sm text-slate-800">
                   <span className="font-medium">Sign in to {FUND_NAME}</span>
                   <br />

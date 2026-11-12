@@ -87,7 +87,23 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = read<Session | null>(KEYS.session, null);
-    const preferredRole = readStoredRole();
+    let urlOverride: Role | null = null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const r = params.get("role")?.toLowerCase();
+      if (r === "partner") urlOverride = "Partner";
+      if (r === "analyst") urlOverride = "Analyst";
+      if (urlOverride) {
+        persistRole(urlOverride);
+        params.delete("role");
+        const cleanSearch = params.toString();
+        const cleanUrl = `${window.location.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${window.location.hash}`;
+        window.history.replaceState(null, "", cleanUrl);
+      }
+    } catch {
+      // Ignore URL cleanup errors.
+    }
+    const preferredRole = urlOverride ?? readStoredRole();
     const localSession = saved && saved.name && saved.role ? saved : null;
     if (localSession && preferredRole && localSession.role !== preferredRole) {
       localSession.role = preferredRole;
@@ -103,7 +119,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null } | null; role?: "partner" | "analyst" | null } | null) => {
         if (data?.enabled && data.user?.email && data.role) {
           const serverRole: Role = data.role === "partner" ? "Partner" : "Analyst";
-          const role: Role = preferredRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole);
+          const currentRole = readStoredRole();
+          const role: Role = urlOverride ?? currentRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole);
           persistRole(role);
           const defaultName = role === "Partner" ? "Kabir Shah" : "Riya Menon";
           const realName = data.user.name?.trim() || data.user.email.split("@")[0];

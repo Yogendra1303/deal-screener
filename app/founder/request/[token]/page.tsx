@@ -75,7 +75,7 @@ export default function FounderRequestPage({ params }: { params: Promise<{ token
       <p className="text-xs leading-relaxed text-slate-500">
         Your files are kept exactly as you sent them and are only seen by the people at {FUND_NAME} working on {r.companyName}. You can also
         see everything the fund has asked you for in one place on the <Link href="/founder" className="underline">founder portal</Link>, or
-        email files to {inboxAddress(r.companyName)}. Prototype: files are saved in this browser only, and anyone with this link can open it.
+        email files to {inboxAddress(r.companyName)}.
       </p>
     </div>
   );

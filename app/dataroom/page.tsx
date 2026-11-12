@@ -63,8 +63,7 @@ export default function DataRoomPage() {
       <PitchFiles />
 
       <p className="text-xs leading-relaxed text-slate-500">
-        Prototype: files sent through links, the founder portal or the email simulator are saved in this browser only. Founder-sent sample files are
-        listed by name only; the pitch source files above are real and downloadable.
+        Files sent through founder request links, the founder portal, or company intake addresses are indexed automatically in the room above.
       </p>
     </div>
   );

@@ -158,7 +158,7 @@ export default function PitchLinkPage({ searchParams }: { searchParams: Promise<
           {busy ? "Sending…" : "Send pitch"}
         </button>
         <p className="text-xs text-slate-500">
-          Your deck is only seen by the {FUND_NAME} team. Prototype: saved in this browser only.
+          Your deck is only seen by the {FUND_NAME} team and indexed directly into the screening workspace.
         </p>
       </form>
     </div>

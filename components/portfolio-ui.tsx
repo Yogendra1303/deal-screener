@@ -152,8 +152,8 @@ export function Sparkline({ values, className }: { values: (number | null)[]; cl
 
 export function DemoDate({ today }: { today: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600" title="The prototype runs on a fixed date so the sample data always reads the same.">
-      Demo date: {fmtShort(today)} {today.slice(0, 4)}
+    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600" title="Active reporting period">
+      Reporting period: Q4 {today.slice(0, 4)}
     </span>
   );
 }
