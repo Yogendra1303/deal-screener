@@ -2,6 +2,7 @@
 
 // One sector, read like an instrument page: key numbers, decks by month and outcome, the pipeline,
 // sub-categories as a grid, the news, and every company that pitched. Counts are worked out by code from the decks.
+import { describeChange } from "@/lib/change";
 import { ZeroState } from "@/components/mode";
 import { use, useRef, useState } from "react";
 import { BackLink } from "@/components/company";
@@ -55,7 +56,7 @@ export default function SectorPage({ params, searchParams }: { params: Promise<{
       const months = MONTHS.map((ym) => count(list, ym));
       const recent = months.slice(-3).reduce((a, b) => a + b, 0);
       const before = months.slice(-6, -3).reduce((a, b) => a + b, 0);
-      return { sub, list, months, recent, change: recent / Math.max(1, before) - 1, strong: list.filter((r) => r.fit === "Strong").length };
+      return { sub, list, months, recent, before, change: recent / Math.max(1, before) - 1, strong: list.filter((r) => r.fit === "Strong").length };
     })
     .sort((a, b) => b.recent - a.recent || b.list.length - a.list.length);
   const subPeak = Math.max(1, ...subs.flatMap((s) => s.months));
@@ -211,7 +212,15 @@ export default function SectorPage({ params, searchParams }: { params: Promise<{
                     </td>
                     <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums text-slate-900">{s.recent}</td>
                     <td className="px-3 py-2">
-                      <ChangeBar value={s.change} max={2} className={GRID_BAR} />
+                      {s.before === 0 ? (
+                        <span className="whitespace-nowrap rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-700" title={describeChange(s.before, s.recent).aria}>
+                          {describeChange(s.before, s.recent).text}
+                        </span>
+                      ) : (
+                        <span title={describeChange(s.before, s.recent).aria}>
+                          <ChangeBar value={s.change} max={2} className={GRID_BAR} />
+                        </span>
+                      )}
                     </td>
                     <td className="hidden px-3 py-2 text-right font-mono tabular-nums text-slate-700 @2xl:table-cell">{s.list.length}</td>
                     <td className="hidden whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums text-slate-700 @3xl:table-cell">
