@@ -199,7 +199,7 @@ export const gradeOf = (c: number) => (GRADES.find((g) => c < g.upTo) ?? GRADES[
 export function MarketMap({ items, height: wanted = 320 }: { items: MapItem[]; height?: number }) {
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
-  // On a phone the map grows taller so the small tiles still have room.
+  // On narrow viewports the map grows taller so every sector tile has room.
   const height = width < 520 ? Math.max(wanted, Math.round(width * 1.15)) : wanted;
   useEffect(() => {
     const el = box.current;
@@ -209,23 +209,27 @@ export function MarketMap({ items, height: wanted = 320 }: { items: MapItem[]; h
     return () => ro.disconnect();
   }, []);
   const sorted = [...items].filter((x) => x.value > 0).sort((a, b) => b.value - a.value);
-  const rects = squarify(sorted.map((x) => x.value));
+  // Damped area weights prevent smaller sectors (Healthtech, Mobility, Consumer brands) from being crushed
+  // into slivers while preserving strict rank order and displaying the exact deal count on every tile.
+  const maxVal = Math.max(1, ...sorted.map((x) => x.value));
+  const weights = sorted.map((x) => Math.max(maxVal * 0.24, Math.pow(x.value, 0.78)));
+  const rects = squarify(weights);
   return (
-    <div ref={box} className="relative w-full overflow-hidden rounded-xl bg-slate-950" style={{ height }}>
+    <div ref={box} className="relative w-full overflow-hidden rounded-xl bg-slate-950 p-0.5 ring-1 ring-inset ring-white/10" style={{ height }}>
       {sorted.map((it, k) => {
         const r = rects[k];
         const w = (r.w / 100) * width - 4;
         const h = (r.h / 100) * height - 4;
-        // What fits: the full tile, a two-line tile, or the name alone.
-        const size = h >= 84 && w >= 100 ? "full" : h >= 48 && w >= 64 ? "compact" : h >= 22 && w >= 40 ? "name" : "none";
-        const chart = size === "full" && h >= 128 && w >= 130 && it.trend;
+        const isLarge = h >= 88 && w >= 115;
+        const isMedium = !isLarge && h >= 52 && w >= 72;
+        const chart = isLarge && h >= 152 && w >= 165 && it.trend;
         return (
           <Link
             key={it.key}
             href={it.href}
             className={cx(
-              "group absolute flex overflow-hidden rounded-lg text-white transition duration-200 hover:z-10 hover:ring-2 hover:ring-white/70",
-              size === "full" ? "flex-col justify-between p-2.5 sm:p-3" : size === "compact" ? "flex-col justify-center gap-0.5 px-2 py-1.5" : "items-center px-1.5",
+              "group absolute flex flex-col justify-between overflow-hidden rounded-lg text-white ring-1 ring-inset ring-white/10 transition duration-150 hover:z-10 hover:brightness-110 hover:ring-2 hover:ring-white/80",
+              isLarge ? "p-2.5 sm:p-3" : isMedium ? "px-2.5 py-2" : "px-2 py-1.5",
             )}
             style={{
               left: `calc(${r.x}% + 2px)`,
@@ -237,23 +241,24 @@ export function MarketMap({ items, height: wanted = 320 }: { items: MapItem[]; h
             title={`${it.label}: ${it.value} decks in 6 months, ${changeText(it.change)} in the last 3 months against the 3 before`}
             aria-label={`${it.label}: ${it.value} decks, ${changeText(it.change)}`}
           >
-            <span aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.07] to-transparent" />
-            {size !== "none" && (
-              <span className={cx("relative font-semibold leading-tight drop-shadow-sm", size === "full" ? "line-clamp-2 text-sm sm:text-base" : size === "compact" ? "truncate text-xs" : "truncate text-[10px]")}>{it.label}</span>
-            )}
-            {chart && <Sparkline values={it.trend!} fluid tone="white" className="relative my-1 h-8 w-full max-w-[12rem] flex-none opacity-80" />}
-            {size === "full" && (
-              <span className="relative flex items-end justify-between gap-1">
-                <span className="text-lg font-semibold tabular-nums sm:text-2xl">{it.value}</span>
-                <span className="text-xs font-semibold tabular-nums text-white/90">{changeText(it.change)}</span>
+            <span aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.08] to-transparent" />
+            <span
+              className={cx(
+                "relative truncate font-semibold leading-snug tracking-tight drop-shadow-xs",
+                isLarge ? "text-sm sm:text-[15px]" : isMedium ? "text-xs sm:text-[13px]" : "text-[11px]",
+              )}
+            >
+              {it.label}
+            </span>
+            {chart && <Sparkline values={it.trend!} fluid tone="white" className="relative my-1 h-7 w-full max-w-[11rem] flex-none opacity-80" />}
+            <span className="relative flex flex-wrap items-baseline justify-between gap-x-1.5 gap-y-0.5 leading-none">
+              <span className={cx("font-semibold tabular-nums tracking-tight text-white", isLarge ? "text-lg sm:text-2xl" : isMedium ? "text-sm sm:text-base" : "text-xs")}>
+                {it.value}
               </span>
-            )}
-            {size === "compact" && (
-              <span className="relative flex items-baseline gap-1.5 text-[11px] tabular-nums text-white/90">
-                <span className="text-sm font-semibold text-white">{it.value}</span>
+              <span className={cx("font-semibold tabular-nums whitespace-nowrap text-white/90", isLarge ? "text-xs" : "text-[10px]")}>
                 {changeText(it.change)}
               </span>
-            )}
+            </span>
           </Link>
         );
       })}

@@ -5,7 +5,7 @@
 import { windowCounts } from "@/lib/change";
 import { ZeroState } from "@/components/mode";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DeckList, PillTabs, TempPill, slugOf as sectorSlug, triageOrder, useDealFlow, type FlowRow, type SectorStat } from "@/components/flow";
 import { Delta } from "@/components/charts";
 import { useStore } from "@/components/store";
@@ -60,6 +60,14 @@ const CHIPS: { key: string; dot: string; label: string; hint: string; on: string
     on: "border-amber-300 bg-amber-50 text-amber-800",
     test: (r) => r.look.parts.some(([k]) => k === "Trigger met" || k === "Check date passed"),
   },
+  {
+    key: "never",
+    dot: "bg-slate-500",
+    label: "Never Opened",
+    hint: "Decks that arrived 7+ days ago and have not been claimed by an owner yet.",
+    on: "border-slate-300 bg-slate-100 text-slate-800",
+    test: (r) => r.label === "Never opened",
+  },
 ];
 
 export default function DealsPage() {
@@ -71,6 +79,22 @@ export default function DealsPage() {
   const [sector, setSector] = useState("");
   const [who, setWho] = useState("");
   const [chips, setChips] = useState<string[]>([]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab");
+    if (t && TABS.some((x) => x.key === t)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTab(t);
+    }
+    const s = params.get("sector");
+    if (s && MARKET.some((m) => m.sector === s)) {
+      setSector(s);
+    }
+    const f = params.get("filter");
+    if (f && CHIPS.some((c) => c.key === f)) {
+      setChips([f]);
+    }
+  }, []);
   const flow = useDealFlow((o) => (analyst ? !o || o === w.me : !who || o === who));
 
   const q = query.trim().toLowerCase();
@@ -139,35 +163,35 @@ export default function DealsPage() {
         <>
           <Pulse rows={searched} filtered={Boolean(q || sector || who)} market={flow.market} today={flow.today} onPick={setTab} />
           <div className="space-y-2.5">
-          <div className="flex flex-col-reverse gap-2 xl:flex-row xl:items-center xl:gap-3">
-            <PillTabs options={TABS.map((t) => ({ key: t.key, label: t.label, count: narrowed.filter(t.test).length }))} value={tab} onChange={setTab} />
-            <div className="flex flex-wrap items-center gap-2 xl:flex-1 xl:justify-end">
-              <input
-                id="inbox-search"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search"
-                className="w-36 max-w-full rounded-lg border-0 bg-white px-3 py-1.5 text-sm ring-1 ring-slate-200 focus:ring-2 focus:ring-slate-900"
-              />
-              <select value={sector} onChange={(e) => setSector(e.target.value)} aria-label="Sector" className="rounded-lg border-0 bg-white px-2.5 py-1.5 text-sm ring-1 ring-slate-200">
-                <option value="">Sector</option>
-                {MARKET.map((m) => (
-                  <option key={m.sector}>{m.sector}</option>
-                ))}
-              </select>
-              {!analyst && (
-                <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person" className="rounded-lg border-0 bg-white px-2.5 py-1.5 text-sm ring-1 ring-slate-200">
-                  <option value="">Everyone</option>
-                  {TEAM.map((m) => (
-                    <option key={m.name} value={m.name}>
-                      {m.name.split(" ")[0]}
-                    </option>
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <PillTabs options={TABS.map((t) => ({ key: t.key, label: t.label, count: narrowed.filter(t.test).length }))} value={tab} onChange={setTab} />
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  id="inbox-search"
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search company, city…"
+                  className="w-44 max-w-full rounded-lg border-0 bg-white px-3 py-1.5 text-sm ring-1 ring-slate-200 focus:ring-2 focus:ring-slate-900"
+                />
+                <select value={sector} onChange={(e) => setSector(e.target.value)} aria-label="Sector" className="rounded-lg border-0 bg-white px-2.5 py-1.5 text-sm ring-1 ring-slate-200">
+                  <option value="">All sectors</option>
+                  {MARKET.map((m) => (
+                    <option key={m.sector}>{m.sector}</option>
                   ))}
                 </select>
-              )}
+                {!analyst && (
+                  <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person" className="rounded-lg border-0 bg-white px-2.5 py-1.5 text-sm ring-1 ring-slate-200">
+                    <option value="">Everyone</option>
+                    {TEAM.map((m) => (
+                      <option key={m.name} value={m.name}>
+                        {m.name.split(" ")[0]}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
             </div>
-          </div>
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Quick filters">
             <span className={cx(LABEL, "mr-1")}>Filter</span>
             {CHIPS.map((c) => {

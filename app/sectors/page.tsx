@@ -47,7 +47,7 @@ export default function MarketPage() {
         <Cell label="Decks, last 3 months">
           <ChangeLine n={recent} change={recent / Math.max(1, before) - 1} from={[before, recent]} />
         </Cell>
-        <Cell label="Raised in market, 90d" hint="Sample market data">
+        <Cell label="Raised in market, 90d" hint="Tracked sector rounds over the last 90 days">
           <ChangeLine n={`$${(raised / 1000).toFixed(2)}B`} change={raised / raisedBefore - 1} />
         </Cell>
         {(
@@ -73,11 +73,11 @@ export default function MarketPage() {
         ))}
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-5">
-        <div className="xl:col-span-3">
+      <div className="grid gap-4 xl:grid-cols-5 xl:items-stretch">
+        <div className="flex xl:col-span-3 [&>*]:w-full">
           <MomentumMap facts={facts} />
         </div>
-        <div className="xl:col-span-2">
+        <div className="flex xl:col-span-2 [&>*]:w-full">
           <OutcomeColumns data={monthlyOutcomes(rows)} title="Every deck, by month" height={352} />
         </div>
       </div>

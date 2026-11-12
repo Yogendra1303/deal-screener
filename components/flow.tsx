@@ -403,34 +403,34 @@ const FIT_TAG: Record<FitLevel, ToneKey> = { Strong: "clear", Mixed: "review", W
 function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boolean; owner: boolean; onOpen: (r: FlowRow, code: string) => void }) {
   const router = useRouter();
   const sig = r.look.latest ?? r.signals.at(-1);
-  const td = "px-3 py-2 align-middle";
+  const td = "px-3 py-2.5 align-middle";
   return (
     <tr onClick={() => router.push(r.href)} className="group cursor-pointer transition-colors hover:bg-slate-50/90">
       {showPoints && <td className={cx(td, "text-right font-mono text-xs font-semibold tabular-nums text-slate-900")}>{r.look.points}</td>}
-      <td className={cx(td, "w-full max-w-0")}>
-        <Link href={r.href} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 truncate font-semibold tracking-tight text-slate-900 hover:underline">
+      <td className={cx(td, "min-w-[11rem] sm:min-w-[13rem]")}>
+        <Link href={r.href} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 whitespace-nowrap font-semibold tracking-tight text-slate-900 hover:underline">
           {r.name}
           {r.live && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-900" title="Live pitch" />}
         </Link>
-        <span className="block truncate text-xs text-slate-500">
+        <span className="block whitespace-nowrap text-xs text-slate-500">
           {r.city}
           <span className="@3xl:hidden"> · {r.stage}</span>
         </span>
       </td>
       <td className={cx(td, "hidden @3xl:table-cell")}>
         <span className="block max-w-[14rem] truncate text-slate-700">{r.sub}</span>
-        <span className="block text-xs text-slate-500">{r.stage}</span>
+        <span className="block whitespace-nowrap text-xs text-slate-500">{r.stage}</span>
       </td>
-      <td className={cx(td, "hidden text-right font-mono text-xs font-medium tabular-nums text-slate-900 @md:table-cell")}>{r.askUsd ? money(r.askUsd) : "—"}</td>
-      <td className={cx(td, "hidden @4xl:table-cell")}>{r.fit ? <Tag tone={FIT_TAG[r.fit]}>{r.fit}</Tag> : <span className="text-xs text-slate-400">—</span>}</td>
-      <td className={cx(td, "hidden @xl:table-cell")}>
+      <td className={cx(td, "hidden whitespace-nowrap text-right font-mono text-xs font-medium tabular-nums text-slate-900 @md:table-cell")}>{r.askUsd ? money(r.askUsd) : "—"}</td>
+      <td className={cx(td, "hidden whitespace-nowrap @4xl:table-cell")}>{r.fit ? <Tag tone={FIT_TAG[r.fit]}>{r.fit}</Tag> : <span className="text-xs text-slate-400">—</span>}</td>
+      <td className={cx(td, "hidden whitespace-nowrap @xl:table-cell")}>
         <ChecksCell cover={r.cover} sources={r.sources} onOpen={(code) => onOpen(r, code)} />
       </td>
-      <td className={td}>
+      <td className={cx(td, "whitespace-nowrap")}>
         <LabelPill label={r.label} />
       </td>
-      <td className={cx(td, "hidden max-w-[12rem] @5xl:table-cell")}>{sig ? <SignalBadge kind={sig.kind} /> : <span className="text-xs text-slate-400">—</span>}</td>
-      {owner && <td className={cx(td, "hidden @2xl:table-cell")}>{r.owner ? <Avatar name={r.owner} size="xs" /> : <span className="text-xs text-slate-400">—</span>}</td>}
+      <td className={cx(td, "hidden max-w-[12rem] whitespace-nowrap @5xl:table-cell")}>{sig ? <SignalBadge kind={sig.kind} /> : <span className="text-xs text-slate-400">—</span>}</td>
+      {owner && <td className={cx(td, "hidden whitespace-nowrap @2xl:table-cell")}>{r.owner ? <Avatar name={r.owner} size="xs" /> : <span className="text-xs text-slate-400">—</span>}</td>}
       <td className={cx(td, "text-right font-mono text-xs whitespace-nowrap tabular-nums text-slate-500")}>{fmtDay(r.last)}</td>
       <td className={cx(td, "w-6 pl-0 text-slate-300 transition-colors group-hover:text-slate-700")} aria-hidden>
         →
@@ -482,7 +482,7 @@ export function sectorMap(market: SectorStat[]) {
 export function MarketCard({ market, title = "Market map", height = 300, link = true }: { market: SectorStat[]; title?: string; height?: number; link?: boolean }) {
   const total = market.reduce((s, m) => s + m.counts.reduce((a, b) => a + b, 0), 0);
   return (
-    <section className="rounded-2xl bg-slate-900 p-4 text-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.5)] ring-1 ring-slate-800 sm:p-5">
+    <section className="flex h-full flex-col justify-between rounded-2xl bg-slate-900 p-4 text-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.5)] ring-1 ring-slate-800 sm:p-5">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold">{title}</h2>
@@ -496,8 +496,10 @@ export function MarketCard({ market, title = "Market map", height = 300, link = 
           <GradeKey />
         )}
       </div>
-      <MarketMap items={sectorMap(market)} height={height} />
-      {link && <GradeKey className="mt-3" />}
+      <div className="flex-1">
+        <MarketMap items={sectorMap(market)} height={height} />
+      </div>
+      {link && <GradeKey className="mt-3 pt-0.5" />}
     </section>
   );
 }
@@ -718,7 +720,7 @@ export function NewsList({ rows, limit = 5, sector, title = "News", subtitle }: 
     icon: "read",
     explain: "What the monthly watch found about companies the fund has seen, newest first.",
     clear: "No news yet.",
-    how: "Once a month a job checks every company the fund has seen against a funding database, company registry filings, profile data and the pitch inbox. In this prototype those sources are fictional samples.",
+    how: "Once a month a job checks every company the fund has seen against funding databases, company registry filings, profile data and the pitch inbox.",
     body: () => (
       <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200/70">
         <FeedList items={feed} />

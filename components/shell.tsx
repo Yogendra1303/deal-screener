@@ -124,30 +124,32 @@ function UserCard() {
   const router = useRouter();
   const displayName = w.userName || w.me;
   return (
-    <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
-      <div className="flex items-center gap-2.5">
-        <Avatar name={displayName} size="md" />
-        <div className="min-w-0 flex-1 leading-tight">
-          <div className="truncate text-sm font-semibold text-slate-900">{displayName}</div>
-          <div className="truncate text-[11px] text-slate-500">{w.userEmail || w.role}</div>
+    <div className="space-y-2.5 rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 shadow-2xs">
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar name={displayName} size="sm" />
+            <span className="truncate text-[13.5px] font-semibold tracking-tight text-slate-900">{displayName}</span>
+          </div>
+          <span
+            className={cx(
+              "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+              w.role === "Partner" ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200",
+            )}
+          >
+            {w.role}
+          </span>
         </div>
-        <span
-          className={cx(
-            "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-            w.role === "Partner" ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200" : "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200",
-          )}
-        >
-          {w.role}
-        </span>
+        {w.userEmail && <div className="truncate pl-8 text-[11px] text-slate-500">{w.userEmail}</div>}
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-slate-200/80 pt-2">
-        <label className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs">
-          <span className="text-[11px] text-slate-500">Role View:</span>
+        <label className="flex min-w-0 flex-1 items-center justify-between gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs shadow-2xs">
+          <span className="text-[11px] font-medium text-slate-500">View:</span>
           <select
             aria-label="Sidebar Role View"
             value={w.role}
             onChange={(e) => w.setDemoRole(e.target.value as Role)}
-            className="min-w-0 flex-1 cursor-pointer bg-transparent font-semibold text-slate-900 focus:outline-hidden"
+            className="cursor-pointer bg-transparent font-semibold text-slate-900 focus:outline-hidden"
           >
             <option value="Partner">Partner</option>
             <option value="Analyst">Analyst</option>
@@ -158,7 +160,7 @@ function UserCard() {
             w.signOut();
             router.replace("/login");
           }}
-          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white hover:text-slate-900"
+          className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-white hover:text-slate-900 hover:ring-1 hover:ring-slate-200"
         >
           Sign out
         </button>
@@ -214,18 +216,18 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 className={cx(
-                  "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium",
-                  active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                  "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                  active ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                 )}
               >
                 <Icon name={l.icon} />
-                <span className="flex-1">{l.label}</span>
+                <span className="flex-1 truncate">{l.label}</span>
                 {n > 0 && (
                   <span
                     title={l.count ? titles[l.count] : undefined}
                     className={cx(
-                      "rounded-full px-1.5 text-[11px] font-semibold tabular-nums",
-                      active ? "bg-white/20 text-white" : l.count === "room" ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-700",
+                      "inline-flex min-w-[1.35rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none tabular-nums",
+                      active ? "bg-white/20 text-white" : l.count === "room" ? "bg-slate-900 text-white" : "bg-slate-200/80 text-slate-700",
                     )}
                   >
                     {n}
@@ -353,8 +355,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
     );
 
   return (
-    <div className="min-h-full lg:pl-64">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-200 bg-white lg:block">
+    <div className="min-h-full lg:pl-[272px]">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[272px] border-r border-slate-200 bg-white lg:block">
         <Sidebar />
       </aside>
 

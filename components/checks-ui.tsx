@@ -156,12 +156,12 @@ export function StatusPill({ tone, children, title }: { tone: keyof typeof STATU
   );
 }
 
-/** One table cell: a status pill (gaps, missing facts, matched or unscreened) and the source files as code badges. */
+/** One table cell: a status pill (gaps, missing facts, matched or unscreened) and the source files as code badges on a single clean row. */
 export function ChecksCell({ cover, sources, onOpen }: { cover: Coverage | null; sources?: SourceKey[]; onOpen?: (code: string) => void }) {
   const codes = [...new Set((sources ?? []).map((s) => TABLE_CODE[s]).filter(Boolean))] as string[];
   const NAME: Record<string, string> = { DECK: "Pitch deck", CSV: "Monthly sheet", FORM: "Intake form", REG: "Registry record" };
   const src = codes.length ? (
-    <span className="mt-0.5 flex items-center gap-1" aria-label="Files on record">
+    <span className="inline-flex shrink-0 items-center gap-1" aria-label="Files on record">
       {codes.map((c) =>
         onOpen ? (
           <button
@@ -174,12 +174,12 @@ export function ChecksCell({ cover, sources, onOpen }: { cover: Coverage | null;
               e.stopPropagation();
               onOpen(c);
             }}
-            className="inline-flex h-8 items-center rounded-md px-0.5 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-1"
+            className="inline-flex items-center rounded transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-1"
           >
-            <CodeTag code={c} />
+            <CodeTag code={c} className="hover:border-slate-400 hover:text-slate-900" />
           </button>
         ) : (
-          <span key={c} title={NAME[c]}>
+          <span key={c} title={NAME[c]} className="inline-flex items-center">
             <CodeTag code={c} />
           </span>
         ),
@@ -188,7 +188,7 @@ export function ChecksCell({ cover, sources, onOpen }: { cover: Coverage | null;
   ) : null;
   if (!cover)
     return (
-      <span className="block">
+      <span className="inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
         <StatusPill tone="neutral" title="The AI hasn't read this deck yet, so nothing has been compared.">
           Unscreened
         </StatusPill>
@@ -204,8 +204,8 @@ export function ChecksCell({ cover, sources, onOpen }: { cover: Coverage | null;
     .filter(Boolean)
     .join("\n");
   return (
-    <span className="block" title={tip}>
-      <span className="flex items-center gap-1">
+    <span className="inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap" title={tip}>
+      <span className="inline-flex items-center gap-1">
         {conflicts.length > 0 ? (
           <StatusPill tone="alert">{plural(conflicts.length, "Math Gap")}</StatusPill>
         ) : cover.missing.length > 0 ? (

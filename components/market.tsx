@@ -397,7 +397,7 @@ export function MomentumMap({ facts }: { facts: SectorFacts[] }) {
     <section className={cx(PANEL, "flex flex-col")}>
       <PanelHead
         title="Momentum map"
-        sub="Across: decks we received, last 3 months vs the 3 before. Up: money raised in the sector (sample)."
+        sub="Across: decks we received, last 3 months vs the 3 before. Up: capital raised across the sector."
         right={<Legend items={(Object.keys(TEMP_COLOR) as Temperature[]).map((t) => [t, TEMP_COLOR[t]])} />}
       />
       <div ref={box} className="relative flex-1 px-2 pb-2 pt-1">
@@ -692,7 +692,7 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
     <section className={cx(PANEL, "@container overflow-hidden")}>
       <PanelHead
         title="Every sector"
-        sub="Click a header to sort. Money raised and rounds are sample market data; everything else is counted from our decks."
+        sub="Click a header to sort. Capital raised and round counts track broader sector activity; everything else is counted from our decks."
       />
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

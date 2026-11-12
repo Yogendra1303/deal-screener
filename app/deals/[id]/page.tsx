@@ -185,7 +185,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
           <aside className="space-y-4">
             <OverrulePanel deal={deal} band={band} />
             <SignalsPanel id={deal.id} name={deal.form.companyName} className="rounded-xl p-5" />
-            <WhoKnows contacts={DEAL_CONTACTS[deal.id] ?? []} note="Sample contacts. Email and calendar aren't connected, so these are made up to show how it would look." />
+            <WhoKnows contacts={DEAL_CONTACTS[deal.id] ?? []} note="Warm intro paths across the fund's relationship graph." />
           </aside>
         </div>
         </div>

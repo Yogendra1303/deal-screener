@@ -343,11 +343,23 @@ function PartnerHome() {
     cashTile(p.companies, p.today),
   ];
   const needHelp = p.companies.filter((c) => healthOf(c, p.today).health === "Needs help").length;
-  const stat = (key: string, n: number, label: string, tone = "text-white") => (
-    <button key={key} onClick={() => panels.open(key)} className="rounded-xl bg-white/[0.06] px-4 py-3 text-left ring-1 ring-inset ring-white/10 transition hover:bg-white/10">
-      <span className={cx("block text-2xl font-semibold tabular-nums", tone)}>{n}</span>
-      <span className="text-xs text-white/60">{label}</span>
-    </button>
+  const stat = (href: string, n: number, label: string, sub: string, tone = "text-white") => (
+    <Link
+      key={label}
+      href={href}
+      className="group flex flex-col justify-between rounded-2xl bg-white/[0.06] px-4 py-3.5 text-left ring-1 ring-inset ring-white/10 transition duration-150 hover:-translate-y-0.5 hover:bg-white/[0.11] hover:ring-white/25"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className={cx("text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl", tone)}>{n}</span>
+        <span aria-hidden className="text-xs text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/80">
+          →
+        </span>
+      </div>
+      <div className="mt-1.5">
+        <span className="block text-xs font-medium text-white/85">{label}</span>
+        <span className="block text-[11px] text-white/45">{sub}</span>
+      </div>
+    </Link>
   );
 
   return (
@@ -368,33 +380,37 @@ function PartnerHome() {
         </button>
       )}
 
-      <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-5 text-white shadow-lg sm:p-6">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-white/50">Deal flow · {fmtMonth(today.slice(0, 7))}</p>
-            <p className="mt-2 flex items-baseline gap-3">
-              <span className="text-5xl font-semibold tabular-nums tracking-tight">{thisMonth}</span>
-              <Delta value={change} solid from={[monthly.at(-2)!, thisMonth]} />
-            </p>
-            <p className="mt-1 text-sm text-white/60">decks this month, against {monthly.at(-2)} last month</p>
-            <Sparkline values={monthly} width={320} height={64} tone="white" fluid className="mt-4 h-16 w-full max-w-sm" />
-            <p className="mt-1 flex max-w-sm justify-between text-[10px] uppercase tracking-wider text-white/40">
-              {MONTHS.map((m) => (
-                <span key={m}>{fmtMonth(m).slice(0, 3)}</span>
-              ))}
-            </p>
+      <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-5 text-white shadow-lg ring-1 ring-white/10 sm:p-6">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-center">
+          <div className="flex flex-col justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-white/50">Deal flow · {fmtMonth(today.slice(0, 7))}</p>
+              <div className="mt-2 flex items-baseline gap-3">
+                <span className="text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl">{thisMonth}</span>
+                <Delta value={change} solid from={[monthly.at(-2)!, thisMonth]} />
+              </div>
+              <p className="mt-1 text-sm text-white/60">decks this month, against {monthly.at(-2)} last month</p>
+            </div>
+            <div className="mt-4">
+              <Sparkline values={monthly} width={340} height={60} tone="white" fluid className="h-14 w-full max-w-md" />
+              <p className="mt-1.5 flex max-w-md justify-between text-[10px] font-medium uppercase tracking-wider text-white/40">
+                {MONTHS.map((m) => (
+                  <span key={m}>{fmtMonth(m).slice(0, 3)}</span>
+                ))}
+              </p>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {stat("read", toRead.length, "to read")}
-            {stat("meet", meetings.length, "meetings", "text-emerald-300")}
-            {stat("look", lookNow.length, "look again now", "text-amber-300")}
-            {stat("never", never.length, "never opened", never.length ? "text-red-300" : "text-white")}
+          <div className="grid grid-cols-2 gap-3">
+            {stat("/deals?tab=read", toRead.length, "to read", "Unreviewed inbound", "text-white")}
+            {stat("/deals?tab=meet", meetings.length, "meetings", "Active first calls", "text-emerald-300")}
+            {stat("/deals?tab=look", lookNow.length, "look again now", "Fresh news after pass", "text-amber-300")}
+            {stat("/deals?tab=read&filter=never", never.length, "never opened", `${NEVER_OPENED_DAYS}+ days unassigned`, never.length ? "text-red-300" : "text-white")}
           </div>
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <MarketCard market={market} height={280} />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:items-stretch">
+        <MarketCard market={market} height={296} />
         <TeamPulse rows={rows} />
       </div>
 
@@ -437,58 +453,65 @@ function PartnerHome() {
 function TeamPulse({ rows }: { rows: FlowRow[] }) {
   const people = [...ANALYSTS.map((a) => a.name), PARTNER.name];
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Team</h2>
-          <p className="text-sm text-slate-500">Each person&apos;s pitch work, last 6 months.</p>
+    <section className="flex h-full flex-col justify-between rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/70">
+      <div>
+        <div className="mb-3.5 flex items-baseline justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Team</h2>
+            <p className="text-sm text-slate-500">Each person&apos;s pitch work, last 6 months.</p>
+          </div>
+          <Link href="/team" className="shrink-0 whitespace-nowrap text-sm font-medium text-indigo-700 hover:text-indigo-900">
+            Team →
+          </Link>
         </div>
-        <Link href="/team" className="shrink-0 whitespace-nowrap text-sm font-medium text-indigo-700 hover:text-indigo-900">
-          Team →
-        </Link>
-      </div>
-      <ul className="space-y-3">
-        {people.map((name) => {
-          const mine = rows.filter((r) => r.owner === name);
-          const open = mine.filter((r) => r.status === "New" || r.status === "Reviewing").length;
-          const meet = mine.filter((r) => r.status === "Meeting set").length;
-          const passed = mine.filter((r) => r.status === "Passed" || r.status === "On hold").length;
-          const look = mine.filter((r) => r.look.now).length;
-          return (
-            <li key={name}>
-              <a href={`/team?who=${name.split(" ")[0].toLowerCase()}`} className="block rounded-xl p-2 hover:bg-slate-50">
-                <span className="flex items-center gap-3">
-                  <Avatar name={name} size="sm" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-slate-900">
-                      {name} {name === PARTNER.name && <span className="text-xs font-normal text-slate-400">partner</span>}
-                    </span>
-                    <span className="block text-xs text-slate-500">
-                      {mine.length} pitches · {open} open · {meet} meetings{look ? ` · ${look} to look again` : ""}
+        <ul className="space-y-2.5">
+          {people.map((name) => {
+            const mine = rows.filter((r) => r.owner === name);
+            const open = mine.filter((r) => r.status === "New" || r.status === "Reviewing").length;
+            const meet = mine.filter((r) => r.status === "Meeting set").length;
+            const passed = mine.filter((r) => r.status === "Passed" || r.status === "On hold").length;
+            const look = mine.filter((r) => r.look.now).length;
+            return (
+              <li key={name}>
+                <Link href={`/team?who=${name.split(" ")[0].toLowerCase()}`} className="block rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition hover:border-slate-200 hover:bg-slate-50">
+                  <span className="flex items-center gap-3">
+                    <Avatar name={name} size="sm" />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                        <span>{name}</span>
+                        {name === PARTNER.name ? (
+                          <span className="rounded bg-indigo-50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-indigo-700">Partner</span>
+                        ) : (
+                          <span className="rounded bg-slate-100 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-slate-600">Analyst</span>
+                        )}
+                      </span>
+                      <span className="mt-0.5 block text-xs tabular-nums text-slate-500">
+                        {mine.length} pitches · {open} open · {meet} meetings{look ? ` · ${look} to look again` : ""}
+                      </span>
                     </span>
                   </span>
-                </span>
-                <span className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <span className="bg-slate-600" style={{ width: `${(open / Math.max(1, mine.length)) * 100}%` }} />
-                  <span className="bg-emerald-500" style={{ width: `${(meet / Math.max(1, mine.length)) * 100}%` }} />
-                  <span className="bg-slate-300" style={{ width: `${(passed / Math.max(1, mine.length)) * 100}%` }} />
-                </span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="mt-3 flex flex-wrap gap-x-3 text-[11px] text-slate-500">
-        <span>
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-slate-600" />
+                  <span className="mt-2.5 flex h-1.5 overflow-hidden rounded-full bg-slate-200/70">
+                    <span className="bg-slate-700" style={{ width: `${(open / Math.max(1, mine.length)) * 100}%` }} />
+                    <span className="bg-emerald-500" style={{ width: `${(meet / Math.max(1, mine.length)) * 100}%` }} />
+                    <span className="bg-slate-400" style={{ width: `${(passed / Math.max(1, mine.length)) * 100}%` }} />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      <p className="mt-4 flex flex-wrap gap-x-4 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-500">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-slate-700" />
           open
         </span>
-        <span>
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
           meeting
         </span>
-        <span>
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-slate-300" />
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-slate-400" />
           passed or held
         </span>
       </p>
