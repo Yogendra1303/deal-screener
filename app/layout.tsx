@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthSessionProvider } from "@/components/auth-provider";
 import { EvidenceProvider } from "@/components/evidence";
 import { LinksProvider } from "@/components/links-store";
 import { PortfolioProvider } from "@/components/portfolio-store";
@@ -17,17 +18,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="h-full bg-slate-50 text-slate-900">
-        <StoreProvider>
-          <PortfolioProvider>
-            <WorkspaceProvider>
-              <LinksProvider>
-                <EvidenceProvider>
-                  <Shell>{children}</Shell>
-                </EvidenceProvider>
-              </LinksProvider>
-            </WorkspaceProvider>
-          </PortfolioProvider>
-        </StoreProvider>
+        <AuthSessionProvider>
+          <StoreProvider>
+            <PortfolioProvider>
+              <WorkspaceProvider>
+                <LinksProvider>
+                  <EvidenceProvider>
+                    <Shell>{children}</Shell>
+                  </EvidenceProvider>
+                </LinksProvider>
+              </WorkspaceProvider>
+            </PortfolioProvider>
+          </StoreProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );

@@ -73,16 +73,27 @@ const SETTINGS: { href: string; label: string; icon: IconName; match: (p: string
   { href: "/workspace", label: "Workspace settings", icon: "reset", match: (p) => p.startsWith("/workspace") },
 ];
 
-export function Avatar({ name, size = "sm" }: { name: string; size?: "xs" | "sm" | "md" }) {
+export function Avatar({ name, size = "sm", image }: { name: string; size?: "xs" | "sm" | "md"; image?: string | null }) {
   const m = member(name);
+  const [imgErr, setImgErr] = useState(false);
+  const dim = size === "xs" ? "h-5 w-5 text-[9px]" : size === "sm" ? "h-6 w-6 text-[10px]" : "h-8 w-8 text-xs";
+  if (image && !imgErr) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={image}
+        alt={name}
+        title={name}
+        referrerPolicy="no-referrer"
+        onError={() => setImgErr(true)}
+        className={cx("shrink-0 rounded-full object-cover ring-1 ring-slate-200", dim)}
+      />
+    );
+  }
   return (
     <span
       title={`${m.name}, ${m.role}`}
-      className={cx(
-        "inline-grid shrink-0 place-items-center rounded-full font-semibold",
-        m.tone,
-        size === "xs" ? "h-5 w-5 text-[9px]" : size === "sm" ? "h-6 w-6 text-[10px]" : "h-8 w-8 text-xs",
-      )}
+      className={cx("inline-grid shrink-0 place-items-center rounded-full font-semibold", m.tone, dim)}
     >
       {m.initials}
     </span>
@@ -123,7 +134,7 @@ function UserCard() {
   return (
     <div className="space-y-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
       <div className="flex items-start gap-2.5">
-        <Avatar name={displayName} size="sm" />
+        <Avatar name={displayName} size="sm" image={w.userImage} />
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-1.5">
             <span className="whitespace-nowrap text-sm font-semibold leading-tight text-slate-900">{displayName}</span>
@@ -310,7 +321,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const w = useWorkspace();
   const [open, setOpen] = useState(false);
-  const isPublic = path.startsWith("/founder") || path.startsWith("/login");
+  const isPublic = path.startsWith("/founder") || path.startsWith("/login") || path.startsWith("/pitch");
 
   // Everything except the home landing, login and founder pages needs a signed-in person.
   useEffect(() => {
@@ -343,12 +354,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
     );
 
-  if (path.startsWith("/login") || (path === "/" && w.ready && !w.session)) return <main className="min-h-full">{children}</main>;
+  if (path.startsWith("/login") || path.startsWith("/pitch") || (path === "/" && w.ready && !w.session)) return <main className="min-h-full">{children}</main>;
 
   if (!w.ready || !w.session)
     return (
-      <div className="grid min-h-full place-items-center text-sm text-slate-500">
-        <span>Loading…</span>
+      <div className="min-h-full bg-slate-50 lg:pl-72">
+        <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-slate-200 bg-white p-4 lg:block">
+          <div className="h-8 w-36 animate-pulse rounded-md bg-slate-100" />
+          <div className="mt-5 h-24 animate-pulse rounded-lg bg-slate-100" />
+          <div className="mt-6 space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-8 animate-pulse rounded-md bg-slate-100" />
+            ))}
+          </div>
+        </aside>
+        <div className="h-14 border-b border-slate-200 bg-white px-6" />
+        <div className="mx-auto max-w-6xl space-y-4 p-8">
+          <div className="h-9 w-64 animate-pulse rounded-md bg-slate-200/70" />
+          <div className="h-40 animate-pulse rounded-xl bg-white ring-1 ring-slate-200" />
+        </div>
       </div>
     );
 
@@ -417,7 +441,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2.5">
           <RoleViewDropdown compact />
           <Link
-            href="/founder/pitch"
+            href={`/pitch?ref=${encodeURIComponent(w.userName || w.me || "Analyst")}`}
             target="_blank"
             rel="noreferrer"
             className="hidden items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50 sm:inline-flex"
@@ -428,7 +452,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </svg>
             Share link
           </Link>
-          <Avatar name={w.userName || w.me} size="sm" />
+          <Avatar name={w.userName || w.me} size="sm" image={w.userImage} />
         </div>
       </header>
 

@@ -3,6 +3,7 @@
 // Who is signed in (partner or analyst), and the questions between them. The sign-in stays in this
 // browser; the questions are saved on the server too, laid over the sample questions that ship with the app.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { DEMO_DATE } from "@/lib/portfolio/health";
 import { SEED_QUESTIONS, type Answer, type Question } from "@/lib/questions";
 import { signInCheck, type Session } from "@/lib/auth";
@@ -26,6 +27,7 @@ interface Workspace {
   me: string;
   userName: string;
   userEmail: string;
+  userImage: string;
   setDemoRole: (role: Role) => void;
   signIn: (email: string, password: string) => string | null;
   signOut: () => void;
@@ -81,6 +83,7 @@ function persistRole(role: Role) {
 }
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
+  const { data: authSession } = useSession();
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [local, setLocal] = useState<LocalQuestions>(EMPTY);
@@ -116,7 +119,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null } | null; role?: "partner" | "analyst" | null } | null) => {
+      .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null; image?: string | null } | null; role?: "partner" | "analyst" | null } | null) => {
         if (data?.enabled && data.user?.email && data.role) {
           const serverRole: Role = data.role === "partner" ? "Partner" : "Analyst";
           const currentRole = readStoredRole();
@@ -129,6 +132,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             role,
             email: data.user.email,
             userName: realName,
+            userImage: data.user.image ?? undefined,
           };
           setSession(next);
           write(KEYS.session, next);
@@ -147,6 +151,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         role,
         email: prev?.email ?? (role === "Partner" ? "kabir@fundhub.demo" : "riya@fundhub.demo"),
         userName: prev?.userName,
+        userImage: prev?.userImage,
       };
       write(KEYS.session, next);
       return next;
@@ -207,8 +212,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       session,
       role: session?.role ?? "Analyst",
       me: session?.name ?? "",
-      userName: session?.userName || session?.name || "",
-      userEmail: session?.email || "",
+      userName: authSession?.user?.name || session?.userName || session?.name || "",
+      userEmail: authSession?.user?.email || session?.email || "",
+      userImage: authSession?.user?.image || session?.userImage || "",
       setDemoRole,
       signIn,
       signOut,
@@ -223,7 +229,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       questionsChanged: local.added.length > 0 || Object.keys(local.answers).length > 0,
       resetQuestions: () => update(() => EMPTY),
     }),
-    [ready, session, setDemoRole, signIn, signOut, questions, update, local],
+    [ready, session, authSession, setDemoRole, signIn, signOut, questions, update, local],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

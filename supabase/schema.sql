@@ -13,9 +13,14 @@ create table if not exists public.deals (
   ask_amount numeric,
   currency text,
   status text,
+  checks_status text default 'Unscreened',
   band text,
   founder_fit text,
   owner text,
+  website text,
+  linkedin_url text,
+  founder_name text,
+  founder_email text,
   received_at timestamptz,
   is_historical boolean not null default false,
   record_json jsonb,
@@ -24,6 +29,11 @@ create table if not exists public.deals (
   research_pack_json jsonb,
   updated_at timestamptz not null default now()
 );
+alter table public.deals add column if not exists website text;
+alter table public.deals add column if not exists linkedin_url text;
+alter table public.deals add column if not exists founder_name text;
+alter table public.deals add column if not exists founder_email text;
+alter table public.deals add column if not exists checks_status text default 'Unscreened';
 create index if not exists deals_sector_idx on public.deals (sector);
 create index if not exists deals_status_idx on public.deals (status);
 create index if not exists deals_received_idx on public.deals (received_at desc);
@@ -74,6 +84,7 @@ create table if not exists public.app_state (
 
 -- Uploaded decks and sheets live in a private bucket; the app serves them through /api/files.
 insert into storage.buckets (id, name, public) values ('deal-files', 'deal-files', false) on conflict (id) do nothing;
+insert into storage.buckets (id, name, public) values ('pitch_decks', 'pitch_decks', false) on conflict (id) do nothing;
 
 -- Lock the tables down. The service role key bypasses RLS, which is how the server reads and writes.
 alter table public.deals enable row level security;

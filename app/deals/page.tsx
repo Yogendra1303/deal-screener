@@ -146,7 +146,7 @@ export default function DealsPage() {
               );
             })}
           </div>
-          <PitchLinkButton refSlug={analyst ? slugOf(w.me) : undefined} />
+          <PitchLinkButton refSlug={analyst ? w.userName || w.me : undefined} />
           <Link
             href="/new"
             className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
@@ -260,7 +260,7 @@ export default function DealsPage() {
 
 function PitchLinkButton({ refSlug }: { refSlug?: string }) {
   const [copied, setCopied] = useState(false);
-  const path = `/founder/pitch${refSlug ? `?ref=${refSlug}` : ""}`;
+  const path = `/pitch${refSlug ? `?ref=${encodeURIComponent(refSlug)}` : ""}`;
   return (
     <span className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white text-sm font-medium leading-tight shadow-sm">
       <button

@@ -20,9 +20,14 @@ export interface DealRow {
   ask_amount: number | null;
   currency: string | null;
   status: string | null;
+  checks_status?: string | null;
   band: string | null;
   founder_fit: string | null;
   owner: string | null;
+  website?: string | null;
+  linkedin_url?: string | null;
+  founder_name?: string | null;
+  founder_email?: string | null;
   received_at: string | null;
   is_historical: boolean;
   record_json: unknown;
@@ -270,7 +275,7 @@ export async function patchDeal(id: string, patch: Partial<DealRow>): Promise<De
 
 const safe = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, "_").slice(0, 120);
 
-export async function putFile(dealId: string, fileType: string, fileName: string, mime: string, bytes: Uint8Array): Promise<FileRow> {
+export async function putFile(dealId: string, fileType: string, fileName: string, mime: string, bytes: Uint8Array, bucket = BUCKET): Promise<FileRow> {
   need();
   const row: FileRow = {
     id: uuid(),
@@ -283,7 +288,7 @@ export async function putFile(dealId: string, fileType: string, fileName: string
     created_at: now(),
   };
   if (driver() === "supabase") {
-    await sb(`/storage/v1/object/${BUCKET}/${row.storage_path}`, { method: "POST", body: bytes as BodyInit, headers: { "Content-Type": row.mime_type, "x-upsert": "true" } });
+    await sb(`/storage/v1/object/${bucket}/${row.storage_path}`, { method: "POST", body: bytes as BodyInit, headers: { "Content-Type": row.mime_type, "x-upsert": "true" } });
     // One row per deal and file type: a re-upload replaces the old one.
     await sb(`/rest/v1/deal_files?deal_id=eq.${encodeURIComponent(dealId)}&file_type=eq.${encodeURIComponent(fileType)}`, { method: "DELETE", prefer: "return=minimal" });
     await sb(`/rest/v1/deal_files`, { method: "POST", ...json([row]), prefer: "return=minimal" });
@@ -299,6 +304,10 @@ export async function putFile(dealId: string, fileType: string, fileName: string
   return row;
 }
 
+export async function putPitchDeck(dealId: string, fileName: string, mime: string, bytes: Uint8Array): Promise<FileRow> {
+  return putFile(dealId, "deck_pdf", fileName, mime, bytes, "pitch_decks");
+}
+
 export async function listFiles(dealId?: string): Promise<FileRow[]> {
   need();
   if (driver() === "supabase") return sbSelect<FileRow>("deal_files", dealId ? `deal_id=eq.${encodeURIComponent(dealId)}&select=*` : "select=*");
@@ -311,8 +320,13 @@ export async function getFile(dealId: string, fileType: string): Promise<{ row: 
   const row = (await listFiles(dealId)).find((f) => f.file_type === fileType);
   if (!row) return null;
   if (driver() === "supabase") {
-    const res = await sb(`/storage/v1/object/${BUCKET}/${row.storage_path}`);
-    return { row, bytes: new Uint8Array(await res.arrayBuffer()) };
+    try {
+      const res = await sb(`/storage/v1/object/${BUCKET}/${row.storage_path}`);
+      return { row, bytes: new Uint8Array(await res.arrayBuffer()) };
+    } catch {
+      const res = await sb(`/storage/v1/object/pitch_decks/${row.storage_path}`);
+      return { row, bytes: new Uint8Array(await res.arrayBuffer()) };
+    }
   }
   try {
     return { row, bytes: new Uint8Array(await fs.readFile(path.join(FILES_DIR, row.storage_path))) };

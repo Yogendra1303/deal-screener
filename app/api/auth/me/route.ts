@@ -4,5 +4,9 @@ import { auth, authEnabled } from "@/lib/nextauth";
 export async function GET() {
   if (!authEnabled()) return Response.json({ enabled: false, user: null, role: null });
   const s = await auth();
-  return Response.json({ enabled: true, user: s?.user ? { email: s.user.email, name: s.user.name } : null, role: s?.role ?? null });
+  return Response.json({
+    enabled: true,
+    user: s?.user ? { email: s.user.email, name: s.user.name, image: s.user.image ?? null } : null,
+    role: s?.role ?? null,
+  });
 }

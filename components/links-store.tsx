@@ -104,7 +104,32 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const inbound = useMemo(() => [...SEED_INBOUND.filter((x) => !local.inbound.some((i) => i.id === x.id)), ...local.inbound], [local.inbound]);
+  const [dbInbound, setDbInbound] = useState<Inbound[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/deals", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { deals?: Array<{ intake_json?: Inbound | null; record_json?: unknown }> } | null) => {
+        if (!alive || !data?.deals) return;
+        const fromDb = data.deals
+          .filter((d) => d.intake_json && !d.record_json)
+          .map((d) => d.intake_json as Inbound);
+        if (fromDb.length) setDbInbound(fromDb);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const inbound = useMemo(() => {
+    const map = new Map<string, Inbound>();
+    for (const x of SEED_INBOUND) map.set(x.id, x);
+    for (const x of dbInbound) map.set(x.id, x);
+    for (const x of local.inbound) map.set(x.id, x);
+    return [...map.values()].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+  }, [local.inbound, dbInbound]);
   const emails = useMemo(() => {
     const all: Record<string, EmailIn> = {};
     for (const e of SEED_EMAILS) all[e.id] = e;

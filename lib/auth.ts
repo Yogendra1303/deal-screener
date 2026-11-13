@@ -40,6 +40,7 @@ export interface Session {
   role: Role;
   email: string;
   userName?: string;
+  userImage?: string;
 }
 
 export function signInCheck(email: string, password: string): Session | string {

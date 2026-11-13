@@ -23,28 +23,55 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
     if (who && ANALYSTS.some((a) => slug(a.name) === who)) setTab(who);
   }, []);
 
-  if (w.role !== "Partner")
-    return (
-      <Card className="mx-auto max-w-lg p-6 text-center text-sm text-slate-600">
-        The Team page is for partners. <Link href="/" className="font-medium text-indigo-700">Back to my work</Link>
-      </Card>
-    );
-
   const picked = ANALYSTS.find((a) => slug(a.name) === tab);
+  const currentUserName = w.userName || w.me || "Fund Member";
+  const pinnedTitle = w.role === "Partner" ? "Primary Partner" : "Lead Analyst";
+  const remainingAnalysts = ANALYSTS.filter((a) => a.name.toLowerCase() !== currentUserName.toLowerCase());
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Team</h1>
         <p className="mt-1 text-sm text-slate-600">
           What each analyst is carrying, worked out from the records: questions they owe you, reports they haven&apos;t read, founders
           they need to chase, and numbers still in conflict. Open an analyst to see exactly what they see.
         </p>
       </div>
+
+      {/* Pinned active Google-authenticated user */}
+      <Card className="border-blue-200/80 bg-gradient-to-r from-blue-50/50 via-white to-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <Avatar name={currentUserName} size="md" image={w.userImage} />
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-semibold text-slate-900">{currentUserName}</h2>
+                <span className="inline-flex items-center rounded-sm bg-blue-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-800">
+                  {pinnedTitle}
+                </span>
+                <span className="inline-flex items-center rounded-sm bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                  Active Session
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {w.userEmail || "Authenticated workspace member"} · {w.role === "Partner" ? "Full fund pipeline, IC decisions & >10% math-gap audit" : "Assigned screening queue, deck verification & founder follow-ups"}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/deals"
+            className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+          >
+            Open pipeline →
+          </Link>
+        </div>
+      </Card>
+
       <Tabs
         label="Analysts"
         value={tab}
         onChange={setTab}
-        tabs={[{ key: "all", label: "Everyone" }, ...ANALYSTS.map((a) => ({ key: slug(a.name), label: a.name }))]}
+        tabs={[{ key: "all", label: "Everyone" }, ...remainingAnalysts.map((a) => ({ key: slug(a.name), label: a.name }))]}
       />
       {picked ? (
         <div className="space-y-4">
@@ -55,10 +82,13 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
           <AskedFounders who={picked.name} />
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {ANALYSTS.map((a) => (
-            <AnalystCard key={a.name} name={a.name} onOpen={() => setTab(slug(a.name))} />
-          ))}
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Team members</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {remainingAnalysts.map((a) => (
+              <AnalystCard key={a.name} name={a.name} onOpen={() => setTab(slug(a.name))} />
+            ))}
+          </div>
         </div>
       )}
     </div>
