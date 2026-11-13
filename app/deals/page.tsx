@@ -147,15 +147,13 @@ export default function DealsPage() {
             })}
           </div>
           <PitchLinkButton refSlug={analyst ? slugOf(w.me) : undefined} />
-          {analyst && (
-            <Link
-              href="/new"
-              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-              title="Add a pitch for the AI to read"
-            >
-              Add for AI reading
-            </Link>
-          )}
+          <Link
+            href="/new"
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+            title="Add a pitch for the AI to read"
+          >
+            Add for AI reading
+          </Link>
           <Link
             href="/upload"
             className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium leading-tight text-white shadow-sm transition-colors hover:bg-blue-700"

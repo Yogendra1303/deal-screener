@@ -79,17 +79,6 @@ export default function NewDealPage() {
     }
   }
 
-  if (w.ready && w.role === "Partner")
-    return (
-      <Card className="mx-auto max-w-lg space-y-2 p-8 text-center text-sm text-slate-600">
-        <p className="font-medium text-slate-900">Analysts add pitches.</p>
-        <p>Pitches reach you from founders&apos; links and from the team. You see all of them under Pitches.</p>
-        <Link href="/deals" className="inline-block pt-1 font-medium text-indigo-700 hover:text-indigo-900">
-          ← Pitches
-        </Link>
-      </Card>
-    );
-
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
