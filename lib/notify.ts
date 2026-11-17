@@ -19,7 +19,6 @@ const ALERT_FROM = process.env.RESEND_FROM ?? "Yogendra Kapkoti · Aarka <onboar
 function buildFounderThankYouEmail(actorEmail: string, details: LogDetails): { subject: string; text: string; html: string } {
   const company = String(details.companyName ?? "your company");
   const founder = String(details.name ?? "Founder");
-  const firstName = founder.split(/\s+/)[0] || founder;
   const stage = String(details.stage ?? "Seed");
   const sector = String(details.sector ?? "Technology");
   const amount =
@@ -29,11 +28,11 @@ function buildFounderThankYouEmail(actorEmail: string, details: LogDetails): { s
         ? `$${String(details.amountUsd)}`
         : "Not specified";
 
-  const subject = `Thank you for your submission to Aarka — ${company}`;
+  const subject = "Thank you for your submission to Aarka";
   const text = [
-    `Hi ${firstName},`,
+    `Hi ${founder},`,
     "",
-    `Thank you for your submission to Aarka. We have received your pitch deck and company details for ${company} (${stage} · ${sector} · Ask: ${amount}).`,
+    `Thank you for your submission, ${founder}. We have received your pitch deck and company details for ${company} (${stage} · ${sector} · Ask: ${amount}).`,
     "",
     `Your submission is now logged in our live investment review queue. Our team reviews every deck and verifies core metrics directly against your materials. If we need any additional information, we will reach out to you at ${actorEmail}.`,
     "",
@@ -48,7 +47,7 @@ function buildFounderThankYouEmail(actorEmail: string, details: LogDetails): { s
   <body style="margin:0;padding:24px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;">
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;">
       <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#2563eb;">Aarka · Investment Team</div>
-      <h1 style="margin:10px 0 0;font-size:20px;font-weight:600;color:#0f172a;">Thank you for your submission, ${escapeHtml(firstName)}</h1>
+      <h1 style="margin:10px 0 0;font-size:20px;font-weight:600;color:#0f172a;">Thank you for your submission, ${escapeHtml(founder)}</h1>
       <p style="margin:14px 0 0;font-size:14px;line-height:1.6;color:#334155;">
         We have received the pitch deck and company details for <strong>${escapeHtml(company)}</strong> and logged your record into our live investment review queue.
       </p>
@@ -142,43 +141,53 @@ async function sendAlertEmail(eventType: AuditEventType, actorEmail: string, det
   const resend = new Resend(apiKey);
   const { subject, text, html } = buildEmail(eventType, actorEmail, details);
 
-  const tasks: Promise<unknown>[] = [
-    resend.emails.send({
-      from: ALERT_FROM,
-      to: ALERT_TO,
-      replyTo: eventType === "FOUNDER_SUBMIT" ? actorEmail : SENDER_EMAIL,
-      subject,
-      text,
-      html,
-    }),
-  ];
+  const tasks: Promise<unknown>[] = [];
 
-  // Whenever a founder submits a pitch, send them a personalized Thank-You email with reply-to yogendrakapkoti13@gmail.com
-  // and also send a confirmation copy to yogendrakapkoti13@gmail.com.
   if (eventType === "FOUNDER_SUBMIT" && actorEmail && actorEmail.includes("@")) {
+    // 1. Send clean confirmation receipt directly to the founder, BCC'd to yogendrakapkoti13@gmail.com
     const thankYou = buildFounderThankYouEmail(actorEmail, details);
+    const partnerBcc = actorEmail.toLowerCase() !== SENDER_EMAIL.toLowerCase() ? [SENDER_EMAIL] : undefined;
+    tasks.push(
+      resend.emails
+        .send({
+          from: ALERT_FROM,
+          to: actorEmail,
+          bcc: partnerBcc,
+          replyTo: SENDER_EMAIL,
+          subject: thankYou.subject,
+          text: thankYou.text,
+          html: thankYou.html,
+        })
+        .then((res) => {
+          if (res.error) {
+            console.error("[notify][founder-thank-you] Resend error:", res.error);
+          }
+          return res;
+        }),
+    );
+
+    // 2. Send concise operational pitch alert to the fund partner
     tasks.push(
       resend.emails.send({
         from: ALERT_FROM,
-        to: actorEmail,
-        replyTo: SENDER_EMAIL,
-        subject: thankYou.subject,
-        text: thankYou.text,
-        html: thankYou.html,
+        to: ALERT_TO,
+        replyTo: actorEmail,
+        subject,
+        text,
+        html,
       }),
     );
-    if (actorEmail.toLowerCase() !== ALERT_TO.toLowerCase()) {
-      tasks.push(
-        resend.emails.send({
-          from: ALERT_FROM,
-          to: ALERT_TO,
-          replyTo: actorEmail,
-          subject: `[Sent to ${actorEmail}] ${thankYou.subject}`,
-          text: thankYou.text,
-          html: thankYou.html,
-        }),
-      );
-    }
+  } else {
+    tasks.push(
+      resend.emails.send({
+        from: ALERT_FROM,
+        to: ALERT_TO,
+        replyTo: SENDER_EMAIL,
+        subject,
+        text,
+        html,
+      }),
+    );
   }
 
   await Promise.allSettled(tasks);
