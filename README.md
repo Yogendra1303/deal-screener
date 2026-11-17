@@ -89,7 +89,7 @@ You need Node.js 20.12 or newer and an Anthropic API key.
 npm install
 cp .env.example .env.local      # then put your key in .env.local
 npm test                        # checks the maths, rules and health score, no AI calls, free
-npm run dev                     # open http://localhost:3000 (or: npm run dev -- -p 3100)
+npm run dev                     # live at https://aarkavc.xyz (or locally with: npm run dev -- -p 3100)
 ```
 
 Set a monthly spend limit on your key in the Anthropic Console before you start.
