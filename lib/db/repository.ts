@@ -498,3 +498,32 @@ export async function listFounderDeals(email: string): Promise<FounderPitchSumma
     status: mapFounderStatus(d.status),
   }));
 }
+
+export interface AuditLogRow {
+  id?: string;
+  created_at?: string;
+  event_type: string;
+  actor_email: string;
+  details: Record<string, unknown>;
+}
+
+/** Inserts an audit log row into public.audit_logs (no-ops cleanly when db driver is none). */
+export async function insertAuditLog(eventType: string, actorEmail: string, details: Record<string, unknown>): Promise<void> {
+  const drv = driver();
+  if (drv === "none") return;
+  const row: AuditLogRow = {
+    event_type: eventType,
+    actor_email: actorEmail.trim().toLowerCase(),
+    details,
+  };
+  if (drv === "supabase") {
+    await sb("/rest/v1/audit_logs", { method: "POST", ...json([row]), prefer: "return=minimal" });
+    return;
+  }
+  await withDb((db) => {
+    const store = db as unknown as { audit_logs?: AuditLogRow[] };
+    if (!store.audit_logs) store.audit_logs = [];
+    store.audit_logs.unshift({ id: uuid(), created_at: now(), ...row });
+    store.audit_logs = store.audit_logs.slice(0, 500);
+  });
+}

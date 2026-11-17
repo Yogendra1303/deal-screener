@@ -126,6 +126,17 @@ create table if not exists public.users (
 );
 alter table public.users enable row level security;
 
+-- Permanent audit trail for logins and pitch submissions.
+create table if not exists public.audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  event_type text not null,
+  actor_email text not null,
+  details jsonb
+);
+create index if not exists audit_logs_created_idx on public.audit_logs (created_at desc);
+alter table public.audit_logs enable row level security;
+
 -- Who may sign in with Google, and as what. The server checks the Google email against this table on every sign-in.
 -- Add people with:  insert into public.permitted_users (email, name, role) values ('you@fund.com', 'Your Name', 'partner');
 create table if not exists public.permitted_users (

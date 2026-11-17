@@ -4,6 +4,7 @@ import NextAuth from "next-auth";
 import "next-auth/jwt";
 import Google from "next-auth/providers/google";
 import { getPermittedUser, upsertUser, type AppRole, type UserRole } from "./db/repository";
+import { logAndNotify } from "./notify";
 
 export type AuthRole = UserRole; // "VC" | "FOUNDER"
 
@@ -69,6 +70,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await upsertUser({ email, name, avatar, role });
       } catch (err) {
         console.error("[auth][upsertUser]", err);
+      }
+      const displayName = name || email;
+      if (role === "VC") {
+        void logAndNotify("VC_LOGIN", email, {
+          name: displayName,
+          role,
+          subject: `👀 VC LOGIN: ${displayName}`,
+          message: `${email} just accessed the VC dashboard.`,
+        });
+      } else {
+        void logAndNotify("FOUNDER_LOGIN", email, {
+          name: displayName,
+          role,
+          subject: `👋 FOUNDER LOGIN: ${displayName}`,
+          message: `${email} accessed the founder portal.`,
+        });
       }
       return true;
     },

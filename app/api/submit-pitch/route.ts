@@ -3,6 +3,7 @@ import { after, NextResponse } from "next/server";
 import { hasKey } from "@/lib/ai";
 import { STATE_KEYS } from "@/lib/db/project";
 import { driver, getState, mergeDeals, patchDeal, putFinancialFile, putPitchDeck, putState } from "@/lib/db/repository";
+import { logAndNotify } from "@/lib/notify";
 import { processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
 import type { DealResult, Flag, FormInput, SheetRow } from "@/lib/types";
@@ -231,6 +232,20 @@ export async function POST(req: Request) {
         await runExtraction();
       }
     }
+
+    after(() =>
+      logAndNotify("FOUNDER_SUBMIT", founderEmail, {
+        name: founderName,
+        companyName,
+        stage,
+        amountUsd: askAmount,
+        sector,
+        location: location || undefined,
+        dealId: id,
+        subject: `🚀 NEW PITCH: ${companyName}`,
+        message: `${founderName} just submitted a ${stage} pitch asking for $${askAmount.toLocaleString("en-US")}.`,
+      }),
+    );
 
     revalidatePath("/deals");
     revalidatePath("/");
