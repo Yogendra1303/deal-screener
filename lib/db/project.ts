@@ -67,7 +67,7 @@ export function baseRow(id: string): Partial_ {
   return { id, slug: id, company_name: id, is_historical: false };
 }
 
-function rowFromDeal(d: DealResult): Partial_ {
+export function rowFromDeal(d: DealResult): Partial_ {
   return {
     id: d.id,
     slug: d.id,

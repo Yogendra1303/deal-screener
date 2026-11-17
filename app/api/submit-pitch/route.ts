@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { after, NextResponse } from "next/server";
 import { hasKey } from "@/lib/ai";
+import { summariseSheet } from "@/lib/csv-parser";
 import { STATE_KEYS } from "@/lib/db/project";
 import {
   driver,
@@ -14,7 +15,7 @@ import {
   recordUploadedFile,
 } from "@/lib/db/repository";
 import { logAndNotify } from "@/lib/notify";
-import { processDeal } from "@/lib/pipeline";
+import { finishDeal, processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
 import type { DealResult, Flag, FormInput, SheetRow } from "@/lib/types";
 import { checkUpload } from "@/lib/upload";
@@ -330,9 +331,22 @@ export async function POST(req: Request) {
             await putState(STATE_KEYS.deals, { ...existingDeals, [id]: deal });
           } else {
             // Deterministic code checks when ANTHROPIC_API_KEY is not configured
+            const sheetSum = sheet && sheet.length ? summariseSheet(sheet) : null;
+            const gold = {
+              mrr: sheetSum?.mrr != null ? { amount: sheetSum.mrr, currency: sheetSum.currency || "USD" } : null,
+              arr: sheetSum?.impliedArr != null ? { amount: sheetSum.impliedArr, currency: sheetSum.currency || "USD" } : null,
+              growth: sheetSum?.avgGrowthPct ?? null,
+              customers: sheetSum?.customers ?? null,
+              team: sheetSum?.headcount ?? null,
+              burn: sheetSum?.burn != null ? { amount: sheetSum.burn, currency: sheetSum.currency || "USD" } : null,
+              cash: sheetSum?.cash != null ? { amount: sheetSum.cash, currency: sheetSum.currency || "USD" } : null,
+              runway: sheetSum?.runwayMonths ?? null,
+              round: askAmount,
+              founded: null,
+            };
             const preview = checkUpload(form, {
-              gold: { mrr: null, arr: null, growth: null, customers: null, team: null, burn: null, cash: null, runway: null, round: askAmount, founded: null },
-              asOf: null,
+              gold,
+              asOf: sheetSum?.to || null,
               sub: sector,
               city: city ?? "",
               founders: [],
@@ -341,12 +355,53 @@ export async function POST(req: Request) {
               deckFile: deckFileName,
               by: "System",
             });
+
+            const dealObj = finishDeal({
+              id,
+              source: "upload",
+              receivedAt,
+              form,
+              fileName: deckFileName,
+              deckUrl: fileUrl,
+              record: preview.record,
+              sheet,
+              registry: null,
+              profiles: [],
+              flags: preview.flags,
+              assessment: {
+                summary: oneLinePitch || `${companyName} (${sector}, ${stage}) submitted for review.`,
+                founderChecks: [],
+                traction: {
+                  level: sheetSum?.mrr ? "Mixed" : "Weak",
+                  reason: sheetSum?.mrr ? `Monthly revenue of $${sheetSum.mrr.toLocaleString()} reported in financials.` : "Early stage metrics without revenue history.",
+                  evidence: sheetSum?.mrr ? [`Latest MRR: $${sheetSum.mrr.toLocaleString()}`, `Average growth: ${sheetSum.avgGrowthPct ?? 0}%`] : ["No revenue history in submission."],
+                },
+                team: {
+                  level: "Mixed",
+                  reason: `${founderName} (${linkedinUrl || "LinkedIn profile submitted"})`,
+                  evidence: [`Founder: ${founderName}`],
+                },
+                strengths: [hasFin ? "Financial spreadsheet provided" : "Pitch deck attached"],
+                concerns: preview.flags.filter((f) => f.kind === "conflict").map((f) => f.title),
+                founderQuestions: [],
+              },
+              model: "deterministic-v2",
+              runLog: [{ step: "Deterministic financial parsing & math checks", ms: 45 }],
+            });
+
+            const checksSummary = summarizeChecks(dealObj.flags);
             await patchDeal(id, {
-              checks_json: preview.flags,
-              checks_status: summarizeChecks(preview.flags),
-              summary: oneLinePitch || `${companyName} (${sector}, ${stage}) submitted for review.`,
+              record_json: dealObj,
+              checks_json: dealObj.flags,
+              checks_status: checksSummary,
+              band: dealObj.band,
+              founder_fit: dealObj.scores.find((s) => s.key === "team")?.level ?? "Mixed",
+              summary: dealObj.ai.summary,
               ai_status: "Complete",
             });
+
+            const existingDeals = (await getState<Record<string, DealResult>>(STATE_KEYS.deals)) ?? {};
+            await putState(STATE_KEYS.deals, { ...existingDeals, [id]: dealObj });
           }
         } catch (err) {
           console.error("[submit-pitch][ai]", err);

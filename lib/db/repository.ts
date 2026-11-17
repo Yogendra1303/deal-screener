@@ -257,7 +257,16 @@ export async function mergeDeals(rows: (Partial<DealRow> & { id: string })[]): P
     const ids = stamped.map((r) => r.id);
     const have = new Set((await sbSelect<{ id: string }>("deals", `id=in.(${ids.map((i) => `"${i.replace(/"/g, "")}"`).join(",")})&select=id`)).map((r) => r.id));
     const fresh = stamped.filter((r) => !have.has(r.id)).map((r) => ({ company_name: r.id, is_historical: false, ...r }));
-    if (fresh.length) await sb(`/rest/v1/deals`, { method: "POST", ...json(fresh), prefer: "return=minimal" });
+    if (fresh.length) {
+      // PostgREST requires identical keys across all objects in a bulk POST array
+      const allKeys = Array.from(new Set(fresh.flatMap((obj) => Object.keys(obj))));
+      const normalizedFresh = fresh.map((obj) => {
+        const norm: Record<string, unknown> = {};
+        for (const k of allKeys) norm[k] = (obj as Record<string, unknown>)[k] ?? null;
+        return norm;
+      });
+      await sb(`/rest/v1/deals`, { method: "POST", ...json(normalizedFresh), prefer: "return=minimal" });
+    }
     for (const r of stamped.filter((x) => have.has(x.id))) {
       const { id, ...patch } = r;
       await sb(`/rest/v1/deals?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", ...json(patch), prefer: "return=minimal" });
@@ -456,6 +465,14 @@ export async function getPermittedUser(email: string): Promise<PermittedUser | n
   if (list(process.env.FUNDHUB_PARTNERS).includes(e)) return { email: e, name: null, role: "partner", active: true };
   if (list(process.env.FUNDHUB_ANALYSTS).includes(e)) return { email: e, name: null, role: "analyst", active: true };
   return null;
+}
+
+export async function upsertPermittedUsers(users: PermittedUser[]): Promise<void> {
+  need();
+  if (driver() === "supabase") {
+    await sbUpsert("permitted_users", users, "email");
+    return;
+  }
 }
 
 export type UserRole = "VC" | "FOUNDER";
