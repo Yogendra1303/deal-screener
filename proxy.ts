@@ -1,98 +1,89 @@
-// Strict server-side RBAC gate: prevents UI flickering and blocks FOUNDERs from internal VC routes.
+// Strict Default-Deny Route Proxy (Next.js 16 middleware convention).
+// ONLY the landing page (/), pitch submission form (/pitch), auth/pending pages,
+// tokenized founder pitch links, and explicitly required public APIs are accessible without VC auth.
+// Every other internal route (e.g. /dashboard, /pipeline, /deals, /portfolio, /team, etc.) is DENIED by default.
 import { NextResponse } from "next/server";
 import { auth, authEnabled } from "@/lib/nextauth";
 
-const VC_PREFIXES = [
-  "/deals",
-  "/portfolio",
-  "/sectors",
-  "/market",
-  "/team",
-  "/dataroom",
-  "/compare",
-  "/new",
-  "/upload",
-  "/rules",
-  "/workspace",
-  "/method",
-  "/sources",
-  "/resources",
-  "/results",
-];
+function isPublicPage(pathname: string, hasPitchToken: boolean): boolean {
+  if (pathname === "/") return true;
+  if (pathname === "/pitch" || pathname.startsWith("/pitch/")) return true;
+  if (pathname === "/founder/pitch") return true; // redirects cleanly to /pitch
+  if (pathname === "/login" || pathname === "/pending" || pathname === "/unauthorized") return true;
+  // Token-gated founder pitch status / data room (backend enforces cryptographic HMAC token check per dealId)
+  if (pathname.startsWith("/founder/dataroom/") && hasPitchToken) return true;
+  if (pathname === "/founder/dataroom" && hasPitchToken) return true;
+  return false;
+}
 
-function isVcRoute(pathname: string): boolean {
-  return VC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+function isPublicApi(pathname: string, method: string, hasPitchToken: boolean): boolean {
+  // NextAuth OAuth callbacks & session endpoints
+  if (pathname.startsWith("/api/auth/")) return true;
+  // Public founder pitch submission & signed upload URL
+  if (pathname === "/api/submit-pitch" || pathname === "/api/pitch" || pathname === "/api/upload-url") return true;
+  // Public Invite-Only access request submission (POST only; GET stays locked to VC)
+  if (pathname === "/api/access-request" && method === "POST") return true;
+  // Client error telemetry ingestion (POST only; GET stays locked to VC)
+  if (pathname === "/api/errors" && method === "POST") return true;
+  // Minimal non-sensitive health probe
+  if (pathname === "/api/health" && method === "GET") return true;
+  // Token-authenticated founder pitch tracking & data room endpoints (strict HMAC verified inside each handler)
+  if (
+    hasPitchToken &&
+    (pathname === "/api/founder/dataroom" ||
+      pathname === "/api/founder/file" ||
+      pathname === "/api/founder/upload" ||
+      pathname === "/api/founder/metrics")
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export default auth((req) => {
   if (!authEnabled()) return NextResponse.next();
 
-  const { pathname } = req.nextUrl;
+  const { pathname, searchParams } = req.nextUrl;
+  const method = req.method.toUpperCase();
+  const hasPitchToken = Boolean(searchParams.get("token")?.trim() || req.headers.get("x-pitch-token")?.trim());
   const user = req.auth?.user ?? null;
   const role = req.auth?.role ?? null;
+  const isApprovedVc = Boolean(user && role === "VC");
 
-  // Public founder intake & token-based request links stay open; /founder and /founder/dataroom require sign-in.
-  if (
-    pathname.startsWith("/pitch") ||
-    pathname.startsWith("/founder/request") ||
-    pathname.startsWith("/founder/pitch")
-  ) {
-    return NextResponse.next();
+  // 1. API Routes — Default Deny (401 JSON) unless explicitly public or approved VC
+  if (pathname.startsWith("/api/")) {
+    if (isApprovedVc) return NextResponse.next();
+    if (isPublicApi(pathname, method, hasPitchToken)) return NextResponse.next();
+    // Allow signed-in founders on /api/founder/* (handlers still enforce strict row-level ownership)
+    if (user && pathname.startsWith("/api/founder/")) return NextResponse.next();
+    return NextResponse.json({ error: user ? "Forbidden" : "Unauthorized" }, { status: user ? 403 : 401 });
   }
 
-  // Signed-in FOUNDER: lock to /founder (redirect away from /, /login, and all VC routes).
-  if (user && role === "FOUNDER") {
-    if (pathname === "/" || pathname.startsWith("/login") || isVcRoute(pathname)) {
-      return NextResponse.redirect(new URL("/founder", req.nextUrl.origin));
-    }
-    return NextResponse.next();
-  }
-
-  // Signed-in VC: redirect /login straight to /, allow all VC routes.
-  if (user && role === "VC") {
-    if (pathname.startsWith("/login")) {
+  // 2. Approved VC Partner — full workspace access; redirect /login and /pending straight to /
+  if (isApprovedVc) {
+    if (pathname === "/login" || pathname === "/pending" || pathname === "/unauthorized") {
       return NextResponse.redirect(new URL("/", req.nextUrl.origin));
     }
     return NextResponse.next();
   }
 
-  // Unauthenticated visitor: / and /welcome and /login stay accessible.
-  if (pathname === "/" || pathname.startsWith("/welcome") || pathname.startsWith("/login")) {
+  // 3. Public Pages — explicitly allowlisted only
+  if (isPublicPage(pathname, hasPitchToken)) {
     return NextResponse.next();
   }
 
-  if (
-    isVcRoute(pathname) ||
-    pathname === "/founder" ||
-    pathname.startsWith("/founder/home") ||
-    pathname.startsWith("/founder/dataroom")
-  ) {
-    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  // 4. Signed-in non-VC user trying any internal route -> /pending
+  if (user) {
+    return NextResponse.redirect(new URL("/pending", req.nextUrl.origin));
   }
 
-  return NextResponse.next();
+  // 5. Default Deny — unauthenticated visitor hitting ANY internal route (/dashboard, /pipeline, /deals, /portfolio, /team, etc.) -> homepage (/)
+  return NextResponse.redirect(new URL("/", req.nextUrl.origin));
 });
 
 export const config = {
+  // Catch-all default-deny matcher excluding only static build/public assets
   matcher: [
-    "/",
-    "/login",
-    "/founder",
-    "/founder/:path*",
-    "/deals/:path*",
-    "/portfolio/:path*",
-    "/sectors/:path*",
-    "/market/:path*",
-    "/team/:path*",
-    "/dataroom/:path*",
-    "/compare/:path*",
-    "/new/:path*",
-    "/upload/:path*",
-    "/rules/:path*",
-    "/workspace/:path*",
-    "/method/:path*",
-    "/sources/:path*",
-    "/resources/:path*",
-    "/results/:path*",
+    "/((?!_next/static|_next/image|favicon\\.ico|icon\\.png|logo\\.png|aarka-logo\\.png|aarka-social-logo\\.png|og-card\\.png|og-image\\.png|images/|samples/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)",
   ],
 };

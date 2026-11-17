@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { cx } from "@/components/ui";
 
 interface FounderPitch {
@@ -140,10 +140,14 @@ function getPipelineSteps(status: string) {
 
 function FounderDataRoomContent() {
   const router = useRouter();
+  const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
-  const requestedId = searchParams.get("id") || "";
+  const routeId = typeof params?.id === "string" ? params.id : "";
+  const requestedId = routeId || searchParams.get("id") || "";
+  const token = searchParams.get("token")?.trim() || "";
 
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DataRoomResponse | null>(null);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
@@ -159,11 +163,19 @@ function FounderDataRoomContent() {
   const loadDataRoom = useCallback(async (id?: string) => {
     setLoading(true);
     setError(null);
+    setAccessDenied(null);
     try {
-      const qs = id ? `?id=${encodeURIComponent(id)}` : "";
-      const res = await fetch(`/api/founder/dataroom${qs}`, { cache: "no-store" });
-      if (res.status === 401) {
-        router.replace("/login");
+      const qs = new URLSearchParams();
+      if (id) qs.set("id", id);
+      if (token) qs.set("token", token);
+      const res = await fetch(`/api/founder/dataroom${qs.toString() ? `?${qs.toString()}` : ""}`, {
+        cache: "no-store",
+        headers: token ? { "x-pitch-token": token } : undefined,
+      });
+      if (res.status === 401 || res.status === 403) {
+        const errJson = (await res.json().catch(() => null)) as { error?: string } | null;
+        setAccessDenied(errJson?.error || "Access denied. This pitch link is invalid or does not belong to this submission.");
+        setData(null);
         return;
       }
       const json = (await res.json()) as DataRoomResponse;
@@ -181,7 +193,7 @@ function FounderDataRoomContent() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [token]);
 
   useEffect(() => {
     void loadDataRoom(requestedId || undefined);
@@ -205,9 +217,14 @@ function FounderDataRoomContent() {
     fd.append("file", file);
     fd.append("dealId", selected.id);
     fd.append("category", uploadCategory);
+    if (token) fd.append("token", token);
 
     try {
-      const res = await fetch("/api/founder/upload", { method: "POST", body: fd });
+      const res = await fetch("/api/founder/upload", {
+        method: "POST",
+        headers: token ? { "x-pitch-token": token } : undefined,
+        body: fd,
+      });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "Upload failed");
@@ -231,9 +248,13 @@ function FounderDataRoomContent() {
     try {
       const res = await fetch("/api/founder/metrics", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "x-pitch-token": token } : {}),
+        },
         body: JSON.stringify({
           dealId: selected.id,
+          token: token || undefined,
           mrr,
           cash,
           burn,
@@ -256,6 +277,37 @@ function FounderDataRoomContent() {
     return (
       <div className="min-h-screen bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">
         Loading your data room…
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-12 sm:px-6">
+        <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <h1 className="mt-4 text-lg font-semibold text-slate-900">Access Restricted</h1>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600">{accessDenied}</p>
+          <div className="mt-6 flex flex-col gap-2.5">
+            <Link
+              href="/pitch"
+              className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-4 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              Submit a Pitch Deck →
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              ← Back to Home
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -342,10 +394,10 @@ function FounderDataRoomContent() {
               </select>
             )}
             <Link
-              href="/founder"
+              href={token ? "/" : "/founder"}
               className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              ← Your Pitches
+              {token ? "← Aarka Home" : "← Your Pitches"}
             </Link>
             <span className="inline-flex h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800">
               <span className="h-2 w-2 rounded-full bg-blue-600" />

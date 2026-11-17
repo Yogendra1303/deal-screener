@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { driver, getDeal, getState, patchDeal, putState } from "@/lib/db/repository";
-import { auth, authEnabled, requireRole } from "@/lib/nextauth";
+import { driver, getState, patchDeal, putState } from "@/lib/db/repository";
+import { authorizeFounderDealAccess } from "@/lib/founder-token";
 import { calculateVCMetrics } from "@/lib/vc-metrics";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 
@@ -13,36 +13,15 @@ interface SavedFounderMetrics {
 }
 
 export async function POST(req: NextRequest) {
-  const gate = await requireRole(["VC", "FOUNDER", "analyst", "partner"]);
-  if (!gate.ok) return NextResponse.json({ error: "Unauthorized" }, { status: gate.status });
-
   try {
     const body = await req.json().catch(() => ({}));
     const dealId = String(body.dealId || "").trim();
-    if (!dealId) {
-      return NextResponse.json({ error: "Missing dealId" }, { status: 400 });
-    }
+    const token = String(body.token || req.headers.get("x-pitch-token") || "").trim();
 
-    const currentDeal = await getDeal(dealId);
-    if (!currentDeal) {
-      return NextResponse.json({ error: "Pitch record not found." }, { status: 404 });
-    }
-
-    // Strict founder ownership check
-    if (authEnabled()) {
-      const session = await auth();
-      const email = session?.user?.email?.trim().toLowerCase();
-      const isVc = session?.role === "VC";
-      const ownerEmail = (
-        currentDeal.founder_email ||
-        (currentDeal.intake_json as { form?: { email?: string } } | null)?.form?.email ||
-        ""
-      )
-        .trim()
-        .toLowerCase();
-      if (!isVc && (!email || ownerEmail !== email)) {
-        return NextResponse.json({ error: "You can only update metrics for your own submission." }, { status: 403 });
-      }
+    // Strict row-level authorization: valid deal-scoped HMAC token OR verified owner/VC session
+    const gate = await authorizeFounderDealAccess(dealId, token);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
     const mrrStr = String(body.mrr ?? "").trim();
@@ -67,7 +46,7 @@ export async function POST(req: NextRequest) {
       },
     ];
 
-    const vc = calculateVCMetrics(sheetRows, null, currentDeal.ask_amount);
+    const vc = calculateVCMetrics(sheetRows, null, gate.deal.ask_amount);
     const updatedAt = new Date().toISOString();
 
     if (driver() !== "none") {
@@ -91,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     broadcastRealtimeEvent("metrics.updated", {
       dealId,
-      companyName: currentDeal.company_name || dealId,
+      companyName: gate.deal.company_name || dealId,
       vc_metrics: vc,
       updatedAt,
     });

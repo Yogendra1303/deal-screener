@@ -16,6 +16,7 @@ import {
 } from "@/lib/db/repository";
 import { logAndNotify } from "@/lib/notify";
 import { recordAndAlertError } from "@/lib/error-logger";
+import { createPitchToken } from "@/lib/founder-token";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 import { finishDeal, processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
@@ -471,6 +472,9 @@ export async function POST(req: Request) {
       }
     }
 
+    const trackingToken = createPitchToken(id, founderEmail);
+    const statusUrl = `/founder/dataroom/${encodeURIComponent(id)}?token=${encodeURIComponent(trackingToken)}`;
+
     await logAndNotify("FOUNDER_SUBMIT", founderEmail, {
       name: founderName,
       companyName,
@@ -480,6 +484,7 @@ export async function POST(req: Request) {
       location: location || undefined,
       dealId: id,
       receivedAt,
+      statusUrl: `https://www.aarkavc.xyz${statusUrl}`,
       subject: `🚀 NEW PITCH: ${companyName}`,
       message: `${founderName} (${founderEmail}) just submitted a ${stage} pitch for ${companyName} asking for $${askAmount.toLocaleString("en-US")}.`,
     });
@@ -507,8 +512,8 @@ export async function POST(req: Request) {
       ok: true,
       id,
       receivedAt,
-      intake,
-      thankYouFrom: "yogendrakapkoti13@gmail.com",
+      trackingToken,
+      statusUrl,
       aiStatus: hasKey() && drv !== "none" ? "Processing" : "Complete",
       persisted: drv === "none" ? "client" : drv,
       fileUrl,

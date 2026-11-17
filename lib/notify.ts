@@ -28,6 +28,7 @@ function buildFounderThankYouEmail(actorEmail: string, details: LogDetails): { s
         ? `$${String(details.amountUsd)}`
         : "Not specified";
 
+  const statusUrl = typeof details.statusUrl === "string" ? details.statusUrl : "";
   const subject = "Thank you for your submission to Aarka";
   const text = [
     `Hi ${founder},`,
@@ -35,6 +36,7 @@ function buildFounderThankYouEmail(actorEmail: string, details: LogDetails): { s
     `Thank you for your submission, ${founder}. We have received your pitch deck and company details for ${company} (${stage} · ${sector} · Ask: ${amount}).`,
     "",
     `Your submission is now logged in our live investment review queue. Our team reviews every deck and verifies core metrics directly against your materials. If we need any additional information, we will reach out to you at ${actorEmail}.`,
+    ...(statusUrl ? ["", `Track your private pitch status & data room: ${statusUrl}`] : []),
     "",
     "Warm regards,",
     "Yogendra Kapkoti",
@@ -58,6 +60,13 @@ function buildFounderThankYouEmail(actorEmail: string, details: LogDetails): { s
         <tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:12px;">Funding Ask</td><td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:500;">${escapeHtml(amount)}</td></tr>
         <tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:12px;">Status</td><td style="padding:6px 0;color:#059669;font-size:13px;font-weight:600;">Received · In Live Review Queue</td></tr>
       </table>
+      ${
+        statusUrl
+          ? `<div style="margin-top:18px;">
+              <a href="${escapeHtml(statusUrl)}" style="display:inline-block;background:#0f172a;color:#ffffff;padding:10px 18px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Track Status &amp; Private Data Room →</a>
+            </div>`
+          : ""
+      }
       <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#475569;">
         Our team reviews every submission and will follow up directly if we need additional context or financial sheets.
       </p>

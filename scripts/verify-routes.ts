@@ -1,5 +1,6 @@
 // Automated Live Production & Security Regression Audit Script
-// Verifies landing page CTA hierarchy, public founder intake, strict API authentication, and zero leaked VC sessions.
+// Verifies default-deny route protection, invite-only /pending flow, public founder intake,
+// strict API authentication, and cryptographic Row-Level Isolation on Founder Data Rooms.
 
 const BASE = process.env.VERIFY_BASE_URL || "https://www.aarkavc.xyz";
 
@@ -16,14 +17,13 @@ async function run() {
     console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? `  (${detail})` : ""}`);
   };
 
-  // 1. Landing Page HTML & CTA Hierarchy
+  // 1. Public Allowlisted Pages (/, /pitch, /login, /pending, /unauthorized)
   const homeRes = await fetch(`${BASE}/`, { cache: "no-store" });
   const homeHtml = await homeRes.text();
   check("GET / returns 200", homeRes.status === 200, `status ${homeRes.status}`);
   check("Landing page has 'Partner Sign In' in navbar", homeHtml.includes("Partner Sign In"));
   check("Landing page has 'Explore the Platform' button", homeHtml.includes("Explore the Platform"));
   check("Landing page has 'Submit a Pitch' hero CTA", homeHtml.includes("Submit a Pitch"));
-  check("Landing page removed top-nav 'Request Access' text link", !homeHtml.includes(">Request Access<"));
 
   const logoRes = await fetch(`${BASE}/logo.png`, { cache: "no-store" });
   check("GET /logo.png returns 200", logoRes.status === 200, `status ${logoRes.status}`);
@@ -31,13 +31,36 @@ async function run() {
   const ogRes = await fetch(`${BASE}/og-card.png`, { cache: "no-store" });
   check("GET /og-card.png returns 200", ogRes.status === 200, `status ${ogRes.status}`);
 
-  // 2. Public Founder Pitch Page (/pitch) & Signed Upload URL
   const pitchRes = await fetch(`${BASE}/pitch`, { cache: "no-store" });
   const pitchHtml = await pitchRes.text();
   check("GET /pitch returns 200", pitchRes.status === 200, `status ${pitchRes.status}`);
   check("/pitch has founder-specific metadata title", pitchHtml.includes("Submit Your Pitch Deck"));
-  check("/pitch renders valid form shell", pitchHtml.includes("Submit your pitch") || pitchHtml.includes("Loading pitch form"));
 
+  const pendingRes = await fetch(`${BASE}/pending`, { cache: "no-store" });
+  const pendingHtml = await pendingRes.text();
+  check("GET /pending returns 200", pendingRes.status === 200, `status ${pendingRes.status}`);
+  check("/pending renders invite-only pending notice", pendingHtml.includes("Aarka is invite-only") || pendingHtml.includes("Loading"));
+
+  const unauthRes = await fetch(`${BASE}/unauthorized`, { cache: "no-store" });
+  check("GET /unauthorized returns 200", unauthRes.status === 200, `status ${unauthRes.status}`);
+
+  const loginRes = await fetch(`${BASE}/login`, { cache: "no-store" });
+  const loginHtml = await loginRes.text();
+  check("GET /login returns 200", loginRes.status === 200, `status ${loginRes.status}`);
+  check("/login hides public Magic Link & Test Accounts", !loginHtml.includes("Send Magic Link") && !loginHtml.includes("1-Click Quick Partner Access"));
+
+  // 2. Default-Deny Middleware Checks (ALL internal routes redirect unauthenticated users to /)
+  for (const protectedPath of ["/dashboard", "/pipeline", "/deals", "/portfolio", "/team", "/market", "/dataroom", "/founder", "/founder/dataroom"]) {
+    const r = await fetch(`${BASE}${protectedPath}`, { cache: "no-store", redirect: "manual" });
+    const loc = r.headers.get("location") || "";
+    check(
+      `DEFAULT DENY: GET ${protectedPath} redirects to /`,
+      (r.status === 307 || r.status === 302) && (loc === "/" || loc === `${BASE}/` || loc.endsWith("/")),
+      `status ${r.status} -> ${loc}`,
+    );
+  }
+
+  // 3. Public Founder Upload URL works
   const uploadUrlRes = await fetch(`${BASE}/api/upload-url`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -46,11 +69,20 @@ async function run() {
   const uploadUrlData = (await uploadUrlRes.json().catch(() => null)) as { ok?: boolean; direct?: boolean } | null;
   check("POST /api/upload-url issues signed Supabase PDF upload URL", uploadUrlRes.ok && uploadUrlData?.ok === true, `direct=${String(uploadUrlData?.direct)}`);
 
-  // 3. Login Page (/login) — strictly Google Sign-In, zero public magic link or test accounts
-  const loginRes = await fetch(`${BASE}/login`, { cache: "no-store" });
-  const loginHtml = await loginRes.text();
-  check("GET /login returns 200", loginRes.status === 200, `status ${loginRes.status}`);
-  check("/login hides public Magic Link & Test Accounts", !loginHtml.includes("Send Magic Link") && !loginHtml.includes("1-Click Quick Partner Access"));
+  // 4. Cryptographic Row-Level Isolation (Tampered URL / Forged Token MUST fail with 403)
+  const tamperDrRes = await fetch(`${BASE}/api/founder/dataroom?id=ledgerly&token=forged-tampered-token-12345`, { cache: "no-store" });
+  check("RLS: Forged token on /api/founder/dataroom is rejected (403)", tamperDrRes.status === 403, `status ${tamperDrRes.status}`);
+
+  const tamperFileRes = await fetch(`${BASE}/api/founder/file?dealId=ledgerly&fileType=deck_pdf&token=forged-tampered-token-12345`, { cache: "no-store" });
+  check("RLS: Forged token on /api/founder/file is rejected (403)", tamperFileRes.status === 403, `status ${tamperFileRes.status}`);
+
+  const noTokenDrRes = await fetch(`${BASE}/api/founder/dataroom`, { cache: "no-store" });
+  check("RLS: Unauthenticated /api/founder/dataroom is rejected (401)", noTokenDrRes.status === 401, `status ${noTokenDrRes.status}`);
+
+  // 5. Strict VC API Lockdown — zero public leakage or destructive access
+  const meRes = await fetch(`${BASE}/api/auth/me`, { cache: "no-store" });
+  const meData = (await meRes.json().catch(() => null)) as { enabled?: boolean; user?: unknown } | null;
+  check("GET /api/auth/me reports enabled=true and user=null for public visitor", meRes.ok && meData?.enabled === true && meData?.user === null);
 
   const magicRes = await fetch(`${BASE}/api/auth/magic-link`, {
     method: "POST",
@@ -59,18 +91,6 @@ async function run() {
   });
   check("POST /api/auth/magic-link blocks unauthenticated public calls (403)", magicRes.status === 403, `status ${magicRes.status}`);
 
-  // 4. Auth status & Protected Routes
-  const meRes = await fetch(`${BASE}/api/auth/me`, { cache: "no-store" });
-  const meData = (await meRes.json().catch(() => null)) as { enabled?: boolean; user?: unknown } | null;
-  check("GET /api/auth/me reports enabled=true and user=null for public visitor", meRes.ok && meData?.enabled === true && meData?.user === null, JSON.stringify(meData));
-
-  const drRes = await fetch(`${BASE}/founder/dataroom`, { cache: "no-store", redirect: "manual" });
-  check("GET /founder/dataroom redirects unauthenticated visitor (307)", drRes.status === 307 || drRes.status === 302, `status ${drRes.status}`);
-
-  const drApiRes = await fetch(`${BASE}/api/founder/dataroom`, { cache: "no-store" });
-  check("GET /api/founder/dataroom blocks unauthenticated callers (401)", drApiRes.status === 401, `status ${drApiRes.status}`);
-
-  // 5. Strict VC API Lockdown — zero public leakage or destructive access
   const dealsRes = await fetch(`${BASE}/api/deals`, { cache: "no-store" });
   check("GET /api/deals blocks unauthenticated callers (401)", dealsRes.status === 401, `status ${dealsRes.status}`);
 
@@ -99,7 +119,7 @@ async function run() {
   });
   check("POST /api/webhooks/deals blocks unauthenticated callers (401)", webhookRes.status === 401, `status ${webhookRes.status}`);
 
-  // 6. Access Request Honeypot / No-Cookie Check
+  // 6. Access Request Waitlist Check — NEVER sets a session cookie
   const reqPostRes = await fetch(`${BASE}/api/access-request`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

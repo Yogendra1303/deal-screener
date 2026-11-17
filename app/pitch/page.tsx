@@ -79,7 +79,9 @@ function PitchForm() {
     founderEmail: string;
     companyName: string;
     receivedAt: string;
+    statusUrl?: string;
   } | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const parsedAsk = useMemo(() => parseAsk(askRaw), [askRaw]);
   const overMandate = parsedAsk !== null && parsedAsk > MAX_MANDATE_USD;
@@ -201,6 +203,7 @@ function PitchForm() {
         ok?: boolean;
         id?: string;
         receivedAt?: string;
+        statusUrl?: string;
         error?: string;
       } | null;
 
@@ -221,6 +224,7 @@ function PitchForm() {
         founderEmail: founderEmail.trim().toLowerCase(),
         companyName: companyName.trim(),
         receivedAt,
+        statusUrl: data.statusUrl,
       });
     } catch {
       setError("Network error while submitting your pitch. Please check your connection and try again.");
@@ -273,6 +277,36 @@ function PitchForm() {
             <span className="text-slate-300">·</span>
             <span className="font-medium text-slate-800">Status: Received</span>
           </div>
+
+          {submitted.statusUrl && (
+            <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/50 p-4 text-left">
+              <p className="text-xs font-semibold text-slate-900">Your Private Pitch Status &amp; Data Room Link</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                Bookmark this private link to check your review status, replace your deck, or upload optional financials anytime. It is cryptographically scoped only to your submission.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Link
+                  href={submitted.statusUrl}
+                  className="inline-flex h-8 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+                >
+                  Open Private Data Room →
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const full = `${window.location.origin}${submitted.statusUrl}`;
+                    void navigator.clipboard?.writeText(full);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2500);
+                  }}
+                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  {copiedLink ? "✓ Link Copied" : "Copy private link"}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3 border-t border-slate-100 pt-5">
             <Link
               href="/"

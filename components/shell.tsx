@@ -719,7 +719,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const w = useWorkspace();
   const [open, setOpen] = useState(false);
-  const isPublic = path.startsWith("/founder") || path.startsWith("/login") || path.startsWith("/pitch") || path.startsWith("/welcome");
+  const isPublic =
+    path.startsWith("/founder") ||
+    path.startsWith("/login") ||
+    path.startsWith("/pitch") ||
+    path.startsWith("/pending") ||
+    path.startsWith("/unauthorized") ||
+    path.startsWith("/welcome");
 
   // Everything except the home landing, login and founder pages needs a signed-in person.
   useEffect(() => {
@@ -733,7 +739,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (path === "/founder") return <main className="min-h-full">{children}</main>;
+  if (path === "/founder" || path.startsWith("/founder/dataroom")) return <main className="min-h-full">{children}</main>;
 
   if (path.startsWith("/founder"))
     return (
@@ -766,7 +772,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
     );
 
-  if (path.startsWith("/login") || path.startsWith("/pitch") || path.startsWith("/welcome") || (path === "/" && !w.session)) return <main className="min-h-full">{children}</main>;
+  if (
+    path.startsWith("/login") ||
+    path.startsWith("/pitch") ||
+    path.startsWith("/pending") ||
+    path.startsWith("/unauthorized") ||
+    path.startsWith("/welcome") ||
+    (path === "/" && !w.session)
+  )
+    return <main className="min-h-full">{children}</main>;
 
   if (!w.ready || !w.session)
     return (

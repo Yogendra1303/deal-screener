@@ -13,7 +13,7 @@ export interface AccessRequestItem {
   intent: string;
   additionalContext?: string;
   createdAt: string;
-  status: "pending" | "approved" | "invited";
+  status: "PENDING" | "APPROVED" | "INVITED" | "pending" | "approved" | "invited";
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       intent,
       additionalContext: additionalContext || undefined,
       createdAt: new Date().toISOString(),
-      status: "pending",
+      status: "PENDING",
     };
 
     // 1. Save to Supabase app_state (strictly pending manual approval — never grants workspace access)

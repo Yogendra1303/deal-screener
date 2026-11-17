@@ -1,35 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDeal, getFile } from "@/lib/db/repository";
-import { auth, authEnabled } from "@/lib/nextauth";
+import { getFile } from "@/lib/db/repository";
+import { authorizeFounderDealAccess } from "@/lib/founder-token";
 
-/** Allows a signed-in founder (or VC partner) to download ONLY files belonging to their own submitted deal. */
+/** Strictly row-isolated file download: requires valid HMAC token for dealId OR verified owner/VC session. */
 export async function GET(req: NextRequest) {
   const dealId = req.nextUrl.searchParams.get("dealId")?.trim() || "";
   const fileType = req.nextUrl.searchParams.get("fileType")?.trim() || "";
+  const token = req.nextUrl.searchParams.get("token")?.trim() || req.headers.get("x-pitch-token")?.trim() || "";
+
   if (!dealId || !fileType) {
     return NextResponse.json({ error: "Missing dealId or fileType." }, { status: 400 });
   }
 
-  if (authEnabled()) {
-    const session = await auth();
-    const email = session?.user?.email?.trim().toLowerCase();
-    if (!email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const isVc = session?.role === "VC";
-    if (!isVc) {
-      const deal = await getDeal(dealId);
-      const ownerEmail = (
-        deal?.founder_email ||
-        (deal?.intake_json as { form?: { email?: string } } | null)?.form?.email ||
-        ""
-      )
-        .trim()
-        .toLowerCase();
-      if (!deal || ownerEmail !== email) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
+  const gate = await authorizeFounderDealAccess(dealId, token);
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
   const hit = await getFile(dealId, fileType);
