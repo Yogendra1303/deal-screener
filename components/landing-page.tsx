@@ -4,6 +4,7 @@ import { signIn as nextAuthSignIn } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AccessRequestModal } from "./access-request-modal";
 
 interface LightboxAsset {
   src: string;
@@ -49,6 +50,7 @@ const WORKFLOW_STEPS = [
 export function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [SigningIn, setSigningIn] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [diligenceTab, setDiligenceTab] = useState<"audit" | "compare">("audit");
   const [marketTab, setMarketTab] = useState<"momentum" | "sector">("momentum");
   const [lightbox, setLightbox] = useState<LightboxAsset | null>(null);
@@ -135,15 +137,20 @@ export function LandingPage() {
             >
               Submit a Pitch
             </Link>
-            <span aria-hidden className="h-4 w-px bg-slate-200" />
             <button
               type="button"
-              onClick={handleSignIn}
-              disabled={SigningIn}
-              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-[13px] font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+              onClick={() => setIsInviteModalOpen(true)}
+              className="text-[13.5px] font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
             >
-              <span>{SigningIn ? "Connecting…" : "Sign In"}</span>
+              Request Access
             </button>
+            <span aria-hidden className="h-4 w-px bg-slate-200" />
+            <Link
+              href="/login"
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-[13px] font-medium text-white transition-colors hover:bg-slate-800"
+            >
+              Sign In
+            </Link>
           </div>
 
           <button
@@ -225,9 +232,12 @@ export function LandingPage() {
         <section className="border-b border-slate-200/80 bg-white pt-14 pb-16 sm:pt-20 sm:pb-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                INVESTMENT INTELLIGENCE PLATFORM
-              </p>
+              <div className="flex items-center justify-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-blue-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
+                  INVITE-ONLY INSTITUTIONAL PLATFORM
+                </span>
+              </div>
 
               <h1 className="mt-4 font-serif text-4xl font-normal tracking-[-0.02em] text-balance text-slate-950 sm:text-5xl lg:text-[52px] lg:leading-[1.08]">
                 See beyond the pitch.
@@ -244,9 +254,14 @@ export function LandingPage() {
               <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
                 <button
                   type="button"
-                  onClick={handleSignIn}
-                  disabled={SigningIn}
-                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-slate-900 px-5 text-[13.5px] font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+                  onClick={() => setIsInviteModalOpen(true)}
+                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-[13.5px] font-semibold text-white shadow-md shadow-blue-600/25 transition-all hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-600/35"
+                >
+                  <span>Explore the Platform →</span>
+                </button>
+                <Link
+                  href="/login"
+                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-slate-900 px-5 text-[13.5px] font-medium text-white transition-colors hover:bg-slate-800"
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden>
                     <path
@@ -266,21 +281,28 @@ export function LandingPage() {
                       d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"
                     />
                   </svg>
-                  <span>{SigningIn ? "Redirecting to Google…" : "Sign In"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection("workflow")}
+                  <span>Partner Sign In</span>
+                </Link>
+                <Link
+                  href="/pitch"
                   className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-5 text-[13.5px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
                 >
-                  Explore the Platform
-                </button>
+                  Submit a Pitch
+                </Link>
               </div>
 
               <p className="mx-auto mt-3.5 max-w-xl text-xs leading-relaxed text-slate-500">
-                <strong className="font-medium text-slate-700">Invite-only fund workspace:</strong> Authorised partners and analysts enter the investment dashboard; all other Google accounts are directed to the{" "}
+                <strong className="font-medium text-slate-700">Invite-only fund workspace:</strong> Verified fund partners and analysts enter with credentials. If you are exploring for a fund, click{" "}
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(true)}
+                  className="font-medium text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-800 cursor-pointer"
+                >
+                  Explore the Platform
+                </button>{" "}
+                to request trial access. Founders submit decks via{" "}
                 <Link href="/pitch" className="font-medium text-slate-800 underline decoration-slate-300 underline-offset-4 hover:text-slate-950">
-                  Founder Pitch Form
+                  Pitch Form
                 </Link>
                 .
               </p>
@@ -1145,6 +1167,12 @@ export function LandingPage() {
           </div>
         </div>
       )}
+
+      {/* Institutional Invite Access Request Modal */}
+      <AccessRequestModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+      />
     </div>
   );
 }
