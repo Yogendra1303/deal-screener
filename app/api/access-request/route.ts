@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getState, putState } from "@/lib/db/repository";
 import { recordAndAlertError } from "@/lib/error-logger";
+import { requireRole } from "@/lib/nextauth";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 
 export interface AccessRequestItem {
@@ -16,12 +17,22 @@ export interface AccessRequestItem {
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_FROM = process.env.RESEND_FROM ?? "Aarka Access Requests <onboarding@resend.dev>";
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] || c);
+}
 
 export async function GET() {
+  const gate = await requireRole();
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+  }
+
   try {
     const list = (await getState<AccessRequestItem[]>("access_requests")) || [];
     return NextResponse.json({ requests: list, count: list.length });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ requests: [], count: 0 });
   }
 }
@@ -29,14 +40,20 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    const background = typeof body.background === "string" ? body.background.trim() : "Investor";
-    const firm = typeof body.firm === "string" ? body.firm.trim() : "";
-    const intent = typeof body.intent === "string" ? body.intent.trim() : "Evaluating platform";
-    const additionalContext = typeof body.additionalContext === "string" ? body.additionalContext.trim() : "";
 
-    if (!email || !email.includes("@")) {
+    // Silent honeypot check for automated spam bots
+    if (typeof body.companyWebsite === "string" && body.companyWebsite.trim().length > 0) {
+      return NextResponse.json({ ok: true, message: "Access request recorded successfully" });
+    }
+
+    const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase().slice(0, 160) : "";
+    const background = typeof body.background === "string" ? body.background.trim().slice(0, 120) : "Investor";
+    const firm = typeof body.firm === "string" ? body.firm.trim().slice(0, 120) : "";
+    const intent = typeof body.intent === "string" ? body.intent.trim().slice(0, 200) : "Evaluating platform";
+    const additionalContext = typeof body.additionalContext === "string" ? body.additionalContext.trim().slice(0, 1000) : "";
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "Please provide a valid email address." }, { status: 400 });
     }
 
@@ -52,12 +69,12 @@ export async function POST(req: NextRequest) {
       status: "pending",
     };
 
-    // 1. Save to Supabase app_state
+    // 1. Save to Supabase app_state (strictly pending manual approval — never grants workspace access)
     const existing = (await getState<AccessRequestItem[]>("access_requests")) || [];
     const updated = [item, ...existing.filter((x) => x.email !== email)];
     await putState("access_requests", updated);
 
-    // 2. Notify Yogendra & Partners via Resend
+    // 2. Notify Yogendra directly via Resend
     if (RESEND_API_KEY) {
       try {
         await fetch("https://api.resend.com/emails", {
@@ -67,56 +84,25 @@ export async function POST(req: NextRequest) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Aarka Access Requests <onboarding@resend.dev>",
+            from: RESEND_FROM,
             to: ["yogendrakapkoti13@gmail.com"],
             reply_to: email,
-            subject: `✨ New Access Request: ${item.name} (${firm || background})`,
+            subject: `New Access Request: ${item.name} (${firm || background})`,
             html: `
-              <div style="font-family: sans-serif; padding: 24px; background: #0f172a; color: #f8fafc; border-radius: 8px;">
-                <h2 style="color: #38bdf8; margin-top: 0;">New Institutional Access Request</h2>
-                <p>Someone has requested access to the Aarka VC Platform:</p>
-                <ul style="line-height: 1.8;">
-                  <li><strong>Name:</strong> ${item.name}</li>
-                  <li><strong>Email:</strong> ${item.email}</li>
-                  <li><strong>Background:</strong> ${item.background}</li>
-                  ${firm ? `<li><strong>Firm/Fund:</strong> ${firm}</li>` : ""}
-                  <li><strong>Reason for Exploring:</strong> ${item.intent}</li>
-                  ${additionalContext ? `<li><strong>Additional Context:</strong> ${additionalContext}</li>` : ""}
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; background: #09090b; color: #f4f4f5; border-radius: 10px; border: 1px solid #27272a;">
+                <h2 style="color: #ffffff; margin-top: 0; font-size: 18px;">New Institutional Access Request</h2>
+                <p style="color: #a1a1aa; font-size: 14px;">Someone requested invite-only access to the Aarka workspace (dashboard access is NOT granted automatically):</p>
+                <ul style="line-height: 1.8; color: #e4e4e7; font-size: 14px;">
+                  <li><strong>Name:</strong> ${escapeHtml(item.name)}</li>
+                  <li><strong>Email:</strong> ${escapeHtml(item.email)}</li>
+                  <li><strong>Role:</strong> ${escapeHtml(item.background)}</li>
+                  ${firm ? `<li><strong>Firm / Company:</strong> ${escapeHtml(firm)}</li>` : ""}
+                  <li><strong>Reason for Exploring:</strong> ${escapeHtml(item.intent)}</li>
+                  ${additionalContext ? `<li><strong>Additional Context:</strong> ${escapeHtml(additionalContext)}</li>` : ""}
                   <li><strong>Received:</strong> ${new Date().toLocaleString("en-US")}</li>
                 </ul>
-                <p style="margin-top: 24px; font-size: 13px; color: #94a3b8;">
-                  You can whitelist their email in the Google Auth Platform or approve them directly in Supabase permitted_users.
-                </p>
-              </div>
-            `,
-          }),
-        });
-
-        // Confirmation email to the requester
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "Aarka <onboarding@resend.dev>",
-            to: [email],
-            reply_to: "yogendrakapkoti13@gmail.com",
-            subject: "Your Aarka Institutional Access Request",
-            html: `
-              <div style="font-family: sans-serif; padding: 24px; background: #0f172a; color: #f8fafc; border-radius: 8px;">
-                <h2 style="color: #38bdf8; margin-top: 0;">Welcome to Aarka</h2>
-                <p>Hello ${item.name},</p>
-                <p>Thank you for your interest in Aarka Investment Intelligence Platform. Our investment team has received your request.</p>
-                <p>We review all fund and investor applications within 24 hours. In the meantime, you have been granted preview access to explore our live dealflow pipeline and financial verification workflows.</p>
-                <p style="margin-top: 24px;">
-                  <a href="https://www.aarkavc.xyz/?role=Partner" style="display: inline-block; background: #2563eb; color: #fff; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">
-                    Enter Preview Workspace →
-                  </a>
-                </p>
-                <p style="font-size: 12px; color: #64748b; margin-top: 32px;">
-                  Aarka · Investment Intelligence Platform · Confidential
+                <p style="margin-top: 20px; font-size: 13px; color: #71717a;">
+                  To approve access, add their Google email to your Google OAuth console and Supabase permitted_users table.
                 </p>
               </div>
             `,
@@ -127,7 +113,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Broadcast to Realtime Bus
+    // 3. Broadcast to authenticated Partner SSE listeners only
     try {
       broadcastRealtimeEvent("deal.updated", {
         type: "access_request",
@@ -137,31 +123,12 @@ export async function POST(req: NextRequest) {
       // non-blocking
     }
 
-    const res = NextResponse.json({
+    // Never issue a session cookie here — only manually approved Google OAuth partners can enter the workspace.
+    return NextResponse.json({
       ok: true,
-      message: "Access request recorded successfully",
-      item,
+      message: "Access request recorded for partner review.",
+      id: item.id,
     });
-
-    // Grant 24-hour Institutional Guest Preview session cookie so "Enter Preview Workspace" works immediately
-    res.cookies.set({
-      name: "aarka_session",
-      value: JSON.stringify({
-        email: item.email,
-        name: item.name,
-        role: "VC",
-        isGuestPreview: true,
-        issuedAt: Date.now(),
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      }),
-      path: "/",
-      httpOnly: false,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60,
-    });
-
-    return res;
   } catch (err: unknown) {
     console.error("[api/access-request] error:", err);
     const e = err instanceof Error ? err : new Error(String(err));

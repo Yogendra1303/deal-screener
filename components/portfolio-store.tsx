@@ -4,6 +4,7 @@
 // asking for help, the fund marking a report read, sending a reminder, writing a note) is saved in
 // this browser and on the server, laid over the shipped data. Every action is dated on the demo date.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { PORTFOLIO } from "@/lib/portfolio/data";
 import { addDays as addDaysIso } from "@/lib/dates";
 import { DEMO_DATE, addMonths, dueDateFor, lastDueMonth } from "@/lib/portfolio/health";
@@ -100,6 +101,8 @@ const Ctx = createContext<PortfolioStore | null>(null);
 const PAGES: Record<MetricKey, number> = { revenue: 2, burn: 3, cash: 3, customers: 4 };
 
 export function PortfolioProvider({ children }: { children: React.ReactNode }) {
+  const { data: authSession } = useSession();
+  const isVc = authSession?.role === "VC";
   const [ready, setReady] = useState(false);
   const [local, setLocal] = useState<Local>(EMPTY);
   const today = DEMO_DATE;
@@ -116,8 +119,19 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setLocal(saved);
     setReady(true);
-    hydrate<Partial<Local>>(KEY, (v) => setLocal({ ...EMPTY, ...v }), saved);
   }, []);
+
+  useEffect(() => {
+    if (!isVc) return;
+    let saved: Local | null = null;
+    try {
+      const raw = window.localStorage.getItem(KEY);
+      if (raw) saved = { ...EMPTY, ...(JSON.parse(raw) as Partial<Local>) };
+    } catch {
+      // ignore
+    }
+    hydrate<Partial<Local>>(KEY, (v) => setLocal({ ...EMPTY, ...v }), saved);
+  }, [isVc]);
 
   const update = useCallback((fn: (l: Local) => Local) => {
     setLocal((prev) => {

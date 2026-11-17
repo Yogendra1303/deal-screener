@@ -157,7 +157,19 @@ async function sendAlertEmail(eventType: AuditEventType, actorEmail: string, det
     });
 
     if (res.error) {
-      console.error("[notify][FOUNDER_SUBMIT] Resend delivery failed:", JSON.stringify(res.error));
+      console.error("[notify][FOUNDER_SUBMIT] Founder email failed, falling back to partner alert:", JSON.stringify(res.error));
+      // Guarantee the fund partner ALWAYS receives the pitch notification even if Resend restricts external recipients.
+      const fallback = await resend.emails.send({
+        from: ALERT_FROM,
+        to: ALERT_TO,
+        replyTo: founderEmail,
+        subject,
+        text,
+        html,
+      });
+      if (fallback.error) {
+        console.error("[notify][FOUNDER_SUBMIT] Partner fallback alert failed:", JSON.stringify(fallback.error));
+      }
     }
     return;
   }

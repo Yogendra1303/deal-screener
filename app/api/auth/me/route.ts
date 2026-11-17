@@ -1,45 +1,24 @@
-import { cookies } from "next/headers";
 import { auth, authEnabled } from "@/lib/nextauth";
 
-/** Who the server thinks you are. Reads both NextAuth and secure magic-link session cookie. */
+/** Who the server thinks you are. Reads strictly from verified NextAuth session. */
 export async function GET() {
-  // 1. Check NextAuth if active
-  if (authEnabled()) {
-    try {
-      const s = await auth();
-      if (s?.user?.email) {
-        return Response.json({
-          enabled: true,
-          user: { email: s.user.email, name: s.user.name, image: s.user.image ?? null },
-          role: s.role ?? "VC",
-        });
-      }
-    } catch {
-      // ignore
-    }
+  const enabled = authEnabled();
+  if (!enabled) {
+    return Response.json({ enabled: false, user: null, role: null });
   }
 
-  // 2. Check aarka_session cookie
   try {
-    const cookieStore = await cookies();
-    const raw = cookieStore.get("aarka_session")?.value;
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (data.expiresAt > Date.now()) {
-        return Response.json({
-          enabled: true,
-          user: {
-            email: data.email,
-            name: data.name,
-            image: data.image ?? null,
-          },
-          role: data.role || "VC",
-        });
-      }
+    const s = await auth();
+    if (s?.user?.email) {
+      return Response.json({
+        enabled: true,
+        user: { email: s.user.email, name: s.user.name, image: s.user.image ?? null },
+        role: s.role ?? "FOUNDER",
+      });
     }
   } catch {
     // ignore
   }
 
-  return Response.json({ enabled: false, user: null, role: null });
+  return Response.json({ enabled: true, user: null, role: null });
 }

@@ -512,18 +512,27 @@ export interface FounderPitchSummary {
   id: string;
   companyName: string;
   sector: string | null;
+  stage?: string | null;
   askAmount: number | null;
   receivedAt: string | null;
   status: string;
+  rawStatus?: string | null;
+  location?: string | null;
+  website?: string | null;
+  oneLinePitch?: string | null;
+  founderName?: string | null;
+  founderEmail?: string | null;
 }
 
 function mapFounderStatus(raw: string | null | undefined): string {
   switch ((raw ?? "").toLowerCase()) {
     case "meeting":
+    case "meeting set":
       return "Meeting Scheduled";
     case "reviewing":
-    case "on hold":
       return "Under Review";
+    case "on hold":
+      return "On Hold";
     case "passed":
       return "Passed";
     case "new":
@@ -532,24 +541,42 @@ function mapFounderStatus(raw: string | null | undefined): string {
   }
 }
 
+function resolveCompanyDisplayName(d: DealRow): string {
+  const intakeName = (d.intake_json as { form?: { companyName?: string } } | null)?.form?.companyName?.trim();
+  if (intakeName && (!d.company_name || d.company_name === d.id || d.company_name === d.slug)) {
+    return intakeName;
+  }
+  return d.company_name || intakeName || d.id;
+}
+
 /** Safe pitch metadata for a signed-in founder; never exposes internal math gaps or analyst notes. */
 export async function listFounderDeals(email: string): Promise<FounderPitchSummary[]> {
   const e = email.trim().toLowerCase();
   if (!e || driver() === "none") return [];
   const rows =
     driver() === "supabase"
-      ? await sbSelect<DealRow>("deals", `founder_email=eq.${encodeURIComponent(e)}&select=id,company_name,sector,ask_amount,status,received_at,intake_json&order=received_at.desc`)
+      ? await sbSelect<DealRow>(
+          "deals",
+          `founder_email=ilike.${encodeURIComponent(e)}&select=id,slug,company_name,sector,stage,ask_amount,status,received_at,location,city,country,website,one_line_pitch,founder_name,founder_email,intake_json&order=received_at.desc`,
+        )
       : (await listDeals()).filter((d) => {
           const intakeEmail = (d.intake_json as { form?: { email?: string } } | null)?.form?.email?.toLowerCase();
           return (d.founder_email ?? "").toLowerCase() === e || intakeEmail === e;
         });
   return rows.map((d) => ({
     id: d.id,
-    companyName: d.company_name,
+    companyName: resolveCompanyDisplayName(d),
     sector: d.sector,
+    stage: d.stage,
     askAmount: d.ask_amount,
     receivedAt: d.received_at,
     status: mapFounderStatus(d.status),
+    rawStatus: d.status,
+    location: d.location || [d.city, d.country].filter(Boolean).join(", ") || null,
+    website: d.website,
+    oneLinePitch: d.one_line_pitch,
+    founderName: d.founder_name,
+    founderEmail: d.founder_email,
   }));
 }
 

@@ -2,6 +2,7 @@ import { processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
 import { MissingKeyError, hasKey } from "@/lib/ai";
 import { sampleById } from "@/lib/data";
+import { requireRole } from "@/lib/nextauth";
 import type { FormInput, SheetRow } from "@/lib/types";
 
 // A deck takes one to a few minutes. Vercel stops the function after this many seconds.
@@ -14,6 +15,9 @@ function bad(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
+  const gate = await requireRole();
+  if (!gate.ok) return bad(gate.status === 401 ? "Sign in first." : "Your account isn't permitted.", gate.status);
+
   if (!hasKey()) return bad(new MissingKeyError().message, 503);
 
   let fd: FormData;

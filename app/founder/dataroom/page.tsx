@@ -1,485 +1,611 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cx } from "@/components/ui";
 
-interface ChecklistItem {
+interface FounderPitch {
   id: string;
-  category: string;
+  companyName: string;
+  sector: string | null;
+  stage?: string | null;
+  askAmount: number | null;
+  receivedAt: string | null;
+  status: string;
+  rawStatus?: string | null;
+  location?: string | null;
+  website?: string | null;
+  oneLinePitch?: string | null;
+  founderName?: string | null;
+  founderEmail?: string | null;
+}
+
+interface UploadedFile {
+  id: string;
+  fileType: string;
+  fileName: string;
+  mimeType: string;
+  uploadedAt: string | null;
+  downloadUrl: string;
+}
+
+interface SavedMetrics {
+  mrr?: string;
+  cash?: string;
+  burn?: string;
+  headcount?: string;
+  updatedAt?: string;
+}
+
+interface DataRoomResponse {
+  user?: { name: string; email: string };
+  pitches: FounderPitch[];
+  selected: FounderPitch | null;
+  files: UploadedFile[];
+  metrics: SavedMetrics | null;
+  error?: string;
+}
+
+const DOC_SLOTS: {
+  id: string;
+  fileTypes: string[];
+  uploadCategory: string;
   title: string;
   description: string;
   required: boolean;
-  status: "verified" | "pending" | "uploading";
-  fileName?: string;
-  fileUrl?: string;
-  uploadedAt?: string;
-}
-
-const DEFAULT_ITEMS: ChecklistItem[] = [
+  accept: string;
+}[] = [
   {
     id: "deck",
-    category: "pitch_deck",
-    title: "Pitch Deck (Latest Version)",
-    description: "PDF presentation detailing problem, product, traction, business model, and team.",
+    fileTypes: ["deck_pdf", "pitch_deck"],
+    uploadCategory: "deck_pdf",
+    title: "Pitch Deck (PDF)",
+    description: "Your submitted pitch deck presentation. You can replace it anytime with an updated version.",
     required: true,
-    status: "verified",
-    fileName: "Fluxloop_Series_Seed_Deck.pdf",
-    fileUrl: "#",
-    uploadedAt: "Today",
+    accept: "application/pdf,.pdf",
   },
   {
-    id: "fin_model",
-    category: "financial_model",
-    title: "Financial Model & Projections",
-    description: "Monthly P&L, MRR waterfall, historical revenue, net burn, and 24-month forecast (.xlsx or .csv).",
-    required: true,
-    status: "verified",
-    fileName: "Fluxloop_Financial_Model_FY26.csv",
-    fileUrl: "#",
-    uploadedAt: "Today",
+    id: "financials",
+    fileTypes: ["monthly_csv", "financial_sheet", "financial_model"],
+    uploadCategory: "monthly_csv",
+    title: "Financial Model / Monthly Metrics",
+    description: "Optional monthly revenue, burn, cash balance, or financial projections (.csv or .xlsx).",
+    required: false,
+    accept: ".csv,.xlsx,.xls,text/csv",
   },
   {
     id: "cap_table",
-    category: "cap_table",
-    title: "Cap Table & Ownership Ledger",
-    description: "Fully-diluted cap table showing founders, option pool, SAFEs, and prior angel investors.",
-    required: true,
-    status: "pending",
+    fileTypes: ["cap_table"],
+    uploadCategory: "cap_table",
+    title: "Cap Table",
+    description: "Share only if requested or ready — founder ownership, option pool, SAFEs, and prior rounds.",
+    required: false,
+    accept: ".pdf,.csv,.xlsx,.xls",
   },
   {
     id: "cohorts",
-    category: "customer_contracts",
-    title: "Customer Retention & Cohort Analysis",
-    description: "Logo and net revenue retention (NRR) cohorts or anonymized top-10 customer contract terms.",
+    fileTypes: ["customer_contracts"],
+    uploadCategory: "customer_contracts",
+    title: "Customer Retention / Cohorts",
+    description: "Optional retention or anonymized customer metrics to support diligence.",
     required: false,
-    status: "pending",
+    accept: ".pdf,.csv,.xlsx,.xls",
   },
   {
     id: "legal",
-    category: "legal",
-    title: "Certificate of Incorporation & IP Assignment",
-    description: "Delaware / Singapore / India incorporation certificate and founder IP assignment agreements.",
-    required: true,
-    status: "pending",
+    fileTypes: ["legal"],
+    uploadCategory: "legal",
+    title: "Incorporation & Legal Docs",
+    description: "Certificate of incorporation or IP assignment documents (only needed later in diligence).",
+    required: false,
+    accept: ".pdf",
   },
 ];
 
+function formatAsk(usd: number | null | undefined): string {
+  if (!usd || !Number.isFinite(usd)) return "Not specified";
+  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(usd % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (usd >= 1_000) return `$${Math.round(usd / 1_000)}K`;
+  return `$${usd.toLocaleString("en-US")}`;
+}
+
+function getPipelineSteps(status: string) {
+  const s = status.toLowerCase();
+  const isPassed = s === "passed";
+  const isMeeting = s === "meeting scheduled" || s === "meeting set";
+  const isReviewing = s === "under review" || s === "on hold" || s === "reviewing";
+
+  return [
+    {
+      num: "01",
+      name: "Pitch Received",
+      sub: "Logged in review queue",
+      state: "complete" as const,
+    },
+    {
+      num: "02",
+      name: s === "on hold" ? "On Hold" : "Partner Review",
+      sub: isReviewing ? "In progress" : isMeeting ? "Completed" : isPassed ? "Reviewed" : "Queued for review",
+      state: isMeeting || isPassed ? ("complete" as const) : isReviewing ? ("active" as const) : ("active" as const),
+    },
+    {
+      num: "03",
+      name: "Partner Meeting",
+      sub: isMeeting ? "Meeting scheduled" : isPassed ? "Not moving forward" : "Next step if selected",
+      state: isMeeting ? ("active" as const) : ("pending" as const),
+    },
+  ];
+}
+
 function FounderDataRoomContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const companyParam = searchParams.get("company") || "Fluxloop";
-  const dealId = searchParams.get("id") || "h-0069";
+  const requestedId = searchParams.get("id") || "";
 
-  const [companyName, setCompanyName] = useState(companyParam);
-  const [items, setItems] = useState<ChecklistItem[]>(DEFAULT_ITEMS);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<DataRoomResponse | null>(null);
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  // Financial metrics state
-  const [mrr, setMrr] = useState("32,000");
-  const [cash, setCash] = useState("480,000");
-  const [burn, setBurn] = useState("28,000");
-  const [headcount, setHeadcount] = useState("7");
+  // Founder-entered financial metrics — strictly blank until THIS founder enters them
+  const [mrr, setMrr] = useState("");
+  const [cash, setCash] = useState("");
+  const [burn, setBurn] = useState("");
+  const [headcount, setHeadcount] = useState("");
   const [savingMetrics, setSavingMetrics] = useState(false);
 
-  // Q&A state
-  const [qaAnswer, setQaAnswer] = useState("");
-  const [qaSubmitted, setQaSubmitted] = useState(false);
+  const loadDataRoom = useCallback(async (id?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const qs = id ? `?id=${encodeURIComponent(id)}` : "";
+      const res = await fetch(`/api/founder/dataroom${qs}`, { cache: "no-store" });
+      if (res.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      const json = (await res.json()) as DataRoomResponse;
+      if (!res.ok) {
+        setError(json.error || "Could not load your data room.");
+        return;
+      }
+      setData(json);
+      setMrr(json.metrics?.mrr ?? "");
+      setCash(json.metrics?.cash ?? "");
+      setBurn(json.metrics?.burn ?? "");
+      setHeadcount(json.metrics?.headcount ?? "");
+    } catch {
+      setError("Network error while loading your data room.");
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
 
-  async function handleFileUpload(itemId: string, category: string, file: File) {
-    setUploadingId(itemId);
-    setToastMessage(null);
+  useEffect(() => {
+    void loadDataRoom(requestedId || undefined);
+  }, [loadDataRoom, requestedId]);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("dealId", dealId);
-    formData.append("companyName", companyName);
-    formData.append("category", category);
+  const selected = data?.selected ?? null;
+  const pitches = data?.pitches ?? [];
+  const files = data?.files ?? [];
+
+  async function handleFileUpload(slotId: string, uploadCategory: string, file: File) {
+    if (!selected) return;
+    if (file.size > 32 * 1024 * 1024) {
+      setError("File exceeds the 32 MB size limit.");
+      return;
+    }
+    setUploadingSlot(slotId);
+    setError(null);
+    setToast(null);
+
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("dealId", selected.id);
+    fd.append("category", uploadCategory);
 
     try {
-      const res = await fetch("/api/founder/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId
-            ? {
-                ...item,
-                status: "verified",
-                fileName: data.fileName,
-                fileUrl: data.fileUrl,
-                uploadedAt: "Just now",
-              }
-            : item
-        )
-      );
-
-      setToastMessage(`✓ ${file.name} uploaded to data room and synced with Aarka partners.`);
-      setTimeout(() => setToastMessage(null), 5000);
-    } catch (err: any) {
-      alert(`Upload error: ${err.message || "Failed to upload file"}`);
+      const res = await fetch("/api/founder/upload", { method: "POST", body: fd });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "Upload failed");
+      }
+      setToast(`Uploaded ${file.name} to your data room.`);
+      await loadDataRoom(selected.id);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not upload document.");
     } finally {
-      setUploadingId(null);
+      setUploadingSlot(null);
     }
   }
 
-  async function handleSyncMetrics(e: React.FormEvent) {
+  async function handleSaveMetrics(e: React.FormEvent) {
     e.preventDefault();
+    if (!selected) return;
     setSavingMetrics(true);
+    setError(null);
+    setToast(null);
 
     try {
       const res = await fetch("/api/founder/metrics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dealId,
-          mrr: Number(mrr.replace(/[^0-9.]/g, "")),
-          cash: Number(cash.replace(/[^0-9.]/g, "")),
-          burn: Number(burn.replace(/[^0-9.]/g, "")),
-          headcount: Number(headcount),
+          dealId: selected.id,
+          mrr,
+          cash,
+          burn,
+          headcount,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to sync metrics");
-
-      setToastMessage("✓ Financial metrics updated. Recalculated VC scorecard synced with partners.");
-      setTimeout(() => setToastMessage(null), 5000);
-    } catch (err: any) {
-      alert(err.message || "Failed to sync metrics");
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "Could not save financial metrics.");
+      }
+      setToast("Saved your financial details.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not save metrics.");
     } finally {
       setSavingMetrics(false);
     }
   }
 
-  const completedCount = items.filter((i) => i.status === "verified").length;
-  const progressPct = Math.round((completedCount / items.length) * 100);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">
+        Loading your data room…
+      </div>
+    );
+  }
+
+  if (!selected) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-12 sm:px-6">
+        <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/aarka-logo.png" alt="Aarka" className="h-7 w-7 rounded-md object-contain" />
+          </div>
+          <h1 className="mt-4 text-lg font-semibold text-slate-900">Your Private Data Room</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            You haven&apos;t submitted a pitch deck under{" "}
+            <span className="font-medium text-slate-900">{data?.user?.email || "this account"}</span> yet. Submit your pitch first and your private data room will appear here automatically.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/founder"
+              className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-4 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              ← Back to Founder Portal
+            </Link>
+            <Link
+              href="/pitch"
+              className="inline-flex h-9 items-center rounded-md bg-blue-600 px-4 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              Submit Your Pitch Deck →
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const uploadedCount = DOC_SLOTS.filter((slot) =>
+    files.some((f) => slot.fileTypes.includes(f.fileType)),
+  ).length;
+  const steps = getPipelineSteps(selected.status);
+
+  const parsedMrr = Number(mrr.replace(/[^0-9.]/g, "")) || 0;
+  const parsedCash = Number(cash.replace(/[^0-9.]/g, "")) || 0;
+  const parsedBurn = Number(burn.replace(/[^0-9.]/g, "")) || 0;
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 py-10 px-4 sm:px-6 lg:px-8 selection:bg-blue-600 selection:text-white">
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* Navigation & Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
+    <div className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl space-y-6">
+        {/* Top bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
-              ▲
-            </div>
+            <Link href="/founder" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white p-1.5 shadow-2xs">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/aarka-logo.png" alt="Aarka" className="h-6 w-6 rounded object-contain" />
+            </Link>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold tracking-tight text-white">{companyName}</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30 font-medium">
-                  Founder Data Room
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-tight text-slate-900">{selected.companyName}</h1>
+                <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700">
+                  Private Founder Data Room
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Target Check: $1.5M Seed · Fund Mandate Approved
+              <p className="mt-0.5 text-xs text-slate-500">
+                {[selected.sector, selected.stage, `Asking ${formatAsk(selected.askAmount)}`, selected.location]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {pitches.length > 1 && (
+              <select
+                aria-label="Select submission"
+                value={selected.id}
+                onChange={(e) => router.push(`/founder/dataroom?id=${encodeURIComponent(e.target.value)}`)}
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+              >
+                {pitches.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.companyName} ({p.receivedAt ? new Date(p.receivedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recent"})
+                  </option>
+                ))}
+              </select>
+            )}
             <Link
-              href="/"
-              className="text-xs px-3.5 py-2 rounded-lg border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-slate-300 hover:text-white transition-colors"
+              href="/founder"
+              className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              ← Back to Main Platform
+              ← Your Pitches
             </Link>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Under Partner Review
-            </div>
+            <span className="inline-flex h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800">
+              <span className="h-2 w-2 rounded-full bg-blue-600" />
+              Status: {selected.status}
+            </span>
           </div>
         </div>
 
-        {/* Global Toast Alert */}
-        {toastMessage && (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-4 text-xs text-emerald-300 flex items-center justify-between shadow-lg">
-            <span>{toastMessage}</span>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="text-emerald-400 hover:text-emerald-200 font-bold"
-            >
+        {/* Alerts */}
+        {error && (
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">
+            {error}
+          </div>
+        )}
+        {toast && (
+          <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-800">
+            <span>✓ {toast}</span>
+            <button type="button" onClick={() => setToast(null)} className="text-emerald-700 hover:text-emerald-900">
               ✕
             </button>
           </div>
         )}
 
-        {/* 5-Step Diligence Pipeline Stepper */}
-        <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
-              Diligence & Investment Committee Pipeline
-            </h2>
-            <span className="text-xs text-blue-400 font-medium">Stage 3 of 5: Partner Deep-Dive</span>
+        {/* Submission Summary & Current Review Stage */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Where Your Pitch Stands</h2>
+              {selected.oneLinePitch && <p className="mt-1 text-sm text-slate-700">{selected.oneLinePitch}</p>}
+            </div>
+            {selected.receivedAt && (
+              <span className="text-xs text-slate-500">
+                Submitted {new Date(selected.receivedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </span>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-            {[
-              { num: "01", name: "Inbound Intake", status: "complete", sub: "Deck & Form Verified" },
-              { num: "02", name: "Math Checks", status: "complete", sub: "ARR & Runway Verified" },
-              { num: "03", name: "Partner Review", status: "active", sub: "Sanchit & Yogendra" },
-              { num: "04", name: "Data Room", status: "pending", sub: "Diligence Checklist" },
-              { num: "05", name: "IC Term Sheet", status: "pending", sub: "Final Committee Vote" },
-            ].map((s) => (
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {steps.map((s) => (
               <div
                 key={s.num}
                 className={cx(
-                  "p-3 rounded-xl border transition-all",
-                  s.status === "complete"
-                    ? "bg-slate-900/80 border-blue-500/40 text-blue-300"
-                    : s.status === "active"
-                    ? "bg-blue-600/10 border-blue-500 text-white ring-1 ring-blue-500"
-                    : "bg-slate-900/40 border-slate-800/80 text-slate-500"
+                  "rounded-lg border p-3.5",
+                  s.state === "active"
+                    ? "border-blue-500 bg-blue-50/50"
+                    : s.state === "complete"
+                      ? "border-emerald-200 bg-emerald-50/40"
+                      : "border-slate-200 bg-slate-50/60",
                 )}
               >
-                <div className="flex items-center justify-between text-[11px] font-mono">
+                <div className="flex items-center justify-between text-[11px] font-mono text-slate-500">
                   <span>{s.num}</span>
-                  {s.status === "complete" && <span className="text-emerald-400">✓</span>}
-                  {s.status === "active" && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />}
+                  {s.state === "complete" && <span className="font-sans font-semibold text-emerald-600">✓ Done</span>}
+                  {s.state === "active" && <span className="font-sans font-semibold text-blue-700">Current</span>}
                 </div>
-                <div className="text-xs font-semibold mt-1 text-slate-200">{s.name}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5 truncate">{s.sub}</div>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{s.name}</p>
+                <p className="mt-0.5 text-xs text-slate-500">{s.sub}</p>
               </div>
             ))}
           </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 text-xs sm:grid-cols-4">
+            <div>
+              <span className="block text-slate-400">Company</span>
+              <span className="mt-0.5 block font-medium text-slate-900">{selected.companyName}</span>
+            </div>
+            <div>
+              <span className="block text-slate-400">Stage &amp; Ask</span>
+              <span className="mt-0.5 block font-medium text-slate-900">
+                {selected.stage || "—"} · {formatAsk(selected.askAmount)}
+              </span>
+            </div>
+            <div>
+              <span className="block text-slate-400">Sector</span>
+              <span className="mt-0.5 block font-medium text-slate-900">{selected.sector || "—"}</span>
+            </div>
+            <div>
+              <span className="block text-slate-400">Website</span>
+              {selected.website ? (
+                <a
+                  href={selected.website.startsWith("http") ? selected.website : `https://${selected.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-0.5 block truncate font-medium text-blue-600 hover:underline"
+                >
+                  {selected.website.replace(/^https?:\/\//, "")}
+                </a>
+              ) : (
+                <span className="mt-0.5 block text-slate-500">—</span>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Data Room Checklist & Direct Uploader */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-xl">
-              <div className="flex items-center justify-between mb-2">
+        {/* Documents & Optional Financial Details */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Left: Only THIS founder's documents */}
+          <div className="lg:col-span-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="text-base font-semibold text-white">Diligence Document Room</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Upload requested verification materials. All uploads are encrypted and shared directly with the investment team.
+                  <h2 className="text-base font-semibold text-slate-900">Your Shared Documents</h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Only files you have uploaded for {selected.companyName} appear here. Everything is private to your account and the Aarka review team.
                   </p>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-blue-400">{progressPct}% Complete</div>
-                  <div className="text-[10px] text-slate-500">{completedCount} of {items.length} items verified</div>
-                </div>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                  {uploadedCount} of {DOC_SLOTS.length} uploaded
+                </span>
               </div>
 
-              {/* Progress bar */}
-              <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-6 mt-3">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-
-              {/* Items List */}
-              <div className="divide-y divide-slate-800">
-                {items.map((item) => (
-                  <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1 max-w-lg">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-slate-200">{item.title}</span>
-                        {item.required && (
-                          <span className="text-[10px] text-amber-400 bg-amber-950/40 border border-amber-800/40 px-1.5 py-0.2 rounded">
-                            Required
-                          </span>
-                        )}
-                        {item.status === "verified" ? (
-                          <span className="text-[10px] text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <span>✓</span> Verified
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
-                            Pending Upload
-                          </span>
+              <div className="divide-y divide-slate-100">
+                {DOC_SLOTS.map((slot) => {
+                  const uploaded = files.find((f) => slot.fileTypes.includes(f.fileType));
+                  return (
+                    <div key={slot.id} className="flex flex-col justify-between gap-3 py-4 sm:flex-row sm:items-center">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium text-slate-900">{slot.title}</span>
+                          {slot.required && (
+                            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-200">
+                              Required
+                            </span>
+                          )}
+                          {uploaded ? (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                              ✓ Uploaded
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                              Not uploaded yet
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500">{slot.description}</p>
+                        {uploaded && (
+                          <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
+                            <a
+                              href={uploaded.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-blue-600 hover:underline"
+                            >
+                              {uploaded.fileName}
+                            </a>
+                            {uploaded.uploadedAt && (
+                              <span className="text-slate-400">
+                                · {new Date(uploaded.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">{item.description}</p>
-                      {item.fileName && (
-                        <div className="text-[11px] text-blue-400 font-mono flex items-center gap-1.5 pt-0.5">
-                          <span>📎 {item.fileName}</span>
-                          <span className="text-slate-500">· {item.uploadedAt}</span>
-                        </div>
-                      )}
-                    </div>
 
-                    <div className="shrink-0 flex items-center gap-2">
                       <label
                         className={cx(
-                          "cursor-pointer text-xs font-medium px-3.5 py-2 rounded-lg border transition-all inline-flex items-center gap-1.5",
-                          uploadingId === item.id
-                            ? "bg-slate-800 text-slate-400 border-slate-700 pointer-events-none"
-                            : item.status === "verified"
-                            ? "bg-slate-900 border-slate-700 hover:border-slate-600 text-slate-300"
-                            : "bg-blue-600 hover:bg-blue-500 border-transparent text-white shadow-sm shadow-blue-600/30"
+                          "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-md border px-3 text-xs font-medium transition-colors",
+                          uploadingSlot === slot.id
+                            ? "pointer-events-none border-slate-200 bg-slate-100 text-slate-400"
+                            : uploaded
+                              ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                              : "border-transparent bg-blue-600 text-white hover:bg-blue-700",
                         )}
                       >
                         <input
                           type="file"
+                          accept={slot.accept}
                           className="hidden"
                           onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFileUpload(item.id, item.category, file);
+                            const f = e.target.files?.[0];
+                            if (f) void handleFileUpload(slot.id, slot.uploadCategory, f);
+                            e.currentTarget.value = "";
                           }}
                         />
-                        {uploadingId === item.id ? (
-                          "Uploading…"
-                        ) : item.status === "verified" ? (
-                          "Replace File"
-                        ) : (
-                          "Upload Document ↑"
-                        )}
+                        {uploadingSlot === slot.id ? "Uploading…" : uploaded ? "Replace file" : "Upload"}
                       </label>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
-
-            {/* Partner Q&A Section */}
-            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">Investment Committee Diligence Q&A</h3>
-                <span className="text-[10px] text-blue-400 font-mono">1 Active Question</span>
-              </div>
-              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 space-y-1.5">
-                <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                  <span className="font-semibold text-blue-400">Sanchit Kumar (Partner):</span>
-                  <span>Received Today</span>
-                </div>
-                <p>
-                  &ldquo;What is your current gross margin structure across pilot customers, and what is your expected payback period on CAC over the next 12 months?&rdquo;
-                </p>
-              </div>
-
-              {qaSubmitted ? (
-                <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-xs text-emerald-300">
-                  ✓ Response sent to partner committee.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <textarea
-                    rows={3}
-                    value={qaAnswer}
-                    onChange={(e) => setQaAnswer(e.target.value)}
-                    placeholder="Type your response to the partner question here…"
-                    className="w-full text-xs rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!qaAnswer.trim()) return;
-                      setQaSubmitted(true);
-                      setToastMessage("✓ Your response has been submitted to Sanchit Kumar.");
-                    }}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium"
-                  >
-                    Submit Response →
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Sidebar: Financial Metrics Live Sync */}
-          <div className="space-y-6">
-            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-              <div className="border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-semibold text-white">Financial Baseline Sync</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Keep your core financial metrics updated for real-time VC scorecard calculation.
+          {/* Right: Optional Founder-Entered Financial Details */}
+          <div>
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h2 className="text-sm font-semibold text-slate-900">Your Financial Details (Optional)</h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Fill in or update your current numbers if you&apos;d like to share them alongside your deck.
                 </p>
               </div>
 
-              <form onSubmit={handleSyncMetrics} className="space-y-3.5 text-xs">
+              <form onSubmit={handleSaveMetrics} className="mt-4 space-y-3.5 text-xs">
                 <div>
-                  <label className="block text-[11px] text-slate-300 font-medium mb-1">
-                    Current Monthly Revenue (MRR, USD)
-                  </label>
+                  <label className="mb-1 block font-medium text-slate-700">Monthly Revenue (MRR, USD)</label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    placeholder="e.g. 25000 (leave blank if pre-revenue)"
                     value={mrr}
                     onChange={(e) => setMrr(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white font-mono text-xs focus:border-blue-500 focus:outline-none"
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
                   />
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">
-                    Implied ARR: ${(Number(mrr.replace(/\D/g, "") || 0) * 12).toLocaleString()}
-                  </span>
+                  {parsedMrr > 0 && (
+                    <span className="mt-1 block text-[11px] text-slate-500">
+                      Implied ARR: ${(parsedMrr * 12).toLocaleString("en-US")}
+                    </span>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-slate-300 font-medium mb-1">
-                    Cash in Bank (USD)
-                  </label>
+                  <label className="mb-1 block font-medium text-slate-700">Cash in Bank (USD)</label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    placeholder="e.g. 300000"
                     value={cash}
                     onChange={(e) => setCash(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white font-mono text-xs focus:border-blue-500 focus:outline-none"
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-slate-300 font-medium mb-1">
-                    Monthly Net Burn (USD)
-                  </label>
+                  <label className="mb-1 block font-medium text-slate-700">Monthly Net Burn (USD)</label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    placeholder="e.g. 20000"
                     value={burn}
                     onChange={(e) => setBurn(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white font-mono text-xs focus:border-blue-500 focus:outline-none"
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
                   />
-                  <span className="text-[10px] text-emerald-400 mt-0.5 block">
-                    Runway: {(Number(cash.replace(/\D/g, "") || 1) / Math.max(1, Number(burn.replace(/\D/g, "") || 1))).toFixed(1)} Months
-                  </span>
+                  {parsedCash > 0 && parsedBurn > 0 && (
+                    <span className="mt-1 block text-[11px] text-emerald-700">
+                      Estimated Runway: {(parsedCash / parsedBurn).toFixed(1)} months
+                    </span>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-slate-300 font-medium mb-1">
-                    Current Headcount (FTEs)
-                  </label>
+                  <label className="mb-1 block font-medium text-slate-700">Team Size (FTEs)</label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 5"
                     value={headcount}
                     onChange={(e) => setHeadcount(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white font-mono text-xs focus:border-blue-500 focus:outline-none"
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={savingMetrics}
-                  className="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors shadow-sm disabled:opacity-50 mt-2"
+                  className="mt-1 inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                 >
-                  {savingMetrics ? "Syncing…" : "Update Financial Metrics →"}
+                  {savingMetrics ? "Saving…" : "Save Financial Details"}
                 </button>
               </form>
-            </div>
-
-            {/* Deal Team Card */}
-            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
-                Your Aarka Deal Leads
-              </span>
-              <div className="space-y-2.5">
-                {[
-                  { name: "Sanchit Kumar", role: "Partner · Deal Lead", email: "sanchitkr7@gmail.com", initials: "SK", color: "bg-cyan-600" },
-                  { name: "Yogendra Kapkoti", role: "Managing Partner", email: "yogendrakapkoti13@gmail.com", initials: "YK", color: "bg-blue-600" },
-                ].map((partner) => (
-                  <div key={partner.email} className="flex items-center gap-3 p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                    <div className={cx("w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white", partner.color)}>
-                      {partner.initials}
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-slate-200">{partner.name}</div>
-                      <div className="text-[10px] text-slate-400">{partner.role}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -490,7 +616,7 @@ function FounderDataRoomContent() {
 
 export default function FounderDataRoomPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#070b14] flex items-center justify-center text-slate-400 text-xs">Loading Data Room…</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">Loading your data room…</div>}>
       <FounderDataRoomContent />
     </Suspense>
   );

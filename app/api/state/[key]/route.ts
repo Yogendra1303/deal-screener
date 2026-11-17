@@ -1,10 +1,14 @@
 // One store's saved blob. GET returns it; PUT replaces it and mirrors it into the deals tables.
 import { NoDatabaseError, getState, putState } from "@/lib/db/repository";
 import { projectState } from "@/lib/db/project";
+import { requireRole } from "@/lib/nextauth";
 
 const fail = (e: unknown) => (e instanceof NoDatabaseError ? Response.json({ error: e.message }, { status: 503 }) : Response.json({ error: (e as Error).message }, { status: 500 }));
 
 export async function GET(_: Request, ctx: { params: Promise<{ key: string }> }) {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   const { key } = await ctx.params;
   try {
     const value = await getState(key);
@@ -15,6 +19,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ key: string }> })
 }
 
 export async function PUT(request: Request, ctx: { params: Promise<{ key: string }> }) {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   const { key } = await ctx.params;
   let body: { value?: unknown };
   try {

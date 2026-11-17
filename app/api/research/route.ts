@@ -1,11 +1,15 @@
 import { runResearch } from "@/lib/research";
 import { MissingKeyError, hasKey } from "@/lib/ai";
+import { requireRole } from "@/lib/nextauth";
 import type { DealRecord } from "@/lib/schema";
 import type { FormInput } from "@/lib/types";
 
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   if (!hasKey()) return Response.json({ error: new MissingKeyError().message }, { status: 503 });
   let body: { form: FormInput; record: DealRecord };
   try {

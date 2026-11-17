@@ -107,16 +107,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       // Ignore URL cleanup errors.
     }
     const preferredRole = urlOverride ?? readStoredRole();
-    const localSession: Session | null =
-      saved && saved.name && saved.role
-        ? saved
-        : urlOverride
-          ? {
-              name: urlOverride === "Partner" ? "Kabir Shah" : "Riya Menon",
-              role: urlOverride,
-              email: urlOverride === "Partner" ? "kabir@aarkavc.xyz" : "riya@aarkavc.xyz",
-            }
-          : null;
+    // Never create an unauthenticated session from ?role=Partner; only use saved session until /api/auth/me verifies it.
+    const localSession: Session | null = saved && saved.name && saved.role ? saved : null;
     if (localSession && preferredRole && localSession.role !== preferredRole) {
       localSession.role = preferredRole;
       localSession.name = preferredRole === "Partner" ? "Kabir Shah" : "Riya Menon";
@@ -124,7 +116,6 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSession(localSession);
     setLocal(read(KEYS.questions, EMPTY));
-    hydrate<Partial<LocalQuestions>>(KEYS.questions, (v) => setLocal({ ...EMPTY, ...v }), window.localStorage.getItem(KEYS.questions) ? read(KEYS.questions, EMPTY) : null);
 
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
@@ -140,10 +131,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }
         if (data?.enabled && data.user?.email && data.role) {
           const isVc = data.role === "VC" || data.role === "partner" || data.role === "analyst";
+          if (!isVc) {
+            setSession(null);
+            try {
+              window.localStorage.removeItem(KEYS.session);
+            } catch {
+              // Ignore storage errors.
+            }
+            return;
+          }
           const serverRole: Role = data.role === "analyst" ? "Analyst" : "Partner";
           const currentRole = readStoredRole();
-          const role: Role = isVc ? (urlOverride ?? currentRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole)) : "Analyst";
-          if (isVc) persistRole(role);
+          const role: Role = urlOverride ?? currentRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole);
+          persistRole(role);
           const defaultName = role === "Partner" ? "Kabir Shah" : "Riya Menon";
           const realName = data.user.name?.trim() || data.user.email.split("@")[0];
           const next: Session = {
@@ -155,6 +155,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           };
           setSession(next);
           write(KEYS.session, next);
+          hydrate<Partial<LocalQuestions>>(KEYS.questions, (v) => setLocal({ ...EMPTY, ...v }), window.localStorage.getItem(KEYS.questions) ? read(KEYS.questions, EMPTY) : null);
         }
       })
       .catch(() => undefined)

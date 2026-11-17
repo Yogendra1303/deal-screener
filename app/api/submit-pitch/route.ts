@@ -25,6 +25,29 @@ import { checkUpload } from "@/lib/upload";
 export const maxDuration = 60;
 
 const MAX_MANDATE_USD = 4_000_000;
+const MAX_PDF_BYTES = 32 * 1024 * 1024;
+const SUBMIT_WINDOW_MS = 15 * 60 * 1000;
+const SUBMIT_LIMIT = 10;
+const submitHits = new Map<string, number[]>();
+
+function checkSubmitRate(ip: string): boolean {
+  const now = Date.now();
+  const prev = (submitHits.get(ip) ?? []).filter((t) => now - t < SUBMIT_WINDOW_MS);
+  if (prev.length >= SUBMIT_LIMIT) {
+    submitHits.set(ip, prev);
+    return false;
+  }
+  prev.push(now);
+  submitHits.set(ip, prev);
+  return true;
+}
+
+function normalizeUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
 
 function slugify(s: string): string {
   return (
@@ -44,7 +67,7 @@ function splitLocation(location: string): { city: string | null; country: string
   if (parts.length >= 2) {
     return { city: parts[0], country: parts[parts.length - 1] };
   }
-  return { city: parts[0] || null, country: "India" };
+  return { city: parts[0] || null, country: parts[0] ? parts[0] : "Global" };
 }
 
 function summarizeChecks(flags: Flag[]): string {
@@ -66,6 +89,11 @@ interface DirectFilePayload {
 
 export async function POST(req: Request) {
   try {
+    const ip = (req.headers.get("x-forwarded-for") || "unknown").split(",")[0].trim();
+    if (!checkSubmitRate(ip)) {
+      return NextResponse.json({ error: "Too many submissions in a short time. Please wait a few minutes and try again." }, { status: 429 });
+    }
+
     const contentType = req.headers.get("content-type") || "";
 
     let founderName = "";
@@ -80,6 +108,7 @@ export async function POST(req: Request) {
     let priorFunding: number | null = null;
     let ref = "";
     let askAmount = NaN;
+    let honeypot = "";
 
     // Direct uploaded files metadata (lightweight JSON)
     let directDeck: DirectFilePayload | null = null;
@@ -91,31 +120,40 @@ export async function POST(req: Request) {
 
     if (contentType.includes("application/json")) {
       const body = await req.json();
-      founderName = String(body.founderName ?? body.name ?? "").trim();
-      founderEmail = String(body.founderEmail ?? body.email ?? "").trim();
-      linkedinUrl = String(body.linkedinUrl ?? "").trim();
-      companyName = String(body.companyName ?? "").trim();
-      website = String(body.website ?? "").trim();
-      sector = String(body.sector ?? "").trim();
-      oneLinePitch = String(body.oneLinePitch ?? "").trim().slice(0, 60);
-      stage = String(body.stage ?? "").trim() || "Seed";
-      location = String(body.location ?? "").trim();
+      honeypot = String(body.companyWebsite ?? "").trim();
+      founderName = String(body.founderName ?? body.name ?? "").trim().slice(0, 120);
+      founderEmail = String(body.founderEmail ?? body.email ?? "").trim().toLowerCase().slice(0, 160);
+      linkedinUrl = normalizeUrl(String(body.linkedinUrl ?? "").slice(0, 240));
+      companyName = String(body.companyName ?? "").trim().slice(0, 120);
+      website = normalizeUrl(String(body.website ?? "").slice(0, 240));
+      sector = String(body.sector ?? "").trim().slice(0, 80);
+      oneLinePitch = String(body.oneLinePitch ?? "").trim().slice(0, 120);
+      stage = String(body.stage ?? "").trim().slice(0, 40) || "Seed";
+      location = String(body.location ?? "").trim().slice(0, 120);
       priorFunding = typeof body.priorFunding === "number" && Number.isFinite(body.priorFunding) ? body.priorFunding : null;
-      ref = String(body.ref ?? "").trim();
+      ref = String(body.ref ?? "").trim().slice(0, 80);
       askAmount = typeof body.askAmount === "number" ? body.askAmount : Number(body.askAmount);
 
       if (body.deck && typeof body.deck.storagePath === "string") {
+        const sp = body.deck.storagePath.trim();
+        if (sp.includes("..") || sp.startsWith("/")) {
+          return NextResponse.json({ error: "Invalid pitch deck upload reference." }, { status: 400 });
+        }
         directDeck = {
-          storagePath: body.deck.storagePath,
-          fileName: String(body.deck.fileName || "deck.pdf"),
+          storagePath: sp,
+          fileName: String(body.deck.fileName || "deck.pdf").slice(0, 140),
           mimeType: String(body.deck.mimeType || "application/pdf"),
           size: typeof body.deck.size === "number" ? body.deck.size : undefined,
         };
       }
       if (body.financials && typeof body.financials.storagePath === "string") {
+        const sp = body.financials.storagePath.trim();
+        if (sp.includes("..") || sp.startsWith("/")) {
+          return NextResponse.json({ error: "Invalid financials upload reference." }, { status: 400 });
+        }
         directFin = {
-          storagePath: body.financials.storagePath,
-          fileName: String(body.financials.fileName || "financials.csv"),
+          storagePath: sp,
+          fileName: String(body.financials.fileName || "financials.csv").slice(0, 140),
           mimeType: String(body.financials.mimeType || "text/csv"),
           size: typeof body.financials.size === "number" ? body.financials.size : undefined,
           previewCsv: typeof body.financials.previewCsv === "string" ? body.financials.previewCsv : undefined,
@@ -123,18 +161,19 @@ export async function POST(req: Request) {
       }
     } else {
       const formData = await req.formData();
-      founderName = String(formData.get("founderName") ?? formData.get("name") ?? "").trim();
-      founderEmail = String(formData.get("founderEmail") ?? formData.get("email") ?? "").trim();
-      linkedinUrl = String(formData.get("linkedinUrl") ?? "").trim();
-      companyName = String(formData.get("companyName") ?? "").trim();
-      website = String(formData.get("website") ?? "").trim();
-      sector = String(formData.get("sector") ?? "").trim();
-      oneLinePitch = String(formData.get("oneLinePitch") ?? "").trim().slice(0, 60);
-      stage = String(formData.get("stage") ?? "").trim() || "Seed";
-      location = String(formData.get("location") ?? "").trim();
+      honeypot = String(formData.get("companyWebsite") ?? "").trim();
+      founderName = String(formData.get("founderName") ?? formData.get("name") ?? "").trim().slice(0, 120);
+      founderEmail = String(formData.get("founderEmail") ?? formData.get("email") ?? "").trim().toLowerCase().slice(0, 160);
+      linkedinUrl = normalizeUrl(String(formData.get("linkedinUrl") ?? "").slice(0, 240));
+      companyName = String(formData.get("companyName") ?? "").trim().slice(0, 120);
+      website = normalizeUrl(String(formData.get("website") ?? "").slice(0, 240));
+      sector = String(formData.get("sector") ?? "").trim().slice(0, 80);
+      oneLinePitch = String(formData.get("oneLinePitch") ?? "").trim().slice(0, 120);
+      stage = String(formData.get("stage") ?? "").trim().slice(0, 40) || "Seed";
+      location = String(formData.get("location") ?? "").trim().slice(0, 120);
       const priorRaw = String(formData.get("priorFunding") ?? "").replace(/[^0-9.]/g, "");
       priorFunding = priorRaw ? Number(priorRaw) : null;
-      ref = String(formData.get("ref") ?? "").trim();
+      ref = String(formData.get("ref") ?? "").trim().slice(0, 80);
       const askRaw = String(formData.get("askAmount") ?? "").replace(/[^0-9.]/g, "");
       askAmount = askRaw ? Number(askRaw) : NaN;
 
@@ -144,8 +183,16 @@ export async function POST(req: Request) {
       if (fFin instanceof File && fFin.size > 0) formFinFile = fFin;
     }
 
+    // Silent honeypot filter for spam bots
+    if (honeypot) {
+      return NextResponse.json({ ok: true, id: `pitch-${Date.now().toString(36)}`, receivedAt: new Date().toISOString() });
+    }
+
     if (!founderName || !founderEmail || !companyName || !sector) {
       return NextResponse.json({ error: "Please complete all required founder and company fields." }, { status: 400 });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(founderEmail)) {
+      return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
     if (!Number.isFinite(askAmount) || askAmount <= 0) {
       return NextResponse.json({ error: "Please enter a valid funding ask amount in USD." }, { status: 400 });
@@ -155,6 +202,9 @@ export async function POST(req: Request) {
     }
     if (!directDeck && !formDeckFile) {
       return NextResponse.json({ error: "Please attach your pitch deck PDF." }, { status: 400 });
+    }
+    if ((directDeck?.size ?? 0) > MAX_PDF_BYTES || (formDeckFile?.size ?? 0) > MAX_PDF_BYTES) {
+      return NextResponse.json({ error: "Pitch deck PDF must be 32 MB or smaller." }, { status: 413 });
     }
 
     const id = `${slugify(companyName)}-${Date.now().toString(36)}`;

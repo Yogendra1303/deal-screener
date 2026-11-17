@@ -4,6 +4,7 @@
 // picked up each new pitch.
 // Saved in this browser and on the server (files included); a founder page open in another tab updates the dashboard live.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { loadDeck, saveDeck } from "@/lib/deckstore";
 import { DEMO_DATE } from "@/lib/portfolio/health";
 import { SEED_EMAILS, SEED_INBOUND, SEED_REQUESTS, newToken, type EmailIn, type FounderAnswer, type FounderRequest, type Inbound, type ItemAnswer, type LinkFile } from "@/lib/links";
@@ -79,6 +80,8 @@ async function keep(prefix: string, dealId: string, files: File[], today: string
 }
 
 export function LinksProvider({ children }: { children: React.ReactNode }) {
+  const { data: authSession } = useSession();
+  const isVc = authSession?.role === "VC";
   const [ready, setReady] = useState(false);
   const [local, setLocal] = useState<Local>(EMPTY);
   const today = DEMO_DATE;
@@ -88,13 +91,17 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocal(load());
     setReady(true);
-    hydrate<Partial<Local>>(KEY, (v) => setLocal({ ...EMPTY, ...v }), window.localStorage.getItem(KEY) ? load() : null);
     const onStorage = (e: StorageEvent) => {
       if (e.key === KEY || e.key === null) setLocal(load());
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  useEffect(() => {
+    if (!isVc) return;
+    hydrate<Partial<Local>>(KEY, (v) => setLocal({ ...EMPTY, ...v }), window.localStorage.getItem(KEY) ? load() : null);
+  }, [isVc]);
 
   const update = useCallback((fn: (l: Local) => Local) => {
     setLocal((prev) => {
@@ -107,6 +114,7 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
   const [dbInbound, setDbInbound] = useState<Inbound[]>([]);
 
   useEffect(() => {
+    if (!isVc) return;
     let alive = true;
     const syncDeals = () => {
       fetch("/api/deals", { cache: "no-store" })
@@ -184,7 +192,7 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
       window.clearInterval(interval);
       window.removeEventListener("focus", syncDeals);
     };
-  }, []);
+  }, [isVc]);
 
   const inbound = useMemo(() => {
     const map = new Map<string, Inbound>();

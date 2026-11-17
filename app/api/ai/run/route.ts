@@ -1,6 +1,7 @@
 // Direct API-key mode. The same jobs the account bridge does by copy and paste, run here when a key is set.
 // Deck extraction needs the PDF, so the browser sends that job to /api/process as a form upload instead.
 import { MissingKeyError, MODEL, hasKey } from "@/lib/ai";
+import { requireRole } from "@/lib/nextauth";
 import { runResearch } from "@/lib/research";
 import type { DealRecord } from "@/lib/schema";
 import type { FormInput } from "@/lib/types";
@@ -8,10 +9,16 @@ import type { FormInput } from "@/lib/types";
 export const maxDuration = 300;
 
 export async function GET() {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   return Response.json({ mode: hasKey() ? "API_KEY" : "ACCOUNT_BRIDGE", hasKey: hasKey(), model: MODEL });
 }
 
 export async function POST(request: Request) {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   if (!hasKey()) return Response.json({ error: new MissingKeyError().message, mode: "ACCOUNT_BRIDGE" }, { status: 503 });
   let body: { kind?: string; form?: FormInput; record?: DealRecord };
   try {

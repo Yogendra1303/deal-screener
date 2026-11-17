@@ -1,9 +1,13 @@
 import { NextRequest } from "next/server";
+import { requireRole } from "@/lib/nextauth";
 import { realtimeBus, type RealtimeEvent } from "@/lib/realtime";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

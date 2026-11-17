@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mergeDeals, type DealRow } from "@/lib/db/repository";
+import { requireRole } from "@/lib/nextauth";
 import { calculateVCMetrics } from "@/lib/vc-metrics";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 
 export async function POST(req: NextRequest) {
   try {
     const secret = req.headers.get("x-aarka-secret") || req.headers.get("authorization");
-    // Allow webhook if secret matches or in dev/demo mode
     const expectedSecret = process.env.AARKA_WEBHOOK_SECRET;
-    if (expectedSecret && secret !== `Bearer ${expectedSecret}` && secret !== expectedSecret) {
-      return NextResponse.json({ error: "Unauthorized webhook request" }, { status: 401 });
+    const validSecret = Boolean(expectedSecret && (secret === `Bearer ${expectedSecret}` || secret === expectedSecret));
+    if (!validSecret) {
+      const gate = await requireRole();
+      if (!gate.ok) {
+        return NextResponse.json({ error: "Unauthorized webhook request" }, { status: 401 });
+      }
     }
 
     const body = await req.json().catch(() => ({}));

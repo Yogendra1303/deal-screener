@@ -4,6 +4,7 @@
 // statuses, decisions, logged signals) is saved in this browser at once and on the server soon after,
 // so every browser that opens the app sees the same state. Without a database the browser copy stands.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { SAMPLES, SEED_RESULTS } from "@/lib/data";
 import { DEFAULT_RULES, bandFor, rescore } from "@/lib/rules";
 import type { Band, DealResult, DealStatus, FundRules, Level, Overrule, ScoreKey } from "@/lib/types";
@@ -95,6 +96,8 @@ function applyScores(deal: DealResult, over?: Partial<Record<ScoreKey, Level>>):
 const Ctx = createContext<Store | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
+  const { data: authSession } = useSession();
+  const isVc = authSession?.role === "VC";
   const [ready, setReady] = useState(false);
   const [local, setLocal] = useState<Record<string, DealResult>>({});
   const [rules, setRulesState] = useState<FundRules>(DEFAULT_RULES);
@@ -121,6 +124,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setSettingsState({ ...DEFAULT_SETTINGS, ...read(KEYS.settings, {}) });
     setResearchState(read(KEYS.research, {}));
     setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isVc) return;
     health().then(setServer);
     // Then the server's copy, which wins over this browser's unless something changed here first.
     const hasLocal = (key: string) => (window.localStorage.getItem(key) ? read(key, null) : null);
@@ -157,7 +164,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       window.clearInterval(interval);
       window.removeEventListener("focus", syncDeals);
     };
-  }, []);
+  }, [isVc]);
 
   const deals = useMemo(() => {
     const all: Record<string, DealResult> = { ...SEED_RESULTS, ...local };

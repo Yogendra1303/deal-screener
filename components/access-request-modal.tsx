@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const BACKGROUND_OPTIONS = [
-  "Venture Capital (Partner / Principal / Associate)",
+  "VC (Partner / Principal / Associate)",
   "Private Equity / Growth Equity",
   "Family Office / Angel Syndicate",
   "Founder (Raising Capital)",
@@ -41,6 +42,7 @@ export function AccessRequestModal({
   const [firm, setFirm] = useState("");
   const [intent, setIntent] = useState(INTENT_OPTIONS[0]);
   const [additionalContext, setAdditionalContext] = useState("");
+  const [companyWebsite, setCompanyWebsite] = useState(""); // honeypot
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function AccessRequestModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim() || !email.includes("@")) {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError("Please enter a valid email address.");
       return;
     }
@@ -78,6 +80,7 @@ export function AccessRequestModal({
           firm: firm.trim(),
           intent,
           additionalContext: additionalContext.trim() || undefined,
+          companyWebsite,
         }),
       });
 
@@ -93,9 +96,14 @@ export function AccessRequestModal({
     }
   }
 
-  function handleEnterPreview() {
+  function handleDone() {
+    setSubmitted(false);
+    setName("");
+    setEmail("");
+    setFirm("");
+    setAdditionalContext("");
+    setError(null);
     onClose();
-    window.location.href = "/?role=Partner";
   }
 
   return (
@@ -104,7 +112,7 @@ export function AccessRequestModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-zinc-100 shadow-2xl sm:p-8"
+        className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-zinc-100 shadow-2xl sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -137,7 +145,7 @@ export function AccessRequestModal({
                   </span>
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                  Submit your details to request partner review and unlock instant guest preview access.
+                  Aarka is strictly invite-only. Submit your details for manual partner review and approval.
                 </p>
               </div>
             </div>
@@ -149,6 +157,18 @@ export function AccessRequestModal({
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Hidden honeypot field */}
+              <input
+                type="text"
+                name="companyWebsite"
+                value={companyWebsite}
+                onChange={(e) => setCompanyWebsite(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="hidden"
+              />
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label htmlFor="req-name" className={labelCls}>
@@ -274,7 +294,7 @@ export function AccessRequestModal({
               </div>
 
               <p className="text-[11px] leading-relaxed text-zinc-500">
-                Your request is logged for partner review and sent directly to Yogendra Kapkoti. Upon submission, you will receive immediate guest access to explore the workspace.
+                Your request is sent directly to the Aarka team for manual approval. Workspace access is restricted to verified, partner-approved accounts only.
               </p>
 
               <button
@@ -282,13 +302,24 @@ export function AccessRequestModal({
                 disabled={loading}
                 className="group mt-2 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md bg-white py-2.5 text-sm font-medium text-black transition-all duration-200 hover:scale-[1.01] hover:bg-zinc-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <span>{loading ? "Recording Request…" : "Submit & Unlock Preview Workspace"}</span>
+                <span>{loading ? "Submitting Request…" : "Request Institutional Access"}</span>
                 {!loading && (
                   <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">
                     →
                   </span>
                 )}
               </button>
+
+              <div className="border-t border-zinc-800/80 pt-3 text-center text-xs text-zinc-400">
+                Founder raising capital?{" "}
+                <Link
+                  href="/pitch"
+                  onClick={onClose}
+                  className="font-medium text-zinc-200 underline underline-offset-2 transition-colors hover:text-white"
+                >
+                  Submit your pitch deck →
+                </Link>
+              </div>
             </form>
           </div>
         ) : (
@@ -298,35 +329,41 @@ export function AccessRequestModal({
             </div>
             <div>
               <h3 className="text-lg font-semibold tracking-tight text-white">
-                Access Request Recorded
+                Access Request Received
               </h3>
               <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-zinc-400">
-                Thank you, <strong className="font-medium text-zinc-200">{name || email}</strong>. Your request has been logged and forwarded to the Aarka investment team.
+                Thank you, <strong className="font-medium text-zinc-200">{name || email}</strong>. Your request has been sent directly to the Aarka team for partner review.
               </p>
             </div>
 
             <div className="space-y-1.5 rounded-lg border border-zinc-800 bg-zinc-900/70 p-4 text-left text-xs text-zinc-300">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-medium text-zinc-200">Guest Preview Access</span>
+                <span className="font-medium text-zinc-200">Partner Approval Required</span>
                 <span className="rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-300">
-                  Active
+                  Pending Review
                 </span>
               </div>
               <p className="text-xs leading-relaxed text-zinc-400">
-                Explore the live dealflow pipeline, automated ARR verification, and institutional VC scorecard right away.
+                We manually review every institutional access request. Once approved, we will whitelist your Google account and reach out directly.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleEnterPreview}
-              className="group flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md bg-white py-2.5 text-sm font-medium text-black transition-all duration-200 hover:scale-[1.01] hover:bg-zinc-200 active:scale-[0.98]"
-            >
-              <span>Enter Preview Workspace</span>
-              <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">
-                →
-              </span>
-            </button>
+            <div className="flex flex-col gap-2.5 sm:flex-row">
+              <button
+                type="button"
+                onClick={handleDone}
+                className="flex flex-1 cursor-pointer items-center justify-center rounded-md bg-white py-2.5 text-sm font-medium text-black transition-all duration-200 hover:bg-zinc-200"
+              >
+                Done
+              </button>
+              <Link
+                href="/pitch"
+                onClick={handleDone}
+                className="flex flex-1 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 py-2.5 text-sm font-medium text-zinc-200 transition-colors hover:border-zinc-700 hover:text-white"
+              >
+                Submit a Pitch →
+              </Link>
+            </div>
           </div>
         )}
       </div>

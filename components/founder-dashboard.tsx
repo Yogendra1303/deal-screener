@@ -3,7 +3,6 @@
 import { signOut as nextAuthSignOut } from "next-auth/react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useLinks } from "@/components/links-store";
 import { DropdownSelect, cx } from "@/components/ui";
 import { uploadFileDirect } from "@/lib/direct-upload";
 import type { FounderPitchSummary } from "@/lib/db/repository";
@@ -34,12 +33,19 @@ function statusBadge(status: string) {
     case "Meeting Scheduled":
       return "bg-emerald-50 text-emerald-700 ring-emerald-200";
     case "Under Review":
+    case "On Hold":
       return "bg-blue-50 text-blue-700 ring-blue-200";
     case "Passed":
       return "bg-slate-100 text-slate-600 ring-slate-200";
     default:
       return "bg-amber-50 text-amber-800 ring-amber-200";
   }
+}
+
+function normalizeUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 export function FounderDashboard({
@@ -49,7 +55,6 @@ export function FounderDashboard({
   user: { name: string; email: string; image?: string | null };
   initialPitches: FounderPitchSummary[];
 }) {
-  const links = useLinks();
   const [pitches, setPitches] = useState<FounderPitchSummary[]>(initialPitches);
   const [showForm, setShowForm] = useState<boolean>(() => initialPitches.length === 0);
 
@@ -83,23 +88,8 @@ export function FounderDashboard({
   const overPriorFunding = parsedPriorFunding !== null && parsedPriorFunding > MAX_PRIOR_FUNDING_USD;
 
   const allPitches = useMemo(() => {
-    const emailLower = user.email.trim().toLowerCase();
-    const map = new Map<string, FounderPitchSummary>();
-    for (const p of pitches) map.set(p.id, p);
-    for (const i of links.inbound) {
-      if ((i.form.email ?? "").trim().toLowerCase() === emailLower && !map.has(i.id)) {
-        map.set(i.id, {
-          id: i.id,
-          companyName: i.form.companyName,
-          sector: i.form.sector,
-          askAmount: i.form.amountUsd,
-          receivedAt: i.receivedAt,
-          status: "Received",
-        });
-      }
-    }
-    return [...map.values()].sort((a, b) => (b.receivedAt ?? "").localeCompare(a.receivedAt ?? ""));
-  }, [pitches, links.inbound, user.email]);
+    return [...pitches].sort((a, b) => (b.receivedAt ?? "").localeCompare(a.receivedAt ?? ""));
+  }, [pitches]);
 
   async function submitPitch(e: React.FormEvent) {
     e.preventDefault();
@@ -135,9 +125,9 @@ export function FounderDashboard({
           body: JSON.stringify({
             founderName: founderName.trim(),
             founderEmail: founderEmail.trim(),
-            linkedinUrl: linkedinUrl.trim(),
+            linkedinUrl: normalizeUrl(linkedinUrl),
             companyName: companyName.trim(),
-            website: website.trim(),
+            website: normalizeUrl(website),
             sector,
             oneLinePitch: oneLinePitch.trim().slice(0, 60),
             stage,
@@ -184,53 +174,13 @@ export function FounderDashboard({
 
       const receivedAt = data.receivedAt || new Date().toISOString();
       const pitchId = data.id || `pitch-${Date.now().toString(36)}`;
-      const locParts = location.split(",").map((s) => s.trim()).filter(Boolean);
-      const parsedCountry = locParts.length >= 2 ? locParts[locParts.length - 1] : "India";
-      await links.addInbound(
-        {
-          id: pitchId,
-          via: "Website",
-          receivedAt,
-          oneLiner: oneLinePitch.trim() || `${sector} · ${stage}${location.trim() ? ` · ${location.trim()}` : ""}`,
-          form: {
-            companyName: companyName.trim(),
-            website: website.trim(),
-            country: parsedCountry,
-            sector,
-            stage,
-            amountUsd: parsedAsk,
-            founders: [{ name: founderName.trim(), profileUrl: linkedinUrl.trim() }],
-            email: founderEmail.trim(),
-          },
-          preUploadedFiles: [
-            {
-              name: deck.name,
-              size: deck.size,
-              at: receivedAt.slice(0, 10),
-              key: `pitch:${pitchId}`,
-              url: data.fileUrl || `/api/files/${encodeURIComponent(pitchId)}/deck_pdf`,
-            },
-            ...(financials && data.financialFileUrl
-              ? [
-                  {
-                    name: financials.name,
-                    size: financials.size,
-                    at: receivedAt.slice(0, 10),
-                    key: `fin:${pitchId}`,
-                    url: data.financialFileUrl,
-                  },
-                ]
-              : []),
-          ],
-        },
-        [deck, ...(financials ? [financials] : [])],
-      );
 
       setPitches((prev) => [
         {
           id: pitchId,
           companyName: companyName.trim(),
           sector,
+          stage,
           askAmount: parsedAsk,
           receivedAt,
           status: "Received",
@@ -239,9 +189,9 @@ export function FounderDashboard({
       ]);
 
       setSubmitPhase("Complete.");
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 500));
       setSuccessMsg(
-        `Thank you for your submission, ${founderName.trim().split(/\s+/)[0]}! Your pitch for ${companyName.trim()} is in our live review queue and a confirmation from yogendrakapkoti13@gmail.com has been sent to ${founderEmail.trim()}.`,
+        `Thank you for your submission, ${founderName.trim().split(/\s+/)[0]}! Your pitch for ${companyName.trim()} is now in our confidential review queue.`,
       );
       setCompanyName("");
       setWebsite("");
@@ -339,12 +289,14 @@ export function FounderDashboard({
             </p>
           </div>
           <div className="flex items-center gap-2.5">
-            <Link
-              href="/founder/dataroom"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-blue-600/30 bg-blue-50 px-3.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 transition-colors"
-            >
-              📁 Data Room Portal →
-            </Link>
+            {allPitches.length > 0 && (
+              <Link
+                href={`/founder/dataroom?id=${encodeURIComponent(allPitches[0].id)}`}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-blue-600/30 bg-blue-50 px-3.5 text-xs font-semibold text-blue-700 shadow-2xs transition-colors hover:bg-blue-100"
+              >
+                Your Data Room →
+              </Link>
+            )}
             {(allPitches.length > 0 || !showForm) && (
               <button
                 type="button"
@@ -401,7 +353,7 @@ export function FounderDashboard({
               </label>
               <label className="block space-y-1">
                 <span className="block text-xs font-medium text-slate-700">LinkedIn profile URL</span>
-                <input type="url" placeholder="https://linkedin.com/in/..." value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} className={inputCls} />
+                <input type="text" placeholder="linkedin.com/in/..." value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} className={inputCls} />
               </label>
               <label className="block space-y-1">
                 <span className="block text-xs font-medium text-slate-700">Company name</span>
@@ -409,7 +361,7 @@ export function FounderDashboard({
               </label>
               <label className="block space-y-1">
                 <span className="block text-xs font-medium text-slate-700">Website</span>
-                <input type="url" placeholder="https://company.com" value={website} onChange={(e) => setWebsite(e.target.value)} className={inputCls} />
+                <input type="text" placeholder="company.com" value={website} onChange={(e) => setWebsite(e.target.value)} className={inputCls} />
               </label>
               <div className="block space-y-1">
                 <span className="block text-xs font-medium text-slate-700">Sector</span>
@@ -552,6 +504,7 @@ export function FounderDashboard({
                     <th className="px-5 py-3">Sector</th>
                     <th className="px-5 py-3">Submitted</th>
                     <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3 text-right">Data Room</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -566,6 +519,14 @@ export function FounderDashboard({
                         <span className={cx("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset", statusBadge(p.status))}>
                           {p.status}
                         </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <Link
+                          href={`/founder/dataroom?id=${encodeURIComponent(p.id)}`}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          Open data room →
+                        </Link>
                       </td>
                     </tr>
                   ))}

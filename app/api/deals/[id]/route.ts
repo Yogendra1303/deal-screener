@@ -1,11 +1,15 @@
 // One deal row, with its files and signals. PATCH changes the columns a person may set.
 import { NoDatabaseError, getDeal, listFiles, listSignals, mergeDeals } from "@/lib/db/repository";
 import { baseRow } from "@/lib/db/project";
+import { requireRole } from "@/lib/nextauth";
 
 const EDITABLE = new Set(["status", "band", "owner", "decision_json", "research_pack_json", "record_json", "founder_fit"]);
 const fail = (e: unknown) => (e instanceof NoDatabaseError ? Response.json({ error: e.message }, { status: 503 }) : Response.json({ error: (e as Error).message }, { status: 500 }));
 
 export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   const { id } = await ctx.params;
   try {
     const deal = await getDeal(id);
@@ -17,6 +21,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
 }
 
 export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   const { id } = await ctx.params;
   let body: Record<string, unknown>;
   try {

@@ -1,9 +1,13 @@
 // Workspace settings: which data shows, the fund rules, and whether the AI runs through an account or a key.
 import { NoDatabaseError, driver, getSettings, putSettings } from "@/lib/db/repository";
+import { requireRole } from "@/lib/nextauth";
 
 const fail = (e: unknown) => (e instanceof NoDatabaseError ? Response.json({ error: e.message }, { status: 503 }) : Response.json({ error: (e as Error).message }, { status: 500 }));
 
 export async function GET() {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   try {
     return Response.json({ driver: driver(), settings: await getSettings() });
   } catch (e) {
@@ -12,6 +16,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const gate = await requireRole();
+  if (!gate.ok) return Response.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+
   let body: Record<string, unknown>;
   try {
     body = await request.json();

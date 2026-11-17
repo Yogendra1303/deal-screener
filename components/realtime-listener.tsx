@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { cx } from "./ui";
 
 interface LiveToast {
   id: string;
@@ -13,9 +13,12 @@ interface LiveToast {
 }
 
 export function RealtimeListener() {
+  const { data: session } = useSession();
+  const isVc = session?.role === "VC";
   const [toasts, setToasts] = useState<LiveToast[]>([]);
 
   useEffect(() => {
+    if (!isVc) return;
     let es: EventSource | null = null;
     let retryTimeout: NodeJS.Timeout;
 
@@ -81,7 +84,7 @@ export function RealtimeListener() {
       if (es) es.close();
       clearTimeout(retryTimeout);
     };
-  }, []);
+  }, [isVc]);
 
   if (toasts.length === 0) return null;
 
