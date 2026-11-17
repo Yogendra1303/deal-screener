@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 /**
- * Lightweight, privacy-safe, ad-blocker-proof pageview beacon for public pages (/, /pitch, /login, /pending).
- * Skips authenticated VC partners so your own dashboard usage never inflates visitor counts.
+ * Lightweight, privacy-safe, ad-blocker-proof pageview beacon for ALL public pages.
+ * Captures source/referrer (Reddit, LinkedIn, X/Twitter, Instagram, etc.), UTM params,
+ * viewport/screen size, timezone, and browser language. Skips authenticated VC partners.
  */
 export function TrafficTracker() {
   const pathname = usePathname();
@@ -14,7 +15,6 @@ export function TrafficTracker() {
   const lastTrackedRef = useRef<string>("");
 
   useEffect(() => {
-    // Wait until session status settles so we don't log partner visits
     if (status === "loading") return;
     if (session?.role === "VC") return;
 
@@ -32,6 +32,18 @@ export function TrafficTracker() {
     lastTrackedRef.current = key;
 
     const params = new URLSearchParams(search);
+    const screenSize =
+      typeof window !== "undefined" && window.screen
+        ? `${window.screen.width}×${window.screen.height}`
+        : "";
+    let timezone = "";
+    try {
+      timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch {
+      // ignore
+    }
+    const language = typeof navigator !== "undefined" ? navigator.language || "" : "";
+
     const payload = {
       path: pathname,
       referrer: typeof document !== "undefined" ? document.referrer : "",
@@ -39,6 +51,9 @@ export function TrafficTracker() {
       utmMedium: params.get("utm_medium") || "",
       utmCampaign: params.get("utm_campaign") || "",
       ref: params.get("ref") || "",
+      screen: screenSize,
+      timezone,
+      language,
     };
 
     try {

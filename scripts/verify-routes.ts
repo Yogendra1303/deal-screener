@@ -50,7 +50,7 @@ async function run() {
   check("/login hides public Magic Link & Test Accounts", !loginHtml.includes("Send Magic Link") && !loginHtml.includes("1-Click Quick Partner Access"));
 
   // 2. Default-Deny Middleware Checks (ALL internal routes redirect unauthenticated users to /)
-  for (const protectedPath of ["/dashboard", "/pipeline", "/deals", "/portfolio", "/team", "/market", "/dataroom", "/founder", "/founder/dataroom"]) {
+  for (const protectedPath of ["/dashboard", "/pipeline", "/deals", "/portfolio", "/team", "/market", "/dataroom", "/traffic", "/founder", "/founder/dataroom"]) {
     const r = await fetch(`${BASE}${protectedPath}`, { cache: "no-store", redirect: "manual" });
     const loc = r.headers.get("location") || "";
     check(

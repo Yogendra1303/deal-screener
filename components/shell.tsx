@@ -27,7 +27,7 @@ const SEED_IDS = new Set<string>([
   ...SEED_INBOUND.map((i) => i.id),
 ]);
 
-type IconName = "reset" | "week" | "team" | "deals" | "portfolio" | "compare" | "sources" | "rules" | "test" | "library" | "room" | "method" | "market";
+type IconName = "reset" | "week" | "team" | "deals" | "portfolio" | "compare" | "sources" | "rules" | "test" | "library" | "room" | "method" | "market" | "traffic";
 
 const PATHS: Record<IconName, string> = {
   week: "M8 2v3M16 2v3M3.5 9h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Zm3 9h3m-3 3h6",
@@ -43,6 +43,7 @@ const PATHS: Record<IconName, string> = {
   method: "M5 3.5h14v17H5zM8.5 7.5h7M8.5 11h2m2.5 0h2.5M8.5 14.5h2m2.5 0h2.5M8.5 18h2m2.5 0h2.5",
   market: "M3.5 20.5h17M6 17v-4M10 17V8M14 17v-6M18 17V5",
   reset: "M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 3.5v3.7h3.7M12 8.5V12l2.5 1.5",
+  traffic: "M3.5 12h4l2.5-6.5 4 13 2.5-6.5h4",
 };
 
 function Icon({ name }: { name: IconName }) {
@@ -81,6 +82,7 @@ const SETTINGS: { href: string; label: string; icon: IconName; match: (p: string
   { href: "/rules", label: "Fund rules", icon: "rules", match: (p) => p.startsWith("/rules") },
   { href: "/resources", label: "Founder support", icon: "library", match: (p) => p.startsWith("/resources") },
   { href: "/workspace", label: "Workspace settings", icon: "reset", match: (p) => p.startsWith("/workspace") },
+  { href: "/traffic", label: "Live site traffic", icon: "traffic", match: (p) => p.startsWith("/traffic"), partnerOnly: true },
 ];
 
 export function Avatar({ name, size = "sm", image }: { name: string; size?: "xs" | "sm" | "md"; image?: string | null }) {

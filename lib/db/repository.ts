@@ -608,3 +608,18 @@ export async function insertAuditLog(eventType: string, actorEmail: string, deta
     store.audit_logs = store.audit_logs.slice(0, 500);
   });
 }
+
+/** Lists the latest audit log events (logins, blocked uninvited attempts, pitch submissions). */
+export async function listAuditLogs(limit = 50): Promise<AuditLogRow[]> {
+  const drv = driver();
+  if (drv === "none") return [];
+  const cap = Math.max(1, Math.min(200, limit));
+  if (drv === "supabase") {
+    return sbSelect<AuditLogRow>(
+      "audit_logs",
+      `select=id,created_at,event_type,actor_email,details&order=created_at.desc&limit=${cap}`,
+    );
+  }
+  const db = (await readDb()) as unknown as { audit_logs?: AuditLogRow[] };
+  return (db.audit_logs ?? []).slice(0, cap);
+}
