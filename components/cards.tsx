@@ -483,25 +483,30 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
       });
     }
     for (const i of links.inbound) {
-      if (store.deals.some((d) => d.id === i.id) || !filter(own(i.id))) continue;
+      if (!i || !i.id || store.deals.some((d) => d.id === i.id) || !filter(own(i.id))) continue;
       const how = viaText(i);
+      const companyName = i.form?.companyName || "Untitled Company";
+      const stage = i.form?.stage || "Seed";
+      const sector = i.form?.sector || "General";
+      const country = i.form?.country || "Unknown";
+      const amountUsd = i.form?.amountUsd;
       out.push({
         id: i.id,
         href: `/deals/${i.id}`,
-        name: i.form.companyName,
+        name: companyName,
         line: i.manual ? `${i.oneLiner ? `${i.oneLiner}. ` : ""}Uploaded here; numbers typed from the deck and checked by code.` : `${i.oneLiner ? `${i.oneLiner}. ` : ""}Deck came in via ${how}. Waiting for the AI to read it.`,
-        stage: i.form.stage,
-        amountUsd: i.form.amountUsd,
-        sector: i.form.sector,
-        country: i.form.country,
-        receivedAt: i.receivedAt,
+        stage,
+        amountUsd,
+        sector,
+        country,
+        receivedAt: i.receivedAt || "",
         isNew: store.statusOf(i.id) === "New",
         screened: false,
         conflicts: 0,
         owner: own(i.id),
       });
     }
-    return out.filter((c) => visibleIn(mode, c.id)).sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+    return out.filter((c) => visibleIn(mode, c.id)).sort((a, b) => (b.receivedAt ?? "").localeCompare(a.receivedAt ?? ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, links, mode]);
 }

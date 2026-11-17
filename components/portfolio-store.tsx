@@ -61,7 +61,7 @@ function merge(c: PortfolioCompany, local: Local, today: string): PortfolioCompa
 
   return {
     ...c,
-    reports: [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month)),
+    reports: [...byMonth.values()].sort((a, b) => (a.month ?? "").localeCompare(b.month ?? "")),
     requests: c.requests.map((q) => {
       const extra = local.reminders[`${c.id}:${q.id}`];
       const got = local.docs?.[c.id]?.[q.id];
@@ -160,7 +160,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
           else delete mine[requestId];
           return { ...l, docs: { ...(l.docs ?? {}), [id]: mine } };
         }),
-      plays: Object.values(local.plays ?? {}).sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
+      plays: Object.values(local.plays ?? {}).sort((a, b) => (b.startedAt ?? "").localeCompare(a.startedAt ?? "")),
       startPlay: (companyId, play, owner) =>
         update((l) => {
           const id = `${companyId}:${play}:${Date.now().toString(36)}`;

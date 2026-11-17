@@ -463,7 +463,7 @@ export function useDataRoom(): RoomRow[] {
     };
     const finish = (r: Omit<RoomRow, "newCount" | "toFile" | "overdue" | "waitingAi">): RoomRow => ({
       ...r,
-      shared: r.shared.sort((a, b) => b.at.localeCompare(a.at) || a.name.localeCompare(b.name)),
+      shared: r.shared.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "") || (a.name ?? "").localeCompare(b.name ?? "")),
       newCount: r.shared.filter((f) => f.isNew).length,
       toFile: r.shared.filter((f) => f.folder === TO_FILE).length,
       overdue: r.missing.filter((m) => m.overdue).length,
@@ -558,7 +558,7 @@ export function useDataRoom(): RoomRow[] {
         }),
       );
     }
-    return rows.sort((a, b) => b.newCount - a.newCount || b.overdue - a.overdue || a.name.localeCompare(b.name));
+    return rows.sort((a, b) => b.newCount - a.newCount || b.overdue - a.overdue || (a.name ?? "").localeCompare(b.name ?? ""));
   }, [store, p.companies, p.today, links]);
 }
 
@@ -621,7 +621,7 @@ export function useFounderAsks(who?: string): AskLine[] {
             tone: r.question.answeredAt ? "good" : daysBetween(r.question.askedAt, p.today) > 7 ? "urgent" : "info",
           });
     }
-    return out.sort((a, b) => b.at.localeCompare(a.at));
+    return out.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
   }, [links, p.companies, p.today, who]);
 }
 

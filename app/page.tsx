@@ -101,7 +101,7 @@ function newPitchesTile(pitches: PitchCardData[], forAnalyst: boolean): TileSpec
       group: dg(d),
       title: `${d.stage}${d.amountUsd ? `, raising ${usd(d.amountUsd)}` : ""} · ${d.sector}, ${d.country}`,
       detail: d.line,
-      meta: `Received ${fmtDay(d.receivedAt.slice(0, 10))}${d.screened && d.conflicts ? ` · ${d.conflicts} ${d.conflicts === 1 ? "number doesn't" : "numbers don't"} match` : ""}`,
+      meta: `Received ${fmtDay((d.receivedAt ?? "").slice(0, 10))}${d.screened && d.conflicts ? ` · ${d.conflicts} ${d.conflicts === 1 ? "number doesn't" : "numbers don't"} match` : ""}`,
       tone: d.conflicts ? "watch" : "info",
       href: d.href,
       cta: d.screened ? "Open pitch" : "See deck",
@@ -273,19 +273,39 @@ function usePartnerData() {
       if (g && !serious.some((a) => a.level === "high" || a.level === "medium")) good.push({ id: c.id, name: c.name, item: g });
     }
     const rank = { high: 0, medium: 1, low: 2, good: 3 };
-    watch.sort((a, b) => rank[a.items[0].level] - rank[b.items[0].level] || a.name.localeCompare(b.name));
+    watch.sort((a, b) => rank[a.items[0].level] - rank[b.items[0].level] || (a.name ?? "").localeCompare(b.name ?? ""));
 
     // What changed in the last seven days.
     const since = addDays(today, -7);
     const changes: { date: string; company: string; href: string; text: string; who: "company" | "fund" | "pitch" }[] = [];
-    for (const d of store.deals)
-      if (d.receivedAt.slice(0, 10) > since) changes.push({ date: d.receivedAt.slice(0, 10), company: d.form.companyName, href: `/deals/${d.id}`, text: "New pitch received and screened", who: "pitch" });
-    for (const s of store.unprocessed)
-      if (s.receivedAt.slice(0, 10) > since) changes.push({ date: s.receivedAt.slice(0, 10), company: s.form.companyName, href: `/deals/${s.id}`, text: "New pitch received, not screened yet", who: "pitch" });
+    for (const d of store.deals) {
+      const rec = (d.receivedAt ?? "").slice(0, 10);
+      if (rec && rec > since) {
+        changes.push({
+          date: rec,
+          company: d.form?.companyName || "Untitled",
+          href: `/deals/${d.id}`,
+          text: "New pitch received and screened",
+          who: "pitch",
+        });
+      }
+    }
+    for (const s of store.unprocessed) {
+      const rec = (s.receivedAt ?? "").slice(0, 10);
+      if (rec && rec > since) {
+        changes.push({
+          date: rec,
+          company: s.form?.companyName || "Untitled",
+          href: `/deals/${s.id}`,
+          text: "New pitch received, not screened yet",
+          who: "pitch",
+        });
+      }
+    }
     for (const c of p.companies)
       for (const e of companyEvents(c, today))
         if (e.date.slice(0, 10) > since && e.who !== "screener") changes.push({ date: e.date.slice(0, 10), company: c.name, href: `/portfolio/${c.id}?tab=activity`, text: e.title, who: e.who === "company" ? "company" : "fund" });
-    changes.sort((a, b) => b.date.localeCompare(a.date));
+    changes.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     return { decisions, watch, good, changes };
   }, [store, p, w]);
 }

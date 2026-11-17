@@ -177,7 +177,7 @@ export function useDealFlow(scope: (owner?: string) => boolean = EVERYONE) {
     const market: SectorStat[] = MARKET.map((m) => ({ sector: m.sector, counts: counts[m.sector], raised: m.raised, rounds: m.rounds, ...temperature({ inbound: counts[m.sector], raised: m.raised }) }));
     const heating = new Set(market.filter((m) => m.temp === "Heating up").map((m) => m.sector));
     const rows: FlowRow[] = base.map((r) => ({ ...r, look: lookAgain({ ...r, outcome: r.status === "Passed" || r.status === "On hold" ? r.status : "Waiting" }, heating, today) }));
-    rows.sort((a, b) => b.last.localeCompare(a.last));
+    rows.sort((a, b) => (b.last ?? "").localeCompare(a.last ?? ""));
     return { rows, market, heating, today };
   }, [cards, store, links, mode]);
   return scope === EVERYONE ? all : { ...all, rows: all.rows.filter((r) => scope(r.owner)) };
@@ -186,7 +186,7 @@ export function useDealFlow(scope: (owner?: string) => boolean = EVERYONE) {
 /** Live decks first in the order code ranks them: fits the rules, founder-market fit, then waiting longest. */
 export function triageOrder(a: FlowRow, b: FlowRow) {
   const fitRank = (r: FlowRow) => (r.fit === "Strong" ? 0 : r.fit === "Mixed" ? 1 : r.fit === "Weak" ? 2 : 3);
-  return Number(b.fits) - Number(a.fits) || fitRank(a) - fitRank(b) || a.last.localeCompare(b.last);
+  return Number(b.fits) - Number(a.fits) || fitRank(a) - fitRank(b) || (a.last ?? "").localeCompare(b.last ?? "");
 }
 
 export function lookOrder(a: FlowRow, b: FlowRow) {
@@ -211,7 +211,7 @@ export function feedOf(rows: FlowRow[]): FeedItem[] {
       for (const c of FUNNEL[r.id]?.competitors ?? [])
         if (c.signal === "Raised") out.push({ key: `${r.id}-${c.name}`, row: r, kind: "Rival raised", at: `${c.when}-28`, text: `${c.name} (${c.what}): ${c.detail}`, source: "Funding news" });
   }
-  return out.sort((a, b) => b.at.localeCompare(a.at));
+  return out.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
 }
 
 // ---------- Small pieces ----------
@@ -326,7 +326,7 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
     setDocs({ name: r.name, docs: d, start: Math.max(0, d.findIndex((x) => x.code === code)) });
   };
   const base = sort === "look" ? [...rows].sort(lookOrder) : rows;
-  const list = col ? [...base].sort((a, b) => (colValue(a, col.key) - colValue(b, col.key)) * col.dir || b.last.localeCompare(a.last)) : base;
+  const list = col ? [...base].sort((a, b) => (colValue(a, col.key) - colValue(b, col.key)) * col.dir || (b.last ?? "").localeCompare(a.last ?? "")) : base;
   if (!list.length) return <p className="rounded-xl bg-white p-8 text-center text-sm text-slate-500 shadow-[0_1px_2px_rgba(15,23,42,0.06)]">{empty}</p>;
   const page = list.slice(0, shown);
   const groups: { head: string; items: FlowRow[] }[] = [];

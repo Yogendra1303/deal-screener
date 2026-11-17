@@ -154,7 +154,7 @@ export function inboxOf(rows: RoomRow[], today: string, days = 7) {
   const since = addDays(today, -days);
   return rows
     .flatMap((r) => r.shared.filter((f) => f.at > since).map((f) => ({ r, f })))
-    .sort((a, b) => b.f.at.localeCompare(a.f.at) || a.r.name.localeCompare(b.r.name));
+    .sort((a, b) => (b.f.at ?? "").localeCompare(a.f.at ?? "") || (a.r.name ?? "").localeCompare(b.r.name ?? ""));
 }
 
 export function InboxList({ items, showOwner, limit = 12 }: { items: { r: RoomRow; f: RoomFile }[]; showOwner: boolean; limit?: number }) {

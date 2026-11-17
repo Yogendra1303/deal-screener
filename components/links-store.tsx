@@ -113,8 +113,11 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
       .then((data: { deals?: Array<{ intake_json?: Inbound | null; record_json?: unknown }> } | null) => {
         if (!alive || !data?.deals) return;
         const fromDb = data.deals
-          .filter((d) => d.intake_json && !d.record_json)
-          .map((d) => d.intake_json as Inbound);
+          .filter((d): d is { intake_json: Inbound; record_json?: unknown } => {
+            const ij = d.intake_json as Partial<Inbound> | null | undefined;
+            return Boolean(ij && typeof ij === "object" && typeof ij.id === "string" && ij.id && ij.form && !d.record_json);
+          })
+          .map((d) => d.intake_json);
         if (fromDb.length) setDbInbound(fromDb);
       })
       .catch(() => undefined);
@@ -125,23 +128,23 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
 
   const inbound = useMemo(() => {
     const map = new Map<string, Inbound>();
-    for (const x of SEED_INBOUND) map.set(x.id, x);
-    for (const x of dbInbound) map.set(x.id, x);
-    for (const x of local.inbound) map.set(x.id, x);
-    return [...map.values()].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+    for (const x of SEED_INBOUND) if (x?.id) map.set(x.id, x);
+    for (const x of dbInbound) if (x?.id) map.set(x.id, x);
+    for (const x of local.inbound) if (x?.id) map.set(x.id, x);
+    return [...map.values()].sort((a, b) => (b.receivedAt ?? "").localeCompare(a.receivedAt ?? ""));
   }, [local.inbound, dbInbound]);
   const emails = useMemo(() => {
     const all: Record<string, EmailIn> = {};
-    for (const e of SEED_EMAILS) all[e.id] = e;
+    for (const e of SEED_EMAILS) if (e?.id) all[e.id] = e;
     Object.assign(all, local.emails);
-    return Object.values(all).sort((a, b) => b.at.localeCompare(a.at));
+    return Object.values(all).sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
   }, [local.emails]);
 
   const requests = useMemo(() => {
     const all: Record<string, FounderRequest> = {};
-    for (const r of SEED_REQUESTS) all[r.id] = r;
+    for (const r of SEED_REQUESTS) if (r?.id) all[r.id] = r;
     Object.assign(all, local.requests);
-    return Object.values(all).sort((a, b) => b.sentAt.localeCompare(a.sentAt) || a.companyName.localeCompare(b.companyName));
+    return Object.values(all).sort((a, b) => (b.sentAt ?? "").localeCompare(a.sentAt ?? "") || (a.companyName ?? "").localeCompare(b.companyName ?? ""));
   }, [local.requests]);
 
   const edit = useCallback(

@@ -212,7 +212,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     () =>
       [...SEED_QUESTIONS, ...local.added]
         .map((q) => (local.answers[q.id] && !q.answer ? { ...q, answer: local.answers[q.id] } : q))
-        .sort((a, b) => b.askedAt.localeCompare(a.askedAt) || a.id.localeCompare(b.id)),
+        .sort((a, b) => (b.askedAt ?? "").localeCompare(a.askedAt ?? "") || (a.id ?? "").localeCompare(b.id ?? "")),
     [local],
   );
 

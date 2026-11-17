@@ -112,7 +112,7 @@ export function FlowRecord({ id }: { id: string }) {
       ),
       tone: SIGNAL_TONE[s.kind] ?? "from-slate-400 to-slate-500",
     })),
-  ].sort((a, b) => a.at.localeCompare(b.at));
+  ].sort((a, b) => (a.at ?? "").localeCompare(b.at ?? ""));
 
   const unanswered = !d && !c.meetingAt && r.status === "New";
   if (unanswered)
@@ -254,7 +254,7 @@ export function FlowRecord({ id }: { id: string }) {
                   [
                     "Trigger event",
                     (() => {
-                      const hit = c.signals.filter((x) => x.kind === "Trigger met").sort((x, y) => y.at.localeCompare(x.at))[0];
+                      const hit = c.signals.filter((x) => x.kind === "Trigger met").sort((x, y) => (y.at ?? "").localeCompare(x.at ?? ""))[0];
                       return hit ? <span key="t" className="font-mono">{hit.at}</span> : <span key="t" className="text-slate-500">None yet</span>;
                     })(),
                   ],

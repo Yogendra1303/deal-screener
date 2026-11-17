@@ -24,13 +24,14 @@ function pitchGroup(c: PitchCardData): Group {
 }
 
 function pitchEntry(c: PitchCardData, today: string, extra?: string): Entry {
-  const days = daysBetween(c.receivedAt.slice(0, 10), today);
+  const dateStr = (c.receivedAt ?? "").slice(0, 10);
+  const days = dateStr ? daysBetween(dateStr, today) : 0;
   return {
     key: c.id,
     group: pitchGroup(c),
     title: `${c.stage}${c.amountUsd ? `, raising ${usd(c.amountUsd)}` : ""} · ${c.sector}`,
     detail: c.line,
-    meta: `Received ${fmtDay(c.receivedAt.slice(0, 10))} (${days} ${days === 1 ? "day" : "days"} ago)${extra ? ` · ${extra}` : ""}`,
+    meta: `Received ${dateStr ? fmtDay(dateStr) : "recently"}${days ? ` (${days} ${days === 1 ? "day" : "days"} ago)` : ""}${extra ? ` · ${extra}` : ""}`,
     tone: !c.owner ? "watch" : "info",
     href: c.href,
     cta: "Open pitch",
@@ -94,7 +95,10 @@ export function PipelineSection() {
     for (const c of cards) sources.set(source(c.id), [...(sources.get(source(c.id)) ?? []), c]);
     const waitingOnUs = live
       .filter((c) => store.statusOf(c.id) === "New" && (!c.owner || !c.screened))
-      .map((c) => ({ c, days: daysBetween(c.receivedAt.slice(0, 10), today) }))
+      .map((c) => {
+        const d = (c.receivedAt ?? "").slice(0, 10);
+        return { c, days: d ? daysBetween(d, today) : 0 };
+      })
       .sort((a, b) => b.days - a.days);
     const team = ANALYSTS.map((a) => {
       const reqs = links.requests.filter((r) => r.from === a.name);

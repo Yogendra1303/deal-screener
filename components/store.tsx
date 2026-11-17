@@ -223,7 +223,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addSignal = useCallback((id: string, s: Omit<LoggedSignal, "id" | "loggedAt">) => {
     setSignals((prev) => {
       const entry: LoggedSignal = { ...s, id: `sig-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, loggedAt: new Date().toISOString() };
-      const next = { ...prev, [id]: [entry, ...(prev[id] ?? [])].sort((a, b) => b.at.localeCompare(a.at)) };
+      const next = { ...prev, [id]: [entry, ...(prev[id] ?? [])].sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")) };
       setSaveError(write(KEYS.signals, next));
       return next;
     });

@@ -20,7 +20,7 @@ import type { DealResult } from "@/lib/types";
 
 export function byUrgency(today: string) {
   const rank = { Overdue: 0, Open: 1, Answered: 2 };
-  return (a: Question, b: Question) => rank[stateOf(a, today)] - rank[stateOf(b, today)] || a.due.localeCompare(b.due);
+  return (a: Question, b: Question) => rank[stateOf(a, today)] - rank[stateOf(b, today)] || (a.due ?? "").localeCompare(b.due ?? "");
 }
 
 // ---------------- Analyst ----------------
