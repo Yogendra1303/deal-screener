@@ -141,56 +141,39 @@ async function sendAlertEmail(eventType: AuditEventType, actorEmail: string, det
   const resend = new Resend(apiKey);
   const { subject, text, html } = buildEmail(eventType, actorEmail, details);
 
-  const tasks: Promise<unknown>[] = [];
-
   if (eventType === "FOUNDER_SUBMIT" && actorEmail && actorEmail.includes("@")) {
-    // 1. Send clean confirmation receipt directly to the founder, BCC'd to yogendrakapkoti13@gmail.com
-    const thankYou = buildFounderThankYouEmail(actorEmail, details);
-    const partnerBcc = actorEmail.toLowerCase() !== SENDER_EMAIL.toLowerCase() ? [SENDER_EMAIL] : undefined;
-    tasks.push(
-      resend.emails
-        .send({
-          from: ALERT_FROM,
-          to: actorEmail,
-          bcc: partnerBcc,
-          replyTo: SENDER_EMAIL,
-          subject: thankYou.subject,
-          text: thankYou.text,
-          html: thankYou.html,
-        })
-        .then((res) => {
-          if (res.error) {
-            console.error("[notify][founder-thank-you] Resend error:", res.error);
-          }
-          return res;
-        }),
-    );
+    const founderEmail = actorEmail.trim().toLowerCase();
+    const thankYou = buildFounderThankYouEmail(founderEmail, details);
+    const ccList = founderEmail !== SENDER_EMAIL.toLowerCase() ? [SENDER_EMAIL] : undefined;
 
-    // 2. Send concise operational pitch alert to the fund partner
-    tasks.push(
-      resend.emails.send({
-        from: ALERT_FROM,
-        to: ALERT_TO,
-        replyTo: actorEmail,
-        subject,
-        text,
-        html,
-      }),
-    );
-  } else {
-    tasks.push(
-      resend.emails.send({
-        from: ALERT_FROM,
-        to: ALERT_TO,
-        replyTo: SENDER_EMAIL,
-        subject,
-        text,
-        html,
-      }),
-    );
+    const res = await resend.emails.send({
+      from: ALERT_FROM,
+      to: founderEmail,
+      cc: ccList,
+      replyTo: SENDER_EMAIL,
+      subject: "Thank you for your submission to Aarka",
+      text: thankYou.text,
+      html: thankYou.html,
+    });
+
+    if (res.error) {
+      console.error("[notify][FOUNDER_SUBMIT] Resend delivery failed:", JSON.stringify(res.error));
+    }
+    return;
   }
 
-  await Promise.allSettled(tasks);
+  const res = await resend.emails.send({
+    from: ALERT_FROM,
+    to: ALERT_TO,
+    replyTo: SENDER_EMAIL,
+    subject,
+    text,
+    html,
+  });
+
+  if (res.error) {
+    console.error(`[notify][${eventType}] Resend delivery failed:`, JSON.stringify(res.error));
+  }
 }
 
 /**

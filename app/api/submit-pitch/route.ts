@@ -91,8 +91,8 @@ export async function POST(req: Request) {
 
     if (contentType.includes("application/json")) {
       const body = await req.json();
-      founderName = String(body.founderName ?? "").trim();
-      founderEmail = String(body.founderEmail ?? "").trim();
+      founderName = String(body.founderName ?? body.name ?? "").trim();
+      founderEmail = String(body.founderEmail ?? body.email ?? "").trim();
       linkedinUrl = String(body.linkedinUrl ?? "").trim();
       companyName = String(body.companyName ?? "").trim();
       website = String(body.website ?? "").trim();
@@ -123,8 +123,8 @@ export async function POST(req: Request) {
       }
     } else {
       const formData = await req.formData();
-      founderName = String(formData.get("founderName") ?? "").trim();
-      founderEmail = String(formData.get("founderEmail") ?? "").trim();
+      founderName = String(formData.get("founderName") ?? formData.get("name") ?? "").trim();
+      founderEmail = String(formData.get("founderEmail") ?? formData.get("email") ?? "").trim();
       linkedinUrl = String(formData.get("linkedinUrl") ?? "").trim();
       companyName = String(formData.get("companyName") ?? "").trim();
       website = String(formData.get("website") ?? "").trim();
