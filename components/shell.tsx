@@ -1,6 +1,7 @@
 "use client";
 
 import { setMode, useMode } from "./mode";
+import { GlobalSearchBar } from "./global-search";
 import { DB_TEXT, hydrate, persist, useDbInfo } from "@/lib/db/client";
 import { MODE_TEXT } from "@/lib/mode";
 import Link from "next/link";
@@ -839,45 +840,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               Back
             </button>
           )}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const q = new FormData(e.currentTarget).get("q")?.toString().trim();
-              router.push(q ? `/deals?q=${encodeURIComponent(q)}` : "/deals");
-            }}
-            className="flex flex-1 items-center gap-2"
-          >
-            <div className="relative w-full">
-              <svg
-                viewBox="0 0 24 24"
-                className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <input
-                name="q"
-                type="search"
-                placeholder="Search companies, sectors, or founders…"
-                className="w-full rounded-md border border-slate-200 bg-slate-50/60 py-1.5 pr-3 pl-9 text-sm leading-tight text-slate-900 placeholder:text-slate-500 transition-colors focus:border-blue-600 focus:bg-white focus:outline-none"
-              />
-            </div>
-            <Link
-              href="/upload"
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium leading-tight text-white shadow-sm transition-colors hover:bg-blue-700"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Create pitch
-            </Link>
-          </form>
+          <GlobalSearchBar />
         </div>
 
         <div className="flex items-center gap-2">

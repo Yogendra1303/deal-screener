@@ -129,6 +129,26 @@ async function run() {
   });
   check("POST /api/track beacon endpoint responds 200 (bot-safe)", trackPostRes.status === 200, `status ${trackPostRes.status}`);
 
+  const searchRes = await fetch(`${BASE}/api/search?q=fintech`, { cache: "no-store" });
+  check("GET /api/search blocks unauthenticated callers (401)", searchRes.status === 401, `status ${searchRes.status}`);
+
+  const votesRes = await fetch(`${BASE}/api/deals/ledgerly/votes`, { cache: "no-store" });
+  check("GET /api/deals/:id/votes blocks unauthenticated callers (401)", votesRes.status === 401, `status ${votesRes.status}`);
+
+  const outreachRes = await fetch(`${BASE}/api/deals/ledgerly/outreach`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ toEmail: "a@b.com", subject: "Test", message: "Test" }),
+  });
+  check("POST /api/deals/:id/outreach blocks unauthenticated callers (401)", outreachRes.status === 401, `status ${outreachRes.status}`);
+
+  const approveRes = await fetch(`${BASE}/api/access-request`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "attacker@example.com", action: "approve" }),
+  });
+  check("PATCH /api/access-request (approve) blocks unauthenticated callers (401)", approveRes.status === 401, `status ${approveRes.status}`);
+
   // 6. Access Request Waitlist Check — NEVER sets a session cookie
   const reqPostRes = await fetch(`${BASE}/api/access-request`, {
     method: "POST",

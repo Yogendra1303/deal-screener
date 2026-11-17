@@ -7,6 +7,7 @@ import { PortfolioHeader } from "@/components/portfolio-header";
 import { useScope } from "@/components/scope";
 import { usePortfolio } from "@/components/portfolio-store";
 import { Card, cx } from "@/components/ui";
+import { downloadCsv, escapeHtml, openPrintableReport } from "@/lib/export";
 import { attentionFor, latestRunway, needsAttention, WATCH_RUNWAY_MONTHS, type Attention } from "@/lib/portfolio/attention";
 
 type Filter = "all" | "attention" | "fine";
@@ -64,14 +65,68 @@ export default function PortfolioPage() {
             </button>
           ))}
         </div>
-        <input
-          id="portfolio-search"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search companies or owners"
-          className="w-64 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            id="portfolio-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search companies or owners"
+            className="w-56 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              downloadCsv(
+                `aarka-lp-portfolio-${new Date().toISOString().slice(0, 10)}.csv`,
+                ["Company", "Sector", "Country", "Owner", "Latest Runway (mo)", "Needs Attention", "Top Alert"],
+                shown.map(({ c, items, needs, runway }) => [
+                  c.name,
+                  c.sector,
+                  c.country,
+                  c.owner,
+                  runway ? runway.months.toFixed(1) : "—",
+                  needs ? "Yes" : "No",
+                  items[0]?.text ?? "On track",
+                ]),
+              );
+            }}
+            className="cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50"
+          >
+            Export LP CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const tableRows = shown
+                .map(
+                  ({ c, items, needs, runway }) =>
+                    `<tr>
+                      <td><strong>${escapeHtml(c.name)}</strong><br/><span style="color:#64748b">${escapeHtml(c.sector)} · ${escapeHtml(c.country)}</span></td>
+                      <td>${escapeHtml(c.owner)}</td>
+                      <td>${runway ? `${runway.months.toFixed(1)} mo` : "—"}</td>
+                      <td><span class="badge ${needs ? "badge-amber" : "badge-green"}">${needs ? "Needs Attention" : "On Track"}</span></td>
+                      <td>${escapeHtml(items[0]?.text ?? "Reporting & runway healthy")}</td>
+                    </tr>`,
+                )
+                .join("");
+              const body = `
+                <div class="grid">
+                  <div class="kpi"><div class="kpi-label">Portfolio Companies</div><div class="kpi-val">${shown.length}</div></div>
+                  <div class="kpi"><div class="kpi-label">Needs Attention</div><div class="kpi-val">${shown.filter((x) => x.needs).length}</div></div>
+                  <div class="kpi"><div class="kpi-label">On Track</div><div class="kpi-val">${shown.filter((x) => !x.needs).length}</div></div>
+                  <div class="kpi"><div class="kpi-label">Watch Threshold</div><div class="kpi-val">&lt; ${WATCH_RUNWAY_MONTHS} mo cash</div></div>
+                </div>
+                <h2>Quarterly Portfolio Summary</h2>
+                <table><thead><tr><th>Company</th><th>Lead</th><th>Runway</th><th>Status</th><th>Latest Note</th></tr></thead><tbody>${tableRows}</tbody></table>
+              `;
+              openPrintableReport("Quarterly LP Portfolio Report", `Fund I · ${shown.length} active portfolio companies`, body);
+            }}
+            className="cursor-pointer rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-2xs hover:bg-slate-800"
+          >
+            LP Report PDF
+          </button>
+        </div>
       </div>
 
       {!p.ready ? (

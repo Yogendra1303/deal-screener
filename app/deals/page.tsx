@@ -11,6 +11,7 @@ import { Delta } from "@/components/charts";
 import { useStore } from "@/components/store";
 import { DropdownSelect, LABEL, Notice, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
+import { downloadCsv } from "@/lib/export";
 import { FLOW_NOTE } from "@/lib/flow";
 import { MARKET, PITCH_ADDRESS } from "@/lib/funnel";
 import { daysBetween } from "@/lib/portfolio/health";
@@ -372,6 +373,34 @@ export default function DealsPage() {
                   Reset filters
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => {
+                  downloadCsv(
+                    `aarka-pipeline-${new Date().toISOString().slice(0, 10)}.csv`,
+                    ["Company", "Sector", "Stage", "City", "Ask (USD)", "Status", "Founder Fit", "Fits Mandate", "Owner", "Latest Date", "Founder"],
+                    sorted.map((r) => [
+                      r.name,
+                      r.sector,
+                      r.stage,
+                      r.city,
+                      r.askUsd ?? "",
+                      r.status,
+                      r.fit,
+                      r.fits ? "Yes" : "No",
+                      r.owner ?? "Unassigned",
+                      r.last,
+                      r.founderName ?? "",
+                    ]),
+                  );
+                }}
+                className={cx(
+                  "cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100",
+                  !hasAnyFilter && "ml-auto",
+                )}
+              >
+                Export CSV ({sorted.length})
+              </button>
             </div>
           </div>
 

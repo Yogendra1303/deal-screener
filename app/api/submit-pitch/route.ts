@@ -16,7 +16,9 @@ import {
 } from "@/lib/db/repository";
 import { logAndNotify } from "@/lib/notify";
 import { recordAndAlertError } from "@/lib/error-logger";
+import { validateFinancialBinary, validatePdfBinary } from "@/lib/file-security";
 import { createPitchToken } from "@/lib/founder-token";
+import { checkRateLimit, getRequestIp, rateLimitHeaders } from "@/lib/rate-limit";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 import { finishDeal, processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
@@ -90,9 +92,13 @@ interface DirectFilePayload {
 
 export async function POST(req: Request) {
   try {
-    const ip = (req.headers.get("x-forwarded-for") || "unknown").split(",")[0].trim();
-    if (!checkSubmitRate(ip)) {
-      return NextResponse.json({ error: "Too many submissions in a short time. Please wait a few minutes and try again." }, { status: 429 });
+    const ip = getRequestIp(req);
+    const rate = checkRateLimit("submit_pitch", ip, 10, 15 * 60 * 1000);
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: "Too many submissions in a short time. Please wait a few minutes and try again." },
+        { status: 429, headers: rateLimitHeaders(rate) },
+      );
     }
 
     const contentType = req.headers.get("content-type") || "";
@@ -321,18 +327,26 @@ export async function POST(req: Request) {
         console.error("[submit-pitch][state-sync]", stateErr);
       }
 
-      // 3. Link or store assets in Supabase Storage / local files
+      // 3. Link or store assets in Supabase Storage / local files (with binary magic-byte validation)
       if (directDeck) {
         await recordUploadedFile(id, "deck_pdf", directDeck.fileName, directDeck.mimeType || "application/pdf", directDeck.storagePath);
       } else if (formDeckFile) {
-        const pdfBytes = Buffer.from(await formDeckFile.arrayBuffer());
-        await putPitchDeck(id, formDeckFile.name, formDeckFile.type || "application/pdf", new Uint8Array(pdfBytes));
+        const pdfBytes = new Uint8Array(await formDeckFile.arrayBuffer());
+        const pdfCheck = validatePdfBinary(pdfBytes, formDeckFile.name);
+        if (!pdfCheck.ok) {
+          return NextResponse.json({ error: pdfCheck.error }, { status: 400 });
+        }
+        await putPitchDeck(id, formDeckFile.name, formDeckFile.type || "application/pdf", pdfBytes);
       }
 
       if (directFin) {
         await recordUploadedFile(id, finFileType, directFin.fileName, directFin.mimeType || "text/csv", directFin.storagePath);
       } else if (formFinFile) {
         const finBytes = new Uint8Array(await formFinFile.arrayBuffer());
+        const finCheck = validateFinancialBinary(finBytes, formFinFile.name);
+        if (!finCheck.ok) {
+          return NextResponse.json({ error: finCheck.error }, { status: 400 });
+        }
         await putFinancialFile(id, finFileType, formFinFile.name, formFinFile.type || "text/csv", finBytes);
       }
 

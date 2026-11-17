@@ -13,7 +13,10 @@ import { CheckSummary } from "@/components/checks-ui";
 import { DealDocs } from "@/components/docs";
 import { coverage } from "@/lib/coverage";
 import { BackLink, type TabTone, Brief, FactsTable, KeyNumbers, QuestionsPanel, Tabs, WhoKnows, type CompanyRef } from "@/components/company";
+import { FounderOutreachModal } from "@/components/founder-outreach-modal";
+import { ICVotingPanel } from "@/components/ic-voting-panel";
 import { VCMetricsPanel } from "@/components/vc-metrics-panel";
+import { escapeHtml, openPrintableReport } from "@/lib/export";
 import { useStore } from "@/components/store";
 import { useWorkspace } from "@/components/workspace";
 import {
@@ -53,6 +56,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
   const deal = store.getDeal(id);
   const deckUrl = useDeckUrl(deal);
   const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "overview");
+  const [outreachOpen, setOutreachOpen] = useState(false);
 
   useEffect(() => {
     if (initial && TABS.includes(initial)) {
@@ -129,7 +133,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
           </div>
           <p className="mt-1 text-slate-600">{deal.record.oneLiner}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="deal-status" className="text-xs text-slate-500">
             Status
           </label>
@@ -142,6 +146,48 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
               if (s === "Passed" || s === "On hold") setTab("overview");
             }}
           />
+          <button
+            type="button"
+            onClick={() => setOutreachOpen(true)}
+            className="cursor-pointer rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
+          >
+            Follow up
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const flagRows = deal.flags
+                .map(
+                  (fl) =>
+                    `<tr><td><span class="badge ${fl.kind === "conflict" ? "badge-red" : "badge-amber"}">${escapeHtml(fl.kind)}</span></td><td><strong>${escapeHtml(fl.title)}</strong><br/>${escapeHtml(fl.detail)}</td></tr>`,
+                )
+                .join("");
+              const scoreRows = deal.scores
+                .map(
+                  (sc) =>
+                    `<tr><td><strong>${escapeHtml(sc.label)}</strong></td><td><span class="badge">${escapeHtml(sc.level)}</span></td><td>${escapeHtml(sc.reason)}</td></tr>`,
+                )
+                .join("");
+              const body = `
+                <div class="grid">
+                  <div class="kpi"><div class="kpi-label">Stage</div><div class="kpi-val">${escapeHtml(f.stage)}</div></div>
+                  <div class="kpi"><div class="kpi-label">Round Ask</div><div class="kpi-val">${escapeHtml(f.amountUsd ? usd(f.amountUsd) : "—")}</div></div>
+                  <div class="kpi"><div class="kpi-label">Sector</div><div class="kpi-val">${escapeHtml(f.sector)}</div></div>
+                  <div class="kpi"><div class="kpi-label">Band / Status</div><div class="kpi-val">${escapeHtml(band)} · ${escapeHtml(store.statusOf(deal.id))}</div></div>
+                </div>
+                <h2>Executive Summary</h2>
+                <p>${escapeHtml(deal.ai?.summary || deal.record.oneLiner)}</p>
+                <h2>Investment Scorecard</h2>
+                <table><thead><tr><th>Dimension</th><th>Rating</th><th>Evidence</th></tr></thead><tbody>${scoreRows}</tbody></table>
+                <h2>Automated Math &amp; Verification Checks (${deal.flags.length})</h2>
+                ${deal.flags.length ? `<table><thead><tr><th>Type</th><th>Finding</th></tr></thead><tbody>${flagRows}</tbody></table>` : `<p>All automated checks passed with zero discrepancies above 10%.</p>`}
+              `;
+              openPrintableReport(`IC Diligence Memo: ${f.companyName}`, `${f.sector} · ${f.stage} · ${f.country}`, body);
+            }}
+            className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            Export Memo
+          </button>
           {deckUrl && (
             <a href={deckUrl} target="_blank" rel="noreferrer" className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
               Open deck
@@ -192,6 +238,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
             <QuestionsPanel company={company} />
           </div>
           <aside className="space-y-4">
+            <ICVotingPanel dealId={deal.id} companyName={f.companyName} />
             <OverrulePanel deal={deal} band={band} />
             <SignalsPanel id={deal.id} name={deal.form.companyName} className="rounded-xl p-5" />
             <WhoKnows contacts={DEAL_CONTACTS[deal.id] ?? []} note="Warm intro paths across the fund's relationship graph." />
@@ -199,6 +246,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
         </div>
         </div>
       )}
+      <FounderOutreachModal isOpen={outreachOpen} onClose={() => setOutreachOpen(false)} deal={deal} />
       {tab === "numbers" && (
         <div className="space-y-6">
           <VCMetricsPanel sheet={deal.sheet} record={deal.record} askAmount={deal.form.amountUsd} />

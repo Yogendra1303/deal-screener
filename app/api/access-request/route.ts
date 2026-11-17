@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getState, putState } from "@/lib/db/repository";
+import { getState, insertAuditLog, putState, upsertPermittedUsers } from "@/lib/db/repository";
 import { recordAndAlertError } from "@/lib/error-logger";
-import { requireRole } from "@/lib/nextauth";
+import { auth, requireRole } from "@/lib/nextauth";
+import { checkRateLimit, getRequestIp, rateLimitHeaders } from "@/lib/rate-limit";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 
 export interface AccessRequestItem {
@@ -13,7 +14,9 @@ export interface AccessRequestItem {
   intent: string;
   additionalContext?: string;
   createdAt: string;
-  status: "PENDING" | "APPROVED" | "INVITED" | "pending" | "approved" | "invited";
+  status: "PENDING" | "APPROVED" | "REVOKED" | "INVITED" | "pending" | "approved" | "invited";
+  reviewedBy?: string;
+  reviewedAt?: string;
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -39,6 +42,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getRequestIp(req);
+    const rate = checkRateLimit("access_request", ip, 8, 15 * 60 * 1000);
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: "Too many access requests. Please wait a few minutes and try again." },
+        { status: 429, headers: rateLimitHeaders(rate) },
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
 
     // Silent honeypot check for automated spam bots
@@ -69,12 +81,10 @@ export async function POST(req: NextRequest) {
       status: "PENDING",
     };
 
-    // 1. Save to Supabase app_state (strictly pending manual approval — never grants workspace access)
     const existing = (await getState<AccessRequestItem[]>("access_requests")) || [];
     const updated = [item, ...existing.filter((x) => x.email !== email)];
     await putState("access_requests", updated);
 
-    // 2. Notify Yogendra directly via Resend
     if (RESEND_API_KEY) {
       try {
         await fetch("https://api.resend.com/emails", {
@@ -91,7 +101,7 @@ export async function POST(req: NextRequest) {
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; background: #09090b; color: #f4f4f5; border-radius: 10px; border: 1px solid #27272a;">
                 <h2 style="color: #ffffff; margin-top: 0; font-size: 18px;">New Institutional Access Request</h2>
-                <p style="color: #a1a1aa; font-size: 14px;">Someone requested invite-only access to the Aarka workspace (dashboard access is NOT granted automatically):</p>
+                <p style="color: #a1a1aa; font-size: 14px;">Someone requested invite-only access to the Aarka workspace (status: PENDING):</p>
                 <ul style="line-height: 1.8; color: #e4e4e7; font-size: 14px;">
                   <li><strong>Name:</strong> ${escapeHtml(item.name)}</li>
                   <li><strong>Email:</strong> ${escapeHtml(item.email)}</li>
@@ -102,7 +112,7 @@ export async function POST(req: NextRequest) {
                   <li><strong>Received:</strong> ${new Date().toLocaleString("en-US")}</li>
                 </ul>
                 <p style="margin-top: 20px; font-size: 13px; color: #71717a;">
-                  To approve access, add their Google email to your Google OAuth console and Supabase permitted_users table.
+                  Approve them in 1 click inside Aarka → Live site traffic → Access Requests.
                 </p>
               </div>
             `,
@@ -113,17 +123,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Broadcast to authenticated Partner SSE listeners only
     try {
-      broadcastRealtimeEvent("deal.updated", {
-        type: "access_request",
-        item,
-      });
+      broadcastRealtimeEvent("deal.updated", { type: "access_request", item });
     } catch {
       // non-blocking
     }
 
-    // Never issue a session cookie here — only manually approved Google OAuth partners can enter the workspace.
     return NextResponse.json({
       ok: true,
       message: "Access request recorded for partner review.",
@@ -140,5 +145,66 @@ export async function POST(req: NextRequest) {
       component: "POST /api/access-request",
     });
     return NextResponse.json({ error: "Failed to submit request" }, { status: 500 });
+  }
+}
+
+/** Partner-only 1-click Waitlist Approval / Revocation console: atomically syncs Supabase permitted_users & audit_logs. */
+export async function PATCH(req: NextRequest) {
+  const gate = await requireRole();
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.status === 401 ? "Unauthorized" : "Forbidden" }, { status: gate.status });
+  }
+
+  try {
+    const body = (await req.json().catch(() => ({}))) as {
+      email?: string;
+      action?: "approve" | "revoke";
+    };
+    const email = String(body.email || "").trim().toLowerCase();
+    const action = body.action;
+    if (!email || !["approve", "revoke"].includes(String(action))) {
+      return NextResponse.json({ error: "Provide email and action ('approve' or 'revoke')." }, { status: 400 });
+    }
+
+    const session = await auth().catch(() => null);
+    const reviewer = session?.user?.email?.trim().toLowerCase() || "partner";
+    const reviewedAt = new Date().toISOString();
+
+    const list = (await getState<AccessRequestItem[]>("access_requests")) || [];
+    const target = list.find((r) => r.email.toLowerCase() === email);
+    const nextStatus = action === "approve" ? "APPROVED" : "REVOKED";
+
+    const updated = list.map((r) =>
+      r.email.toLowerCase() === email
+        ? { ...r, status: nextStatus as AccessRequestItem["status"], reviewedBy: reviewer, reviewedAt }
+        : r,
+    );
+    await putState("access_requests", updated);
+
+    // Sync Supabase permitted_users table so approved users can immediately sign in via Google OAuth
+    try {
+      await upsertPermittedUsers([
+        {
+          email,
+          name: target?.name ?? email.split("@")[0],
+          role: "partner",
+          active: action === "approve",
+        },
+      ]);
+    } catch (permErr) {
+      console.warn("[access-request][PATCH] permitted_users sync note:", permErr);
+    }
+
+    void insertAuditLog(action === "approve" ? "PARTNER_APPROVAL" : "PARTNER_REVOKE", reviewer, {
+      targetEmail: email,
+      targetName: target?.name,
+      status: nextStatus,
+      message: `${reviewer} ${action === "approve" ? "approved & whitelisted" : "revoked access for"} ${email}.`,
+    }).catch(() => undefined);
+
+    return NextResponse.json({ ok: true, email, status: nextStatus, requests: updated });
+  } catch (err) {
+    console.error("[api/access-request][PATCH] error:", err);
+    return NextResponse.json({ error: "Could not update access request." }, { status: 500 });
   }
 }

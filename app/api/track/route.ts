@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getState, listAuditLogs, listDeals, putState } from "@/lib/db/repository";
 import { auth, requireRole } from "@/lib/nextauth";
+import { checkRateLimit, getRequestIp } from "@/lib/rate-limit";
 
 const STATE_KEY = "site_traffic_v1";
 const MAX_EVENTS = 2500;
@@ -9,6 +10,7 @@ const BOT_RE =
   /bot|crawl|spider|slurp|bingpreview|facebookexternalhit|telegrambot|slackbot|discordbot|headless|lighthouse|pingdom|uptimerobot|curl|wget|python-requests/i;
 
 export interface TrafficEvent {
+  visitId?: string;
   ts: string;
   path: string;
   source: string;
@@ -27,10 +29,9 @@ export interface TrafficEvent {
   screen?: string;
   timezone?: string;
   language?: string;
+  durationSec?: number;
   visitor: string;
-  /** Salted one-way hash of the visitor's network IP (never raw IP) used to separate partner Wi-Fi from external visitors. */
   ipHash?: string;
-  /** True when the visit came from a registered Partner / Team Wi-Fi or device. */
   isOwner?: boolean;
   ownerLabel?: string;
 }
@@ -47,26 +48,6 @@ interface TrafficStore {
   totalViews: number;
   events: TrafficEvent[];
   ownerNetworks?: OwnerNetwork[];
-}
-
-const RATE_WINDOW_MS = 60 * 1000;
-const RATE_MAX = 40;
-const ipHits = new Map<string, number[]>();
-
-function allowRate(ip: string): boolean {
-  const now = Date.now();
-  const prev = (ipHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  if (prev.length >= RATE_MAX) {
-    ipHits.set(ip, prev);
-    return false;
-  }
-  prev.push(now);
-  ipHits.set(ip, prev);
-  return true;
-}
-
-function getClientIp(req: NextRequest): string {
-  return (req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown").split(",")[0].trim();
 }
 
 function hashNetworkIp(ip: string): string {
@@ -129,33 +110,15 @@ function classifySource(referrer: string, utmSource: string, ref: string, ua: st
     if (!host || host.includes("aarkavc.xyz") || host.includes("localhost")) {
       return { source: "Direct", channel: "Direct" };
     }
-    if (host.includes("reddit.com") || host === "redd.it" || host === "out.reddit.com") {
-      return { source: "Reddit", channel: "Social" };
-    }
-    if (host.includes("linkedin.com") || host === "lnkd.in") {
-      return { source: "LinkedIn", channel: "Social" };
-    }
-    if (host === "t.co" || host.includes("twitter.com") || host.includes("x.com")) {
-      return { source: "X / Twitter", channel: "Social" };
-    }
-    if (host.includes("instagram.com") || host === "l.instagram.com") {
-      return { source: "Instagram", channel: "Social" };
-    }
-    if (host.includes("facebook.com") || host === "lm.facebook.com" || host === "m.facebook.com") {
-      return { source: "Facebook", channel: "Social" };
-    }
-    if (host.includes("youtube.com") || host === "youtu.be") {
-      return { source: "YouTube", channel: "Social" };
-    }
-    if (host.includes("whatsapp.com") || host === "wa.me") {
-      return { source: "WhatsApp", channel: "Messaging" };
-    }
-    if (host.includes("news.ycombinator.com")) {
-      return { source: "Hacker News", channel: "Community" };
-    }
-    if (host.includes("producthunt.com")) {
-      return { source: "Product Hunt", channel: "Community" };
-    }
+    if (host.includes("reddit.com") || host === "redd.it" || host === "out.reddit.com") return { source: "Reddit", channel: "Social" };
+    if (host.includes("linkedin.com") || host === "lnkd.in") return { source: "LinkedIn", channel: "Social" };
+    if (host === "t.co" || host.includes("twitter.com") || host.includes("x.com")) return { source: "X / Twitter", channel: "Social" };
+    if (host.includes("instagram.com") || host === "l.instagram.com") return { source: "Instagram", channel: "Social" };
+    if (host.includes("facebook.com") || host === "lm.facebook.com" || host === "m.facebook.com") return { source: "Facebook", channel: "Social" };
+    if (host.includes("youtube.com") || host === "youtu.be") return { source: "YouTube", channel: "Social" };
+    if (host.includes("whatsapp.com") || host === "wa.me") return { source: "WhatsApp", channel: "Messaging" };
+    if (host.includes("news.ycombinator.com")) return { source: "Hacker News", channel: "Community" };
+    if (host.includes("producthunt.com")) return { source: "Product Hunt", channel: "Community" };
     if (
       host.includes("google.") ||
       host.includes("bing.com") ||
@@ -171,6 +134,14 @@ function classifySource(referrer: string, utmSource: string, ref: string, ua: st
   }
 }
 
+function pageDisplayName(path: string): string {
+  if (path === "/") return "Homepage (/)";
+  if (path.startsWith("/pitch")) return "Pitch Form (/pitch)";
+  if (path.startsWith("/login")) return "Sign In (/login)";
+  if (path.startsWith("/pending") || path.startsWith("/unauthorized")) return "Invite Pending (/pending)";
+  return path;
+}
+
 function dailyVisitorHash(ip: string, ua: string, day: string): string {
   const secret = process.env.AUTH_SECRET || "aarka-traffic-salt";
   return crypto.createHash("sha256").update(`${secret}:${ip}:${ua.slice(0, 80)}:${day}`).digest("hex").slice(0, 14);
@@ -183,7 +154,14 @@ function initialsOf(nameOrEmail: string): string {
   return clean.slice(0, 2).toUpperCase() || "YK";
 }
 
-/** Public anonymous pageview beacon — automatically tags Partner Wi-Fi separately from external visitors. */
+function avgSec(events: TrafficEvent[]): number | null {
+  const withDur = events.filter((e) => typeof e.durationSec === "number" && e.durationSec > 0);
+  if (!withDur.length) return null;
+  const total = withDur.reduce((sum, e) => sum + (e.durationSec || 0), 0);
+  return Math.round(total / withDur.length);
+}
+
+/** Public anonymous pageview & active time-on-page beacon. */
 export async function POST(req: NextRequest) {
   try {
     const ua = req.headers.get("user-agent") || "";
@@ -191,12 +169,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, ignored: "bot" });
     }
 
-    const ip = getClientIp(req);
-    if (!allowRate(ip)) {
+    const ip = getRequestIp(req);
+    const rate = checkRateLimit("track_beacon", ip, 60, 60 * 1000);
+    if (!rate.allowed) {
       return NextResponse.json({ ok: true, ignored: "rate" });
     }
 
     const body = (await req.json().catch(() => ({}))) as {
+      type?: "view" | "duration";
+      visitId?: string;
+      durationSec?: number;
       path?: string;
       referrer?: string;
       utmSource?: string;
@@ -208,6 +190,27 @@ export async function POST(req: NextRequest) {
       language?: string;
     };
 
+    const existing = (await getState<TrafficStore>(STATE_KEY).catch(() => undefined)) ?? {
+      totalViews: 0,
+      events: [],
+      ownerNetworks: [],
+    };
+    const prevEvents = Array.isArray(existing.events) ? existing.events : [];
+    const ownerNetworks = Array.isArray(existing.ownerNetworks) ? existing.ownerNetworks : [];
+
+    // 1. Duration heartbeat update for an existing pageview
+    if (body.type === "duration" && body.visitId && typeof body.durationSec === "number") {
+      const dur = Math.min(1800, Math.max(1, Math.round(body.durationSec)));
+      const idx = prevEvents.findIndex((e) => e.visitId === body.visitId);
+      if (idx >= 0) {
+        const updated = [...prevEvents];
+        updated[idx] = { ...updated[idx], durationSec: Math.max(updated[idx].durationSec ?? 0, dur) };
+        await putState(STATE_KEY, { ...existing, events: updated, ownerNetworks });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // 2. New pageview event
     const rawPath = String(body.path || "/").trim().slice(0, 120);
     const path = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
 
@@ -229,6 +232,7 @@ export async function POST(req: NextRequest) {
     const screen = String(body.screen || "").trim().slice(0, 32);
     const timezone = String(body.timezone || "").trim().slice(0, 64);
     const language = String(body.language || "").trim().slice(0, 24);
+    const visitId = String(body.visitId || "").trim().slice(0, 40) || undefined;
 
     const country = (req.headers.get("x-vercel-ip-country") || "Unknown").slice(0, 8);
     const region = (req.headers.get("x-vercel-ip-country-region") || "").slice(0, 16);
@@ -246,16 +250,10 @@ export async function POST(req: NextRequest) {
     const visitor = dailyVisitorHash(ip, ua, day);
     const ipHash = ip !== "unknown" ? hashNetworkIp(ip) : undefined;
     const { source, channel } = classifySource(referrer, utmSource, ref, ua);
-
-    const existing = (await getState<TrafficStore>(STATE_KEY).catch(() => undefined)) ?? {
-      totalViews: 0,
-      events: [],
-      ownerNetworks: [],
-    };
-    const ownerNetworks = Array.isArray(existing.ownerNetworks) ? existing.ownerNetworks : [];
     const matchedOwner = ipHash ? ownerNetworks.find((n) => n.ipHash === ipHash) : undefined;
 
     const event: TrafficEvent = {
+      ...(visitId ? { visitId } : {}),
       ts,
       path,
       source,
@@ -279,7 +277,6 @@ export async function POST(req: NextRequest) {
       ...(matchedOwner ? { isOwner: true, ownerLabel: matchedOwner.label } : {}),
     };
 
-    const prevEvents = Array.isArray(existing.events) ? existing.events : [];
     const nextStore: TrafficStore = {
       totalViews: (existing.totalViews || prevEvents.length) + 1,
       events: [event, ...prevEvents].slice(0, MAX_EVENTS),
@@ -294,7 +291,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** Partner-only analytics endpoint — automatically registers Partner Wi-Fi & strictly separates External vs. Your/Team visits. */
+/** Partner-only analytics endpoint — strictly isolates Partner IP as 1 entity (0 external views) + computes avg time on site/page/source. */
 export async function GET(req: NextRequest) {
   const gate = await requireRole();
   if (!gate.ok) {
@@ -307,7 +304,7 @@ export async function GET(req: NextRequest) {
     const partnerName = session?.user?.name?.trim() || partnerEmail || "Partner";
     const partnerLabel = `${initialsOf(partnerName)} · Partner Wi-Fi`;
 
-    const currentIp = getClientIp(req);
+    const currentIp = getRequestIp(req);
     const currentIpHash = currentIp !== "unknown" ? hashNetworkIp(currentIp) : "";
     const currentCountry = (req.headers.get("x-vercel-ip-country") || "").slice(0, 8);
     const rawCity = req.headers.get("x-vercel-ip-city") || "";
@@ -339,9 +336,9 @@ export async function GET(req: NextRequest) {
 
     const store: TrafficStore = storeRaw ?? { totalViews: 0, events: [], ownerNetworks: [] };
     let ownerNetworks = Array.isArray(store.ownerNetworks) ? [...store.ownerNetworks] : [];
+    let dirtyStore = false;
 
-    // Automatically register this authenticated partner's current Wi-Fi IP hash so
-    // even their Incognito / mobile tests on the same Wi-Fi are cleanly separated from External Visitors!
+    // Auto-register partner's current IP hash
     if (currentIpHash && !ownerNetworks.some((n) => n.ipHash === currentIpHash)) {
       ownerNetworks = [
         {
@@ -353,18 +350,20 @@ export async function GET(req: NextRequest) {
         },
         ...ownerNetworks,
       ].slice(0, 20);
-
-      void putState(STATE_KEY, {
-        ...store,
-        ownerNetworks,
-      }).catch(() => undefined);
+      dirtyStore = true;
     }
 
     const ownerHashSet = new Set(ownerNetworks.map((n) => n.ipHash));
     const ownerLabelByHash = new Map(ownerNetworks.map((n) => [n.ipHash, n.label]));
 
+    // Auto-reclassify any hit from registered Partner IP hashes OR legacy pre-hash test hits from partner's exact city
     const allEvents = (Array.isArray(store.events) ? store.events : []).map((ev) => {
-      const matched = Boolean(ev.isOwner || (ev.ipHash && ownerHashSet.has(ev.ipHash)));
+      const legacySameCity =
+        !ev.ipHash &&
+        Boolean(currentCity) &&
+        (ev.city || "").toLowerCase() === currentCity.toLowerCase();
+      const matched = Boolean(ev.isOwner || (ev.ipHash && ownerHashSet.has(ev.ipHash)) || legacySameCity);
+      if (matched && !ev.isOwner) dirtyStore = true;
       return {
         ...ev,
         isOwner: matched,
@@ -372,7 +371,15 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // STRICT SEPARATION: External Visitors vs. Your / Partner Wi-Fi Visits
+    if (dirtyStore) {
+      void putState(STATE_KEY, {
+        ...store,
+        events: allEvents,
+        ownerNetworks,
+      }).catch(() => undefined);
+    }
+
+    // STRICT SEPARATION: External Visitors (0 from your IP) vs. Your / Partner Wi-Fi (counted as 1 single entity)
     const externalEvents = allEvents.filter((e) => !e.isOwner);
     const ownerEvents = allEvents.filter((e) => e.isOwner);
 
@@ -392,8 +399,9 @@ export async function GET(req: NextRequest) {
     const unique7d = new Set(ext7d.map((e) => e.visitor)).size;
     const unique30d = new Set(ext30d.map((e) => e.visitor)).size;
 
-    const homeViews30d = ext30d.filter((e) => e.path === "/").length;
-    const pitchViews30d = ext30d.filter((e) => e.path.startsWith("/pitch")).length;
+    const homeEvents30d = ext30d.filter((e) => e.path === "/");
+    const pitchEvents30d = ext30d.filter((e) => e.path.startsWith("/pitch"));
+
     const socialViews30d = ext30d.filter((e) => {
       const s = (e.source || "").toLowerCase();
       return (
@@ -412,16 +420,25 @@ export async function GET(req: NextRequest) {
       return t > 0 && nowMs - t <= ms30d;
     }).length;
 
-    const countMap = (items: string[], max = 10) => {
-      const m = new Map<string, number>();
-      for (const k of items) m.set(k, (m.get(k) ?? 0) + 1);
-      return [...m.entries()]
-        .map(([label, count]) => ({ label, count }))
+    const countWithAvg = (eventsList: TrafficEvent[], keyFn: (e: TrafficEvent) => string, max = 10) => {
+      const groups = new Map<string, TrafficEvent[]>();
+      for (const e of eventsList) {
+        const k = keyFn(e);
+        const arr = groups.get(k) ?? [];
+        arr.push(e);
+        groups.set(k, arr);
+      }
+      return [...groups.entries()]
+        .map(([label, arr]) => ({
+          label,
+          count: arr.length,
+          unique: new Set(arr.map((x) => x.visitor)).size,
+          avgDurationSec: avgSec(arr),
+        }))
         .sort((a, b) => b.count - a.count)
         .slice(0, max);
     };
 
-    // 14-day daily chart series (strictly External Visitors, plus ownerViews kept separately)
     const dailySeries: { date: string; label: string; views: number; unique: number; ownerViews: number }[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date(nowMs - i * ms24h);
@@ -437,16 +454,17 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const topSources = countMap(ext30d.map((e) => e.source || "Direct"), 12);
-    const topChannels = countMap(ext30d.map((e) => e.channel || "Direct"), 8);
-    const topPages = countMap(ext30d.map((e) => e.path || "/"), 8);
-    const topCountries = countMap(ext30d.map((e) => e.country || "Unknown"), 10);
-    const topCities = countMap(
-      ext30d.map((e) => (e.city ? `${e.city}${e.region ? `, ${e.region}` : ""}, ${e.country}` : e.country || "Unknown")),
+    const topSources = countWithAvg(ext30d, (e) => e.source || "Direct", 12);
+    const topPages = countWithAvg(ext30d, (e) => pageDisplayName(e.path || "/"), 8);
+    const topCountries = countWithAvg(ext30d, (e) => e.country || "Unknown", 10);
+    const topCities = countWithAvg(
+      ext30d,
+      (e) => (e.city ? `${e.city}${e.region ? `, ${e.region}` : ""}, ${e.country}` : e.country || "Unknown"),
       10,
     );
-    const topOS = countMap(ext30d.map((e) => e.os || "Unknown"), 8);
-    const topBrowsers = countMap(ext30d.map((e) => e.browser || "Unknown"), 8);
+    const topOS = countWithAvg(ext30d, (e) => e.os || "Unknown", 8);
+    const topBrowsers = countWithAvg(ext30d, (e) => e.browser || "Unknown", 8);
+
     const devices = {
       desktop: ext30d.filter((e) => e.device === "desktop").length,
       mobile: ext30d.filter((e) => e.device === "mobile").length,
@@ -455,7 +473,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      // Strictly External Visitor metrics (never mixed with YK / Partner Wi-Fi)
       totalViews: externalEvents.length,
       views24h: ext24h.length,
       unique24h,
@@ -464,16 +481,22 @@ export async function GET(req: NextRequest) {
       views30d: ext30d.length,
       unique30d,
       socialViews30d,
+      avgDurationSec: avgSec(ext30d),
       funnel30d: {
-        landingViews: homeViews30d,
-        pitchViews: pitchViews30d,
+        landingViews: homeEvents30d.length,
+        landingUnique: new Set(homeEvents30d.map((e) => e.visitor)).size,
+        landingAvgSec: avgSec(homeEvents30d),
+        pitchViews: pitchEvents30d.length,
+        pitchUnique: new Set(pitchEvents30d.map((e) => e.visitor)).size,
+        pitchAvgSec: avgSec(pitchEvents30d),
         submissions: liveSubmitted30d,
       },
-      // Strictly Separate Partner / Team Wi-Fi metrics
       ownerStats: {
-        totalViews: ownerEvents.length,
-        views24h: owner24h.length,
-        views30d: owner30d.length,
+        uniqueEntity: ownerEvents.length > 0 ? 1 : 0,
+        totalHits: ownerEvents.length,
+        hits24h: owner24h.length,
+        hits30d: owner30d.length,
+        avgDurationSec: avgSec(owner30d),
         registeredNetworks: ownerNetworks.map((n) => ({
           label: n.label,
           location: [n.city, n.country].filter(Boolean).join(", ") || "Active Wi-Fi",
@@ -484,7 +507,6 @@ export async function GET(req: NextRequest) {
       },
       dailySeries,
       topSources,
-      topChannels,
       topPages,
       topCountries,
       topCities,
@@ -502,7 +524,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Partner-only action: mark legacy pre-fingerprint visits from current city/Direct as Owner visits, or clear owner test hits. */
 export async function PATCH(req: NextRequest) {
   const gate = await requireRole();
   if (!gate.ok) {
@@ -520,23 +541,6 @@ export async function PATCH(req: NextRequest) {
 
     if (body.action === "mark_event_owner" && body.ts) {
       const updated = events.map((e) => (e.ts === body.ts ? { ...e, isOwner: true, ownerLabel: "YK · Partner Wi-Fi" } : e));
-      await putState(STATE_KEY, { ...store, events: updated });
-      return NextResponse.json({ ok: true });
-    }
-
-    if (body.action === "mark_legacy_city_owner") {
-      const rawCity = req.headers.get("x-vercel-ip-city") || "";
-      let city = "";
-      try {
-        city = rawCity ? decodeURIComponent(rawCity) : "";
-      } catch {
-        city = rawCity;
-      }
-      const updated = events.map((e) =>
-        !e.ipHash && city && (e.city || "").toLowerCase() === city.toLowerCase()
-          ? { ...e, isOwner: true, ownerLabel: "YK · Partner Wi-Fi" }
-          : e,
-      );
       await putState(STATE_KEY, { ...store, events: updated });
       return NextResponse.json({ ok: true });
     }

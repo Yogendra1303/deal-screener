@@ -13,6 +13,7 @@ import { health } from "@/lib/client-api";
 import { flowById, flowStatus } from "@/lib/flow";
 import { SEED_DECISIONS, type Decision } from "@/lib/funnel";
 import { clearServerState, hydrate, persist } from "@/lib/db/client";
+import { subscribeDealSync } from "@/lib/deal-sync";
 import type { LoggedSignal } from "@/lib/signals";
 import type { Research } from "@/lib/schema";
 
@@ -132,25 +133,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Then the server's copy, which wins over this browser's unless something changed here first.
     const hasLocal = (key: string) => (window.localStorage.getItem(key) ? read(key, null) : null);
     hydrate<Record<string, DealResult>>(KEYS.deals, setLocal, hasLocal(KEYS.deals));
-    let alive = true;
-    const syncDeals = () => {
-      fetch("/api/deals", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data: { deals?: Array<{ id: string; record_json?: DealResult | null }> } | null) => {
-          if (!alive || !data?.deals) return;
-          const fromRows: Record<string, DealResult> = {};
-          for (const row of data.deals) {
-            if (row.record_json) fromRows[row.id] = row.record_json;
-          }
-          if (Object.keys(fromRows).length) {
-            setLocal((prev) => ({ ...fromRows, ...prev }));
-          }
-        })
-        .catch(() => undefined);
-    };
-    syncDeals();
-    const interval = window.setInterval(syncDeals, 15000);
-    window.addEventListener("focus", syncDeals);
+    const unsubscribe = subscribeDealSync((deals) => {
+      const fromRows: Record<string, DealResult> = {};
+      for (const row of deals) {
+        if (row.record_json) fromRows[row.id] = row.record_json as DealResult;
+      }
+      if (Object.keys(fromRows).length) {
+        setLocal((prev) => ({ ...fromRows, ...prev }));
+      }
+    });
     hydrate<FundRules>(KEYS.rules, setRulesState, hasLocal(KEYS.rules));
     hydrate<Record<string, Overrule>>(KEYS.overrules, setOverrules, hasLocal(KEYS.overrules));
     hydrate<Record<string, FactCheck>>(KEYS.factChecks, setFactChecks, hasLocal(KEYS.factChecks));
@@ -159,11 +150,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     hydrate<Record<string, LoggedSignal[]>>(KEYS.signals, setSignals, hasLocal(KEYS.signals));
     hydrate<Partial<Settings>>(KEYS.settings, (v) => setSettingsState({ ...DEFAULT_SETTINGS, ...v }), hasLocal(KEYS.settings));
     hydrate<Record<string, Research>>(KEYS.research, setResearchState, hasLocal(KEYS.research));
-    return () => {
-      alive = false;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", syncDeals);
-    };
+    return unsubscribe;
   }, [isVc]);
 
   const deals = useMemo(() => {

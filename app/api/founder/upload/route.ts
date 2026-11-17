@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { driver, putFile } from "@/lib/db/repository";
+import { validateFinancialBinary, validatePdfBinary } from "@/lib/file-security";
 import { authorizeFounderDealAccess } from "@/lib/founder-token";
+import { checkRateLimit, getRequestIp, rateLimitHeaders } from "@/lib/rate-limit";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 
 export const maxDuration = 60;
@@ -10,6 +12,11 @@ const MAX_BYTES = 32 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   try {
+    const rate = checkRateLimit("founder_upload", getRequestIp(req), 20, 15 * 60 * 1000);
+    if (!rate.allowed) {
+      return NextResponse.json({ error: "Too many uploads. Please wait a few minutes." }, { status: 429, headers: rateLimitHeaders(rate) });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const dealId = String(formData.get("dealId") || "").trim();
@@ -31,6 +38,13 @@ export async function POST(req: NextRequest) {
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
+    if (/\.pdf$/i.test(file.name)) {
+      const check = validatePdfBinary(bytes, file.name);
+      if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
+    } else if (/\.(csv|xlsx|xls)$/i.test(file.name)) {
+      const check = validateFinancialBinary(bytes, file.name);
+      if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
+    }
     const tokenSuffix = token ? `&token=${encodeURIComponent(token)}` : "";
     const fileUrl = `/api/founder/file?dealId=${encodeURIComponent(dealId)}&fileType=${encodeURIComponent(category)}${tokenSuffix}`;
 

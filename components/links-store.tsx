@@ -10,6 +10,7 @@ import { DEMO_DATE } from "@/lib/portfolio/health";
 import { SEED_EMAILS, SEED_INBOUND, SEED_REQUESTS, newToken, type EmailIn, type FounderAnswer, type FounderRequest, type Inbound, type ItemAnswer, type LinkFile } from "@/lib/links";
 import { DEAL_OWNERS } from "@/lib/team";
 import { hydrate, persist, putServerFile } from "@/lib/db/client";
+import { subscribeDealSync } from "@/lib/deal-sync";
 
 const KEY = "ds.links.v1";
 
@@ -115,83 +116,45 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isVc) return;
-    let alive = true;
-    const syncDeals = () => {
-      fetch("/api/deals", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then(
-          (
-            data: {
-              deals?: Array<{
-                id?: string;
-                company_name?: string;
-                sector?: string | null;
-                stage?: string | null;
-                country?: string | null;
-                ask_amount?: number | null;
-                founder_name?: string | null;
-                founder_email?: string | null;
-                linkedin_url?: string | null;
-                website?: string | null;
-                one_line_pitch?: string | null;
-                owner?: string | null;
-                received_at?: string | null;
-                is_historical?: boolean;
-                intake_json?: Inbound | null;
-                record_json?: unknown;
-              }>;
-            } | null,
-          ) => {
-            if (!alive || !data?.deals) return;
-            const fromDb: Inbound[] = [];
-            for (const d of data.deals) {
-              if (d.is_historical) continue;
-              const ij = d.intake_json as Partial<Inbound> | null | undefined;
-              if (ij && typeof ij === "object" && typeof ij.id === "string" && ij.id && ij.form) {
-                fromDb.push(ij as Inbound);
-              } else if (d.id && d.company_name) {
-                const receivedAt = d.received_at || new Date().toISOString();
-                fromDb.push({
-                  id: d.id,
-                  via: d.owner ? "Referral" : "Website",
-                  owner: d.owner || undefined,
-                  receivedAt,
-                  oneLiner: d.one_line_pitch || `${d.sector || "Technology"} · ${d.stage || "Seed"}`,
-                  form: {
-                    companyName: d.company_name,
-                    website: d.website || "",
-                    country: d.country || "India",
-                    sector: d.sector || "B2B software",
-                    stage: d.stage || "Seed",
-                    amountUsd: typeof d.ask_amount === "number" ? d.ask_amount : null,
-                    founders: [{ name: d.founder_name || "Founder", profileUrl: d.linkedin_url || "" }],
-                    email: d.founder_email || "",
-                  },
-                  files: [
-                    {
-                      name: `${d.company_name}-deck.pdf`,
-                      size: 0,
-                      at: receivedAt.slice(0, 10),
-                      key: `pitch:${d.id}`,
-                      url: `/api/files/${encodeURIComponent(d.id)}/deck_pdf`,
-                    },
-                  ],
-                });
-              }
-            }
-            setDbInbound(fromDb);
-          },
-        )
-        .catch(() => undefined);
-    };
-    syncDeals();
-    const interval = window.setInterval(syncDeals, 15000);
-    window.addEventListener("focus", syncDeals);
-    return () => {
-      alive = false;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", syncDeals);
-    };
+    return subscribeDealSync((deals) => {
+      const fromDb: Inbound[] = [];
+      for (const d of deals) {
+        if (d.is_historical) continue;
+        const ij = d.intake_json as Partial<Inbound> | null | undefined;
+        if (ij && typeof ij === "object" && typeof ij.id === "string" && ij.id && ij.form) {
+          fromDb.push(ij as Inbound);
+        } else if (d.id && d.company_name) {
+          const receivedAt = d.received_at || new Date().toISOString();
+          fromDb.push({
+            id: d.id,
+            via: d.owner ? "Referral" : "Website",
+            owner: d.owner || undefined,
+            receivedAt,
+            oneLiner: d.one_line_pitch || `${d.sector || "Technology"} · ${d.stage || "Seed"}`,
+            form: {
+              companyName: d.company_name,
+              website: d.website || "",
+              country: d.country || "India",
+              sector: d.sector || "B2B software",
+              stage: d.stage || "Seed",
+              amountUsd: typeof d.ask_amount === "number" ? d.ask_amount : null,
+              founders: [{ name: d.founder_name || "Founder", profileUrl: d.linkedin_url || "" }],
+              email: d.founder_email || "",
+            },
+            files: [
+              {
+                name: `${d.company_name}-deck.pdf`,
+                size: 0,
+                at: receivedAt.slice(0, 10),
+                key: `pitch:${d.id}`,
+                url: `/api/files/${encodeURIComponent(d.id)}/deck_pdf`,
+              },
+            ],
+          });
+        }
+      }
+      setDbInbound(fromDb);
+    });
   }, [isVc]);
 
   const inbound = useMemo(() => {
