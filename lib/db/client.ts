@@ -62,9 +62,37 @@ export async function loadState<T>(key: string): Promise<{ found: boolean; value
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const pending = new Map<string, unknown>();
+let flushHooked = false;
 
-/** Saves soon, not on every keystroke. The last value for a key wins. */
-export function saveState(key: string, value: unknown, delay = 600): void {
+function flushPendingStates(): void {
+  if (!pending.size || (current && current.driver === "none")) return;
+  for (const [key, value] of pending.entries()) {
+    const t = timers.get(key);
+    if (t) {
+      clearTimeout(t);
+      timers.delete(key);
+    }
+    pending.delete(key);
+    try {
+      void fetch(`/api/state/${encodeURIComponent(key)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+        keepalive: true,
+      });
+    } catch {
+      // ignore unload network errors
+    }
+  }
+}
+
+/** Saves soon, not on every keystroke. The last value for a key wins, and pending writes flush on pagehide/refresh. */
+export function saveState(key: string, value: unknown, delay = 250): void {
+  if (typeof window !== "undefined" && !flushHooked) {
+    flushHooked = true;
+    window.addEventListener("pagehide", flushPendingStates);
+    window.addEventListener("beforeunload", flushPendingStates);
+  }
   pending.set(key, value);
   const t = timers.get(key);
   if (t) clearTimeout(t);
@@ -77,7 +105,12 @@ export function saveState(key: string, value: unknown, delay = 600): void {
       const v = pending.get(key);
       pending.delete(key);
       try {
-        await fetch(`/api/state/${encodeURIComponent(key)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ value: v }) });
+        await fetch(`/api/state/${encodeURIComponent(key)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: v }),
+          keepalive: true,
+        });
       } catch {
         // The browser copy is already saved; the next change tries again.
       }

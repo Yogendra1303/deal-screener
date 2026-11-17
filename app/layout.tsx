@@ -10,6 +10,7 @@ import { StoreProvider } from "@/components/store";
 import { WorkspaceProvider } from "@/components/workspace";
 import { RealtimeListener } from "@/components/realtime-listener";
 import { ErrorMonitor } from "@/components/error-monitor";
+import { ScrollManager } from "@/components/scroll-manager";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -88,6 +89,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="h-full bg-slate-50 text-slate-900">
         <AuthSessionProvider>
+          <ScrollManager />
           <ErrorMonitor />
           <RealtimeListener />
           <StoreProvider>

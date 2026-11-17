@@ -1,7 +1,7 @@
 "use client";
 
 import { setMode, useMode } from "./mode";
-import { DB_TEXT, useDbInfo } from "@/lib/db/client";
+import { DB_TEXT, hydrate, persist, useDbInfo } from "@/lib/db/client";
 import { MODE_TEXT } from "@/lib/mode";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -209,12 +209,21 @@ function NotificationMenu() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    let local: Record<string, boolean> | null = null;
     try {
       const saved = window.localStorage.getItem("ds.notif.read.v1");
-      if (saved) setReadIds(JSON.parse(saved) as Record<string, boolean>);
+      if (saved) {
+        local = JSON.parse(saved) as Record<string, boolean>;
+        setReadIds(local);
+      }
     } catch {
       // ignore
     }
+    void hydrate<Record<string, boolean>>(
+      "ds.notif.read.v1",
+      (remote) => setReadIds((prev) => ({ ...remote, ...prev })),
+      local,
+    );
   }, []);
 
   useEffect(() => {
@@ -378,11 +387,7 @@ function NotificationMenu() {
     setReadIds((prev) => {
       const next = { ...prev };
       for (const m of matched) next[m.id] = true;
-      try {
-        window.localStorage.setItem("ds.notif.read.v1", JSON.stringify(next));
-      } catch {
-        // ignore
-      }
+      persist("ds.notif.read.v1", next);
       return next;
     });
   }, [pathname, activeItems]);
@@ -390,11 +395,7 @@ function NotificationMenu() {
   function markRead(id: string) {
     setReadIds((prev) => {
       const next = { ...prev, [id]: true };
-      try {
-        window.localStorage.setItem("ds.notif.read.v1", JSON.stringify(next));
-      } catch {
-        // ignore
-      }
+      persist("ds.notif.read.v1", next);
       return next;
     });
   }
@@ -403,11 +404,7 @@ function NotificationMenu() {
     const next: Record<string, boolean> = { ...readIds };
     for (const i of items) next[i.id] = true;
     setReadIds(next);
-    try {
-      window.localStorage.setItem("ds.notif.read.v1", JSON.stringify(next));
-    } catch {
-      // ignore
-    }
+    persist("ds.notif.read.v1", next);
   }
 
   return (
