@@ -358,7 +358,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
     );
 
-  if (path.startsWith("/login") || path.startsWith("/pitch") || (path === "/" && w.ready && !w.session)) return <main className="min-h-full">{children}</main>;
+  if (path.startsWith("/login") || path.startsWith("/pitch") || path.startsWith("/welcome") || (path === "/" && !w.session)) return <main className="min-h-full">{children}</main>;
 
   if (!w.ready || !w.session)
     return (
