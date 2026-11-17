@@ -102,6 +102,16 @@ alter table public.app_state enable row level security;
 -- create policy "anon all app_state" on public.app_state for all to anon using (true) with check (true);
 -- create policy "anon all storage" on storage.objects for all to anon using (bucket_id = 'deal-files') with check (bucket_id = 'deal-files');
 
+-- Authenticated Google users synced on every login (VC vs FOUNDER role).
+create table if not exists public.users (
+  email text primary key check (email = lower(email)),
+  name text,
+  avatar text,
+  role text not null check (role in ('VC', 'FOUNDER')) default 'FOUNDER',
+  updated_at timestamptz not null default now()
+);
+alter table public.users enable row level security;
+
 -- Who may sign in with Google, and as what. The server checks the Google email against this table on every sign-in.
 -- Add people with:  insert into public.permitted_users (email, name, role) values ('you@fund.com', 'Your Name', 'partner');
 create table if not exists public.permitted_users (

@@ -335,6 +335,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  if (path === "/founder") return <main className="min-h-full">{children}</main>;
+
   if (path.startsWith("/founder"))
     return (
       <div className="flex min-h-full flex-col">

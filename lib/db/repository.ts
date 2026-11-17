@@ -409,3 +409,81 @@ export async function getPermittedUser(email: string): Promise<PermittedUser | n
   if (list(process.env.FUNDHUB_ANALYSTS).includes(e)) return { email: e, name: null, role: "analyst", active: true };
   return null;
 }
+
+export type UserRole = "VC" | "FOUNDER";
+export interface UserRecord {
+  email: string;
+  name: string | null;
+  avatar: string | null;
+  role: UserRole;
+  updated_at?: string;
+}
+
+/** Syncs every Google login into public.users (or no-ops cleanly when db driver is none). */
+export async function upsertUser(user: Omit<UserRecord, "updated_at">): Promise<void> {
+  const email = user.email.trim().toLowerCase();
+  if (!email) return;
+  const drv = driver();
+  if (drv === "none") return;
+  const row: UserRecord = {
+    email,
+    name: user.name ?? null,
+    avatar: user.avatar ?? null,
+    role: user.role,
+    updated_at: now(),
+  };
+  if (drv === "supabase") {
+    await sbUpsert("users", [row], "email");
+    return;
+  }
+  await withDb((db) => {
+    const store = db as unknown as { users?: Record<string, UserRecord> };
+    if (!store.users) store.users = {};
+    store.users[email] = row;
+  });
+}
+
+export interface FounderPitchSummary {
+  id: string;
+  companyName: string;
+  sector: string | null;
+  askAmount: number | null;
+  receivedAt: string | null;
+  status: string;
+}
+
+function mapFounderStatus(raw: string | null | undefined): string {
+  switch ((raw ?? "").toLowerCase()) {
+    case "meeting":
+      return "Meeting Scheduled";
+    case "reviewing":
+    case "on hold":
+      return "Under Review";
+    case "passed":
+      return "Passed";
+    case "new":
+    default:
+      return "Received";
+  }
+}
+
+/** Safe pitch metadata for a signed-in founder; never exposes internal math gaps or analyst notes. */
+export async function listFounderDeals(email: string): Promise<FounderPitchSummary[]> {
+  const e = email.trim().toLowerCase();
+  if (!e || driver() === "none") return [];
+  const rows =
+    driver() === "supabase"
+      ? await sbSelect<DealRow>("deals", `founder_email=eq.${encodeURIComponent(e)}&select=id,company_name,sector,ask_amount,status,received_at,intake_json&order=received_at.desc`)
+      : (await listDeals()).filter((d) => {
+          const intakeEmail = (d.intake_json as { form?: { email?: string } } | null)?.form?.email?.toLowerCase();
+          return (d.founder_email ?? "").toLowerCase() === e || intakeEmail === e;
+        });
+  return rows.map((d) => ({
+    id: d.id,
+    companyName: d.company_name,
+    sector: d.sector,
+    askAmount: d.ask_amount,
+    receivedAt: d.received_at,
+    status: mapFounderStatus(d.status),
+  }));
+}

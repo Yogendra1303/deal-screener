@@ -119,12 +119,22 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null; image?: string | null } | null; role?: "partner" | "analyst" | null } | null) => {
+      .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null; image?: string | null } | null; role?: string | null } | null) => {
+        if (data?.enabled && !data.user) {
+          setSession(null);
+          try {
+            window.localStorage.removeItem(KEYS.session);
+          } catch {
+            // Ignore storage errors.
+          }
+          return;
+        }
         if (data?.enabled && data.user?.email && data.role) {
-          const serverRole: Role = data.role === "partner" ? "Partner" : "Analyst";
+          const isVc = data.role === "VC" || data.role === "partner" || data.role === "analyst";
+          const serverRole: Role = data.role === "analyst" ? "Analyst" : "Partner";
           const currentRole = readStoredRole();
-          const role: Role = urlOverride ?? currentRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole);
-          persistRole(role);
+          const role: Role = isVc ? (urlOverride ?? currentRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole)) : "Analyst";
+          if (isVc) persistRole(role);
           const defaultName = role === "Partner" ? "Kabir Shah" : "Riya Menon";
           const realName = data.user.name?.trim() || data.user.email.split("@")[0];
           const next: Session = {
