@@ -7,7 +7,7 @@ import { getPermittedUser, upsertUser, type AppRole, type UserRole } from "./db/
 
 export type AuthRole = UserRole; // "VC" | "FOUNDER"
 
-const DEFAULT_VC_EMAILS = ["yogendrakapkoti1309@gmail.com", "yogendrakapkoti13@gmail.com", "02.ashutosh@gmail.com"];
+const DEFAULT_VC_EMAILS = ["yogendrakapkoti1309@gmail.com", "yogendrakapkoti13@gmail.com", "02.ashutosh@gmail.com", "hello@gopalahuja.com"];
 
 function getVcEmailSet(): Set<string> {
   const extra = (process.env.VC_EMAILS ?? "")
