@@ -80,9 +80,29 @@ export function RealtimeListener() {
 
     connect();
 
+    const onDetectedLiveDeal = (ev: Event) => {
+      const d = (ev as CustomEvent<{ id?: string; slug?: string; company_name?: string; sector?: string; stage?: string; ask_amount?: number }>).detail;
+      if (!d) return;
+      const companyName = d.company_name || "New Company";
+      const ask = d.ask_amount ? `$${(d.ask_amount / 1_000_000).toFixed(1)}M` : "";
+      const toast: LiveToast = {
+        id: `poll-${d.id || Date.now()}`,
+        title: `🚀 New Pitch: ${companyName}`,
+        detail: `${d.sector || "Tech"} · ${d.stage || "Seed"} ${ask ? `· Ask ${ask}` : ""}`,
+        href: `/deals/${d.id || d.slug}`,
+        type: "deal",
+      };
+      setToasts((prev) => (prev.some((x) => x.id === toast.id) ? prev : [toast, ...prev.slice(0, 3)]));
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== toast.id));
+      }, 9000);
+    };
+    window.addEventListener("aarka:new_live_deal", onDetectedLiveDeal);
+
     return () => {
       if (es) es.close();
       clearTimeout(retryTimeout);
+      window.removeEventListener("aarka:new_live_deal", onDetectedLiveDeal);
     };
   }, [isVc]);
 

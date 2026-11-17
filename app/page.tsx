@@ -25,6 +25,8 @@ import { useDataToFix } from "@/components/queues";
 import { useStore } from "@/components/store";
 import { Button, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
+import { triggerDealSync } from "@/lib/deal-sync";
+import type { DealStatus } from "@/lib/types";
 import { addDays, fmtDay } from "@/lib/dates";
 import { fmtMoney, fmtMonth } from "@/lib/format";
 import { attentionFor, latestRunway, WATCH_RUNWAY_MONTHS, type Attention } from "@/lib/portfolio/attention";
@@ -367,53 +369,108 @@ function usePartnerData(resolvedTrigger = 0) {
 
 function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
   const store = useStore();
-  const liveNew = rows.filter((r) => r.isLiveSubmission && r.status === "New");
-  if (liveNew.length === 0) return null;
+  const [scope, setScope] = useState<"new" | "all">("new");
+  const [syncing, setSyncing] = useState(false);
+
+  const allLive = useMemo(
+    () =>
+      rows
+        .filter((r) => r.isLiveSubmission)
+        .sort((a, b) => (b.receivedAtIso ?? b.last ?? "").localeCompare(a.receivedAtIso ?? a.last ?? "")),
+    [rows],
+  );
+  const liveNew = useMemo(() => allLive.filter((r) => r.status === "New"), [allLive]);
+
+  if (allLive.length === 0) return null;
+
+  const activeScope = scope === "new" && liveNew.length === 0 ? "all" : scope;
+  const shown = activeScope === "new" ? liveNew : allLive;
+
+  async function refreshNow() {
+    setSyncing(true);
+    try {
+      await triggerDealSync();
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <section className="rounded-2xl border border-blue-200/90 bg-white p-4 shadow-[0_2px_8px_-2px_rgba(37,99,235,0.12)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100/80 pb-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-            {liveNew.length}
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-2xs">
+            {liveNew.length > 0 ? liveNew.length : allLive.length}
           </span>
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-slate-900">
-                {liveNew.length === 1
-                  ? "1 New Pitch Submission Received"
-                  : `${liveNew.length} New Pitch Submissions Received`}
+                {liveNew.length > 0
+                  ? liveNew.length === 1
+                    ? "1 New Live Pitch Submission"
+                    : `${liveNew.length} New Live Pitch Submissions`
+                  : `Live Pitch Submissions (${allLive.length})`}
               </h2>
               <span className="inline-flex items-center gap-1 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                Live Queue
+                Live Intake
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              Click any company tile to review. Once you move a pitch to On hold, Meetings, or Passed, it leaves this queue automatically.
+              Newest founder form submissions appear here automatically for both Partners &amp; Analysts.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/deals?tab=hold"
-            className="text-xs font-medium text-slate-600 hover:text-slate-900"
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setScope("new")}
+              className={cx(
+                "cursor-pointer rounded px-2 py-0.5 font-semibold transition-colors",
+                activeScope === "new" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              New ({liveNew.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope("all")}
+              className={cx(
+                "cursor-pointer rounded px-2 py-0.5 font-semibold transition-colors",
+                activeScope === "all" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              All submitted ({allLive.length})
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => void refreshNow()}
+            disabled={syncing}
+            className="cursor-pointer rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            On hold →
-          </Link>
+            {syncing ? "Syncing…" : "↻ Sync"}
+          </button>
           <Link
-            href="/deals?tab=read"
+            href="/deals?tab=live"
             className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900"
           >
-            View all ({liveNew.length}) in Pitches →
+            Open all →
           </Link>
         </div>
       </div>
 
       <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {liveNew.slice(0, 6).map((r) => (
+        {shown.slice(0, 6).map((r) => (
           <div
             key={r.id}
-            className="group relative flex flex-col justify-between rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50/20 hover:shadow-sm"
+            className={cx(
+              "group relative flex flex-col justify-between rounded-xl border p-3 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm",
+              r.status === "New"
+                ? "border-blue-200/90 bg-blue-50/30 hover:border-blue-300"
+                : "border-slate-200/80 bg-slate-50/50 hover:border-slate-300",
+            )}
           >
             <div>
               <div className="flex items-start justify-between gap-2">
@@ -423,19 +480,28 @@ function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
                 >
                   {r.name}
                 </Link>
-                <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-blue-800">
+                <span
+                  className={cx(
+                    "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase",
+                    r.status === "New"
+                      ? "bg-blue-600 text-white"
+                      : r.status === "Meeting set"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-slate-200 text-slate-700",
+                  )}
+                >
                   {r.status}
                 </span>
               </div>
 
               <p className="mt-1 text-xs font-medium text-slate-700 line-clamp-1">
                 {r.sector} · {r.stage}
-                {r.askUsd ? ` · Asking ${usd(r.askUsd)}` : ""}
+                {r.askUsd ? ` · ${usd(r.askUsd)}` : ""}
               </p>
 
               <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-2">
                 {r.founderName
-                  ? `Submitted by ${r.founderName}${r.founderEmail ? ` (${r.founderEmail})` : ""}`
+                  ? `${r.founderName}${r.founderEmail ? ` · ${r.founderEmail}` : ""}`
                   : r.line || `${r.sub} · ${r.city}`}
               </p>
             </div>
@@ -445,20 +511,23 @@ function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
                 {fmtDay(r.last)}
               </span>
               <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => store.setStatus(r.id, "On hold")}
-                  title="Move pitch to On hold and remove from Home"
-                  className="cursor-pointer rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900"
+                <select
+                  aria-label={`Change status for ${r.name}`}
+                  value={r.status}
+                  onChange={(e) => store.setStatus(r.id, e.target.value as DealStatus)}
+                  className="cursor-pointer rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[11px] font-medium text-slate-700 hover:border-slate-300 focus:border-blue-500 focus:outline-none"
                 >
-                  On hold
-                </button>
+                  <option value="New">New</option>
+                  <option value="Reviewing">Reviewing</option>
+                  <option value="Meeting set">Meeting set</option>
+                  <option value="On hold">On hold</option>
+                  <option value="Passed">Passed</option>
+                </select>
                 <Link
                   href={r.href}
-                  className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs transition-all duration-150 hover:bg-blue-700"
+                  className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs transition-colors hover:bg-blue-700"
                 >
-                  <span>Open pitch</span>
-                  <span className="inline-block transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+                  Open →
                 </Link>
               </div>
             </div>
@@ -960,7 +1029,7 @@ function AnalystHome() {
   ];
 
   const pitchRows = flow.rows;
-  const underCap = (r: FlowRow) => r.askUsd == null || r.askUsd < 4_000_000;
+  const underCap = (r: FlowRow) => r.askUsd == null || r.askUsd <= 4_000_000;
   const toReadRows = pitchRows.filter((r) => underCap(r) && r.status === "New" && (r.owner === me || (!r.owner && r.label !== "Never opened"))).sort(triageOrder);
   const unclaimed = pitchRows.filter((r) => underCap(r) && r.label === "Never opened");
   const mineRows = pitchRows.filter((r) => r.owner === me);

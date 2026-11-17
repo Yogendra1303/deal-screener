@@ -29,6 +29,9 @@ function isPublicApi(pathname: string, method: string, hasPitchToken: boolean): 
   if (pathname === "/api/track" && method === "POST") return true;
   // Minimal non-sensitive health probe
   if (pathname === "/api/health" && method === "GET") return true;
+  // Secret-authenticated webhooks & cron jobs (route handlers strictly enforce secret or VC session -> 401 otherwise)
+  if (pathname === "/api/webhooks/inbound-email" && method === "POST") return true;
+  if (pathname === "/api/cron/portfolio-digest") return true;
   // Token-authenticated founder pitch tracking & data room endpoints (strict HMAC verified inside each handler)
   if (
     hasPitchToken &&

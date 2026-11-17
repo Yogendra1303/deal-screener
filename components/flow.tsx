@@ -195,7 +195,7 @@ export function useDealFlow(scope: (owner?: string) => boolean = EVERYONE) {
     );
     return { rows, market, heating, today };
   }, [cards, store, links, mode]);
-  return scope === EVERYONE ? all : { ...all, rows: all.rows.filter((r) => scope(r.owner)) };
+  return scope === EVERYONE ? all : { ...all, rows: all.rows.filter((r) => r.isLiveSubmission || scope(r.owner)) };
 }
 
 /** Live decks first in the order code ranks them: new live user submissions first, then fits the rules, founder-market fit, then waiting longest. */

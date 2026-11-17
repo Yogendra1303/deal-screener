@@ -456,8 +456,8 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
     const out: PitchCardData[] = [];
     const own = links.ownerOf;
     for (const d of store.deals) {
-      if (!filter(own(d.id))) continue;
       const isLive = !SEED_PITCH_IDS.has(d.id);
+      if (!isLive && !filter(own(d.id))) continue;
       out.push({
         id: d.id,
         href: `/deals/${d.id}`,
@@ -498,14 +498,15 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
       });
     }
     for (const i of links.inbound) {
-      if (!i || !i.id || store.deals.some((d) => d.id === i.id) || !filter(own(i.id))) continue;
+      if (!i || !i.id || store.deals.some((d) => d.id === i.id)) continue;
+      const isLive = !SEED_PITCH_IDS.has(i.id);
+      if (!isLive && !filter(own(i.id))) continue;
       const how = viaText(i);
       const companyName = i.form?.companyName || "Untitled Company";
       const stage = i.form?.stage || "Seed";
       const sector = i.form?.sector || "General";
       const country = i.form?.country || "Unknown";
       const amountUsd = i.form?.amountUsd;
-      const isLive = !SEED_PITCH_IDS.has(i.id);
       out.push({
         id: i.id,
         href: `/deals/${i.id}`,

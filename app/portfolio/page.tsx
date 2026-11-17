@@ -18,7 +18,46 @@ export default function PortfolioPage() {
   const p = usePortfolio();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [digestBusy, setDigestBusy] = useState(false);
+  const [digestResult, setDigestResult] = useState<{
+    lowRunway: number;
+    overdueReports: number;
+    emailed: boolean;
+    error?: string;
+  } | null>(null);
   const sc = useScope();
+
+  async function runPortfolioDigest() {
+    setDigestBusy(true);
+    setDigestResult(null);
+    try {
+      const res = await fetch("/api/cron/portfolio-digest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sendEmail: true }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        lowRunway?: unknown[];
+        overdueReports?: unknown[];
+        emailed?: boolean;
+        error?: string;
+      } | null;
+      if (!res.ok || !data?.ok) {
+        setDigestResult({ lowRunway: 0, overdueReports: 0, emailed: false, error: data?.error || "Digest run failed." });
+      } else {
+        setDigestResult({
+          lowRunway: data.lowRunway?.length ?? 0,
+          overdueReports: data.overdueReports?.length ?? 0,
+          emailed: Boolean(data.emailed),
+        });
+      }
+    } catch {
+      setDigestResult({ lowRunway: 0, overdueReports: 0, emailed: false, error: "Network error running digest." });
+    } finally {
+      setDigestBusy(false);
+    }
+  }
 
   const rows = useMemo(
     () =>
@@ -76,6 +115,14 @@ export default function PortfolioPage() {
           />
           <button
             type="button"
+            disabled={digestBusy}
+            onClick={() => void runPortfolioDigest()}
+            className="cursor-pointer rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-800 shadow-2xs hover:bg-indigo-100 disabled:opacity-50"
+          >
+            {digestBusy ? "Checking…" : "Run Digest Check"}
+          </button>
+          <button
+            type="button"
             onClick={() => {
               downloadCsv(
                 `aarka-lp-portfolio-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -128,6 +175,30 @@ export default function PortfolioPage() {
           </button>
         </div>
       </div>
+
+      {digestResult && (
+        <div
+          className={cx(
+            "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3.5 py-2.5 text-xs",
+            digestResult.error
+              ? "border-rose-200 bg-rose-50 text-rose-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-900",
+          )}
+        >
+          <span>
+            {digestResult.error
+              ? digestResult.error
+              : `Portfolio Cron Check complete: ${digestResult.lowRunway} low-runway alert(s) · ${digestResult.overdueReports} overdue MIS item(s)${digestResult.emailed ? " · Weekly digest emailed to partner inbox." : " · Logged to audit trail."}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setDigestResult(null)}
+            className="cursor-pointer font-semibold underline-offset-2 hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {!p.ready ? (
         <p className="text-sm text-slate-500">Loading…</p>

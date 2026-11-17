@@ -3,6 +3,7 @@
 import { setMode, useMode } from "./mode";
 import { GlobalSearchBar } from "./global-search";
 import { DB_TEXT, hydrate, persist, useDbInfo } from "@/lib/db/client";
+import { triggerDealSync } from "@/lib/deal-sync";
 import { MODE_TEXT } from "@/lib/mode";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -28,13 +29,14 @@ const SEED_IDS = new Set<string>([
   ...SEED_INBOUND.map((i) => i.id),
 ]);
 
-type IconName = "reset" | "week" | "team" | "deals" | "portfolio" | "compare" | "sources" | "rules" | "test" | "library" | "room" | "method" | "market" | "traffic";
+type IconName = "reset" | "week" | "team" | "deals" | "portfolio" | "fund" | "compare" | "sources" | "rules" | "test" | "library" | "room" | "method" | "market" | "traffic";
 
 const PATHS: Record<IconName, string> = {
   week: "M8 2v3M16 2v3M3.5 9h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Zm3 9h3m-3 3h6",
   team: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm-6 9.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M16 4.3a3.5 3.5 0 0 1 0 6.4M18 15.2c2 .8 3 2.6 3 5.3",
   deals: "M3.5 7.5h17M3.5 12h17M3.5 16.5h10M3.5 3.5h17v17h-17z",
   portfolio: "M4 20.5V10m5.33 10.5V4m5.34 16.5V13M20 20.5V7.5",
+  fund: "M12 20.5v-8m-5 8v-4m10 4v-11M3.5 3.5v17h17M7 11l4-4 3 3 5-5",
   compare: "M3.5 4.5h17v15h-17zM3.5 9.5h17M3.5 14.5h17M9 4.5v15",
   sources: "M12 3.5c4.7 0 8.5 1.3 8.5 3s-3.8 3-8.5 3-8.5-1.3-8.5-3 3.8-3 8.5-3Zm-8.5 3v5c0 1.7 3.8 3 8.5 3s8.5-1.3 8.5-3v-5m-17 5v5c0 1.7 3.8 3 8.5 3s8.5-1.3 8.5-3v-5",
   rules: "M4 6h10m4 0h2M4 12h4m4 0h8M4 18h12m4 0h0M14 4v4M8 10v4M16 16v4",
@@ -72,6 +74,7 @@ function mainNav(role: Role): NavItem[] {
     { href: "/deals", label: "Pitches", icon: "deals", match: (p) => p.startsWith("/deals") || p.startsWith("/new"), count: "deals" },
     { href: "/sectors", label: "Market", icon: "market", match: (p) => p.startsWith("/sectors") },
     { href: "/portfolio", label: "Portfolio", icon: "portfolio", match: (p) => p.startsWith("/portfolio"), count: "portfolio" },
+    ...(partner ? [{ href: "/fund", label: "Fund analytics", icon: "fund" as IconName, match: (p: string) => p.startsWith("/fund") }] : []),
     { href: "/dataroom", label: "Data room", icon: "room", match: (p) => p.startsWith("/dataroom"), count: "room" },
     { href: "/compare", label: "Compare", icon: "compare", match: (p) => p.startsWith("/compare") },
   ];
@@ -454,15 +457,25 @@ function NotificationMenu() {
                 </span>
               )}
             </div>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={markAllRead}
-                className="cursor-pointer text-[11px] font-medium text-blue-600 hover:text-blue-800"
+                onClick={() => void triggerDealSync()}
+                title="Check for new pitches now"
+                className="cursor-pointer text-[11px] font-medium text-slate-500 hover:text-slate-900"
               >
-                Mark all read
+                ↻ Sync
               </button>
-            )}
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="cursor-pointer text-[11px] font-medium text-blue-600 hover:text-blue-800"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-1 border-b border-slate-100 px-3 py-1.5 text-xs">
@@ -584,8 +597,9 @@ function useCounts() {
   const mineOpen = w.questions.filter((q) => stateOf(q, p.today) !== "Answered" && q.owner === w.me).length;
   const partner = w.role === "Partner";
   const mine = (owner?: string) => partner || owner === w.me;
-  // Analysts also see new pitches nobody has picked up yet.
+  // Analysts also see new pitches nobody has picked up yet, plus all live inbound pitches.
   const pitchMine = (id: string) => {
+    if (!SEED_IDS.has(id)) return true;
     const o = links.ownerOf(id);
     return partner || !o || o === w.me;
   };

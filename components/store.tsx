@@ -98,7 +98,8 @@ const Ctx = createContext<Store | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const { data: authSession } = useSession();
-  const isVc = authSession?.role === "VC";
+  const [authMeVc, setAuthMeVc] = useState(false);
+  const isVc = authSession?.role === "VC" || authMeVc;
   const [ready, setReady] = useState(false);
   const [local, setLocal] = useState<Record<string, DealResult>>({});
   const [rules, setRulesState] = useState<FundRules>(DEFAULT_RULES);
@@ -125,21 +126,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setSettingsState({ ...DEFAULT_SETTINGS, ...read(KEYS.settings, {}) });
     setResearchState(read(KEYS.research, {}));
     setReady(true);
+    // Fallback check against /api/auth/me in case NextAuth client useSession() lags or omits role
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { user?: { email?: string } | null; role?: string | null } | null) => {
+        if (d?.user?.email && (d.role === "VC" || d.role === "partner" || d.role === "analyst")) {
+          setAuthMeVc(true);
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
     if (!isVc) return;
     health().then(setServer);
-    // Then the server's copy, which wins over this browser's unless something changed here first.
+    // Merge remote server copy cleanly without overwriting live deals pushed by subscribeDealSync.
     const hasLocal = (key: string) => (window.localStorage.getItem(key) ? read(key, null) : null);
-    hydrate<Record<string, DealResult>>(KEYS.deals, setLocal, hasLocal(KEYS.deals));
+    hydrate<Record<string, DealResult>>(KEYS.deals, (remote) => setLocal((prev) => ({ ...prev, ...remote })), hasLocal(KEYS.deals));
     const unsubscribe = subscribeDealSync((deals) => {
       const fromRows: Record<string, DealResult> = {};
       for (const row of deals) {
         if (row.record_json) fromRows[row.id] = row.record_json as DealResult;
       }
       if (Object.keys(fromRows).length) {
-        setLocal((prev) => ({ ...fromRows, ...prev }));
+        setLocal((prev) => ({ ...prev, ...fromRows }));
       }
     });
     hydrate<FundRules>(KEYS.rules, setRulesState, hasLocal(KEYS.rules));
@@ -223,6 +233,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSaveError(write(KEYS.statuses, next));
       return next;
     });
+    if (typeof window !== "undefined") {
+      fetch(`/api/deals/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      }).catch(() => undefined);
+    }
   }, []);
 
   const addSignal = useCallback((id: string, s: Omit<LoggedSignal, "id" | "loggedAt">) => {

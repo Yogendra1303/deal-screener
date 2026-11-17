@@ -119,6 +119,7 @@ export function DropdownSelect<T extends string = string>({
   className,
   buttonClassName,
   align = "left",
+  size = "md",
   required,
 }: {
   value: T;
@@ -131,26 +132,42 @@ export function DropdownSelect<T extends string = string>({
   className?: string;
   buttonClassName?: string;
   align?: "left" | "right";
+  size?: "sm" | "md";
   required?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number; maxH: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
   const normalized: DropdownOption<T>[] = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   const selected = normalized.find((o) => o.value === value);
 
+  const computeCoords = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return null;
+    const minW = Math.max(r.width, 188);
+    const rawLeft = align === "right" ? r.right - minW : r.left;
+    const left = Math.max(8, Math.min(window.innerWidth - minW - 8, rawLeft));
+    const spaceBelow = window.innerHeight - r.bottom - 12;
+    const spaceAbove = r.top - 12;
+    const estH = Math.min(264, normalized.length * 34 + 12);
+    if (spaceBelow < Math.min(estH, 180) && spaceAbove > spaceBelow) {
+      const maxH = Math.min(264, Math.max(120, spaceAbove));
+      const top = Math.max(8, r.top - Math.min(estH, maxH) - 4);
+      return { top, left, width: minW, maxH };
+    }
+    const maxH = Math.min(264, Math.max(120, spaceBelow));
+    return { top: r.bottom + 4, left, width: minW, maxH };
+  };
+
   useEffect(() => {
     if (!open) return;
     const updatePosition = () => {
-      const r = ref.current?.getBoundingClientRect();
-      if (!r) return;
-      const minW = Math.max(r.width, 180);
-      const left = align === "right" ? Math.max(8, r.right - minW) : Math.min(window.innerWidth - minW - 8, r.left);
-      setCoords({ top: r.bottom + 4, left, width: minW });
+      const next = computeCoords();
+      if (next) setCoords(next);
     };
     updatePosition();
-    const onDocClick = (e: MouseEvent) => {
+    const onDocPointer = (e: MouseEvent) => {
       const target = e.target as Node;
       if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
       setOpen(false);
@@ -158,17 +175,29 @@ export function DropdownSelect<T extends string = string>({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("mousedown", onDocPointer);
     window.addEventListener("keydown", onKey);
     window.addEventListener("scroll", updatePosition, true);
     window.addEventListener("resize", updatePosition);
     return () => {
-      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("mousedown", onDocPointer);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
     };
-  }, [open, align]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, align, normalized.length]);
+
+  const toggleOpen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!open) {
+      const next = computeCoords();
+      if (next) setCoords(next);
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  };
 
   const menu =
     open && coords ? (
@@ -176,8 +205,8 @@ export function DropdownSelect<T extends string = string>({
         ref={menuRef}
         role="listbox"
         aria-label={ariaLabel}
-        style={{ top: coords.top, left: coords.left, minWidth: coords.width }}
-        className="fixed z-[200] max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-xl shadow-slate-900/10"
+        style={{ top: coords.top, left: coords.left, minWidth: coords.width, maxHeight: coords.maxH }}
+        className="fixed z-[9999] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-900/15"
       >
         {normalized.map((opt) => {
           const isSelected = opt.value === value;
@@ -186,18 +215,19 @@ export function DropdownSelect<T extends string = string>({
               key={opt.value}
               role="option"
               aria-selected={isSelected}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onChange(opt.value);
                 setOpen(false);
               }}
               className={cx(
-                "flex cursor-pointer items-center justify-between gap-2 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 hover:bg-slate-50",
-                isSelected && "bg-blue-50 text-blue-700",
+                "flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
+                isSelected ? "bg-blue-50 text-blue-700" : "bg-white text-slate-700 hover:bg-slate-50",
               )}
             >
               <span className="truncate">{opt.label}</span>
               {isSelected && (
-                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               )}
@@ -216,17 +246,19 @@ export function DropdownSelect<T extends string = string>({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleOpen}
         className={cx(
-          "inline-flex w-full items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50",
+          "inline-flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border bg-white font-medium leading-tight text-slate-700 shadow-2xs transition-colors hover:bg-slate-50",
+          open ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-200",
+          size === "sm" ? "h-8 px-2.5 text-xs" : "px-3 py-1.5 text-sm",
           buttonClassName,
         )}
       >
-        <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
-          {prefix && <span className="shrink-0 text-slate-500">{prefix}</span>}
+        <span className="inline-flex min-w-0 items-center gap-1 truncate">
+          {prefix && <span className="shrink-0 text-slate-400">{prefix}</span>}
           <span className={cx("truncate", selected ? "text-slate-900" : "text-slate-500")}>{selected ? selected.label : placeholder}</span>
         </span>
-        <svg viewBox="0 0 24 24" className={cx("h-4 w-4 shrink-0 text-slate-500 transition-transform", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg viewBox="0 0 24 24" className={cx("h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>

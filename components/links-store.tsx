@@ -82,7 +82,8 @@ async function keep(prefix: string, dealId: string, files: File[], today: string
 
 export function LinksProvider({ children }: { children: React.ReactNode }) {
   const { data: authSession } = useSession();
-  const isVc = authSession?.role === "VC";
+  const [authMeVc, setAuthMeVc] = useState(false);
+  const isVc = authSession?.role === "VC" || authMeVc;
   const [ready, setReady] = useState(false);
   const [local, setLocal] = useState<Local>(EMPTY);
   const today = DEMO_DATE;
@@ -92,6 +93,14 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocal(load());
     setReady(true);
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { user?: { email?: string } | null; role?: string | null } | null) => {
+        if (d?.user?.email && (d.role === "VC" || d.role === "partner" || d.role === "analyst")) {
+          setAuthMeVc(true);
+        }
+      })
+      .catch(() => undefined);
     const onStorage = (e: StorageEvent) => {
       if (e.key === KEY || e.key === null) setLocal(load());
     };
@@ -160,8 +169,8 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
   const inbound = useMemo(() => {
     const map = new Map<string, Inbound>();
     for (const x of SEED_INBOUND) if (x?.id) map.set(x.id, x);
-    for (const x of dbInbound) if (x?.id) map.set(x.id, x);
     for (const x of local.inbound) if (x?.id) map.set(x.id, x);
+    for (const x of dbInbound) if (x?.id) map.set(x.id, x);
     return [...map.values()].sort((a, b) => (b.receivedAt ?? "").localeCompare(a.receivedAt ?? ""));
   }, [local.inbound, dbInbound]);
   const emails = useMemo(() => {

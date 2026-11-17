@@ -50,7 +50,7 @@ async function run() {
   check("/login hides public Magic Link & Test Accounts", !loginHtml.includes("Send Magic Link") && !loginHtml.includes("1-Click Quick Partner Access"));
 
   // 2. Default-Deny Middleware Checks (ALL internal routes redirect unauthenticated users to /)
-  for (const protectedPath of ["/dashboard", "/pipeline", "/deals", "/portfolio", "/team", "/market", "/dataroom", "/traffic", "/founder", "/founder/dataroom"]) {
+  for (const protectedPath of ["/dashboard", "/pipeline", "/deals", "/portfolio", "/fund", "/team", "/market", "/dataroom", "/traffic", "/founder", "/founder/dataroom"]) {
     const r = await fetch(`${BASE}${protectedPath}`, { cache: "no-store", redirect: "manual" });
     const loc = r.headers.get("location") || "";
     check(
@@ -148,6 +148,23 @@ async function run() {
     body: JSON.stringify({ email: "attacker@example.com", action: "approve" }),
   });
   check("PATCH /api/access-request (approve) blocks unauthenticated callers (401)", approveRes.status === 401, `status ${approveRes.status}`);
+
+  const inboundEmailRes = await fetch(`${BASE}/api/webhooks/inbound-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ from: "attacker@example.com", subject: "Unauthorized" }),
+  });
+  check("POST /api/webhooks/inbound-email blocks unauthenticated callers (401)", inboundEmailRes.status === 401, `status ${inboundEmailRes.status}`);
+
+  const cronDigestRes = await fetch(`${BASE}/api/cron/portfolio-digest`, { cache: "no-store" });
+  check("GET /api/cron/portfolio-digest blocks unauthenticated callers (401)", cronDigestRes.status === 401, `status ${cronDigestRes.status}`);
+
+  const enrichRes = await fetch(`${BASE}/api/deals/ledgerly/enrich`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ companyName: "Ledgerly" }),
+  });
+  check("POST /api/deals/:id/enrich blocks unauthenticated callers (401)", enrichRes.status === 401, `status ${enrichRes.status}`);
 
   // 6. Access Request Waitlist Check — NEVER sets a session cookie
   const reqPostRes = await fetch(`${BASE}/api/access-request`, {

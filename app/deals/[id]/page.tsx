@@ -13,8 +13,11 @@ import { CheckSummary } from "@/components/checks-ui";
 import { DealDocs } from "@/components/docs";
 import { coverage } from "@/lib/coverage";
 import { BackLink, type TabTone, Brief, FactsTable, KeyNumbers, QuestionsPanel, Tabs, WhoKnows, type CompanyRef } from "@/components/company";
+import { CapTableModeler } from "@/components/captable-modeler";
+import { EnrichmentPanel } from "@/components/enrichment-panel";
 import { FounderOutreachModal } from "@/components/founder-outreach-modal";
 import { ICVotingPanel } from "@/components/ic-voting-panel";
+import { PdfSlideViewer } from "@/components/pdf-slide-viewer";
 import { VCMetricsPanel } from "@/components/vc-metrics-panel";
 import { escapeHtml, openPrintableReport } from "@/lib/export";
 import { useStore } from "@/components/store";
@@ -57,6 +60,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
   const deckUrl = useDeckUrl(deal);
   const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "overview");
   const [outreachOpen, setOutreachOpen] = useState(false);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
 
   useEffect(() => {
     if (initial && TABS.includes(initial)) {
@@ -189,9 +193,18 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
             Export Memo
           </button>
           {deckUrl && (
-            <a href={deckUrl} target="_blank" rel="noreferrer" className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
-              Open deck
-            </a>
+            <>
+              <button
+                type="button"
+                onClick={() => setPdfViewerOpen(true)}
+                className="cursor-pointer rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-800 transition-colors hover:bg-indigo-100"
+              >
+                Side-by-Side PDF
+              </button>
+              <a href={deckUrl} target="_blank" rel="noreferrer" className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+                Open deck
+              </a>
+            </>
           )}
         </div>
       </div>
@@ -247,9 +260,24 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
         </div>
       )}
       <FounderOutreachModal isOpen={outreachOpen} onClose={() => setOutreachOpen(false)} deal={deal} />
+      {deckUrl && (
+        <PdfSlideViewer
+          isOpen={pdfViewerOpen}
+          onClose={() => setPdfViewerOpen(false)}
+          deal={deal}
+          deckUrl={deckUrl}
+          facts={facts}
+        />
+      )}
       {tab === "numbers" && (
         <div className="space-y-6">
           <VCMetricsPanel sheet={deal.sheet} record={deal.record} askAmount={deal.form.amountUsd} />
+          <CapTableModeler
+            dealId={deal.id}
+            companyName={f.companyName}
+            defaultAskUsd={f.amountUsd}
+            defaultValuationUsd={deal.record.round.valuation.amount}
+          />
           <FactsTable facts={facts} company={company} />
           {deal.flags.length > 0 && <Flags flags={deal.flags} deckUrl={deckUrl} />}
           {deal.sheet ? <Sheet deal={deal} /> : <Card className="p-5 text-sm text-slate-600">The founder didn&apos;t send a monthly numbers sheet.</Card>}
@@ -260,11 +288,25 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
       {tab === "team" && (
         <div className="space-y-6">
           <FounderFitCard id={deal.id} sector={f.sector} />
+          <EnrichmentPanel
+            dealId={deal.id}
+            companyName={f.companyName}
+            website={f.website || deal.record.company.website.value}
+            country={f.country || deal.record.company.country.value}
+            founderNames={deal.record.team.map((t) => t.name).length ? deal.record.team.map((t) => t.name) : f.founders.map((x) => x.name)}
+          />
           <Founders deal={deal} deckUrl={deckUrl} />
         </div>
       )}
       {tab === "market" && (
         <div className="space-y-6">
+          <EnrichmentPanel
+            dealId={deal.id}
+            companyName={f.companyName}
+            website={f.website || deal.record.company.website.value}
+            country={f.country || deal.record.company.country.value}
+            founderNames={deal.record.team.map((t) => t.name).length ? deal.record.team.map((t) => t.name) : f.founders.map((x) => x.name)}
+          />
           <ResearchPack deal={deal} />
           <Record deal={deal} deckUrl={deckUrl} groups={["Market"]} title="What the deck says about its market" />
         </div>

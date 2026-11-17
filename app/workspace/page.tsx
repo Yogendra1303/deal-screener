@@ -108,8 +108,70 @@ export default function WorkspacePage() {
         )}
       </section>
 
+      <InboundEmailBox />
+
       <ResetBox />
     </div>
+  );
+}
+
+function InboundEmailBox() {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  async function sendTestEmail() {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/webhooks/inbound-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Maya Lin <maya@gridpulse-demo.io>",
+          subject: "GridPulse Seed Round — $1.5M AI Grid Optimization Pitch",
+          text: "Hi Aarka team, raising a $1.5M Seed round for GridPulse (Climate / B2B software).",
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; dealId?: string; companyName?: string; error?: string } | null;
+      if (!res.ok || !data?.ok) {
+        setStatus(data?.error || "Test ingestion failed.");
+      } else {
+        setStatus(`Ingested "${data.companyName}" into Pitches (ID: ${data.dealId}).`);
+      }
+    } catch {
+      setStatus("Network error triggering inbound email test.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-slate-900">Automated Inbox Ingestion</h2>
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+              Webhook Active
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-slate-600">
+            Forward Resend, Postmark, or Mailgun inbound emails from <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800">pitches@aarkavc.xyz</code> to{" "}
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800">POST /api/webhooks/inbound-email</code> using header{" "}
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800">x-aarka-secret</code>. PDF attachments are binary-validated automatically.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void sendTestEmail()}
+          className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {busy ? "Ingesting…" : "Simulate Email Pitch"}
+        </button>
+      </div>
+      {status && <p className="mt-2.5 text-xs font-medium text-blue-700">{status}</p>}
+    </section>
   );
 }
 
