@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { BackLink, type TabTone, Brief, FactsTable, KeyNumbers, MetaChips, People, QuestionsPanel, Tabs, WhoKnows, type CompanyRef } from "@/components/company";
 import { ReminderButton } from "@/components/portfolio-actions";
 import { usePortfolio } from "@/components/portfolio-store";
@@ -47,6 +47,12 @@ export default function CompanyPage({
   const p = usePortfolio();
   const w = useWorkspace();
   const [tab, setTab] = useState<Tab>(TABS.includes(initial as Tab) ? (initial as Tab) : "overview");
+
+  useEffect(() => {
+    if (initial && TABS.includes(initial as Tab)) {
+      setTab(initial as Tab);
+    }
+  }, [initial]);
   const c = p.get(id);
   const facts = useMemo(() => (c ? portfolioFacts(c, p.today) : []), [c, p.today]);
 

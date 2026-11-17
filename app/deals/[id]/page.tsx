@@ -52,6 +52,12 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
   const deal = store.getDeal(id);
   const deckUrl = useDeckUrl(deal);
   const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "overview");
+
+  useEffect(() => {
+    if (initial && TABS.includes(initial)) {
+      setTab(initial);
+    }
+  }, [initial]);
   const facts = useMemo(() => (deal ? dealFacts(deal, deckUrl) : []), [deal, deckUrl]);
   const links = useLinks();
   const w = useWorkspace();

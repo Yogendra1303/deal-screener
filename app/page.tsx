@@ -1,7 +1,7 @@
 "use client";
 
 import { ZeroState } from "@/components/mode";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   healthOf,
   usePanels,
@@ -192,6 +192,31 @@ function byUrgency(today: string) {
 
 // ---------- Partner data ----------
 
+const RESOLVED_DECISIONS_KEY = "ds.decisions.resolved.v1";
+
+function getResolvedDecisions(): Record<string, boolean> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(RESOLVED_DECISIONS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveResolvedDecision(key: string, resolved = true) {
+  if (typeof window === "undefined") return;
+  try {
+    const map = getResolvedDecisions();
+    if (resolved) map[key] = true;
+    else delete map[key];
+    window.localStorage.setItem(RESOLVED_DECISIONS_KEY, JSON.stringify(map));
+    window.dispatchEvent(new Event("storage"));
+  } catch {
+    // ignore
+  }
+}
+
 interface Decision {
   key: string;
   kind: "Pitch" | "Portfolio";
@@ -199,18 +224,21 @@ interface Decision {
   href: string;
   question: string;
   detail: string;
+  problemSummary?: string;
   blockers: string[];
   owner?: string;
 }
 
-function usePartnerData() {
+function usePartnerData(resolvedTrigger = 0) {
   const store = useStore();
   const p = usePortfolio();
   const w = useWorkspace();
   return useMemo(() => {
+    const resolved = getResolvedDecisions();
     const today = p.today;
     const decisions: Decision[] = [];
     for (const d of store.deals) {
+      if (resolved[`deal-${d.id}`]) continue;
       const status = store.statusOf(d.id);
       if (store.bandOf(d) !== "Priority" || !(status === "New" || status === "Reviewing")) continue;
       const conflicts = d.flags.filter((f) => f.kind === "conflict");
@@ -218,8 +246,9 @@ function usePartnerData() {
         key: `deal-${d.id}`,
         kind: "Pitch",
         company: d.form.companyName,
-        href: `/deals/${d.id}`,
+        href: `/deals/${d.id}?tab=numbers`,
         question: "Take a first meeting?",
+        problemSummary: conflicts.length ? conflicts.map((f) => f.title).join(", ") : "Priority inbound pitch to screen",
         detail: `${d.form.stage}, raising ${d.form.amountUsd ? usd(d.form.amountUsd) : "an amount not stated"}. Suggested Priority: ${d.bandReasons.join(", ").toLowerCase()}.`,
         blockers: conflicts.map((f) => f.title),
         owner: DEAL_OWNERS[d.id],
@@ -229,7 +258,7 @@ function usePartnerData() {
     for (const c of p.companies) {
       const rw = latestRunway(c, today);
       const open = w.questionsFor(c.id).filter((q) => !q.answer);
-      if (rw && rw.months < WATCH_RUNWAY_MONTHS) {
+      if (rw && rw.months < WATCH_RUNWAY_MONTHS && !resolved[`runway-${c.id}`]) {
         decided.add(c.id);
         const q = open.find((x) => x.about?.key === "runway");
         const last = c.reports.filter((r) => r.receivedAt).at(-1);
@@ -237,14 +266,15 @@ function usePartnerData() {
           key: `runway-${c.id}`,
           kind: "Portfolio",
           company: c.name,
-          href: `/portfolio/${c.id}`,
+          href: `/portfolio/${c.id}?tab=numbers`,
           question: `About ${rw.months.toFixed(1)} months of cash left. Step in?`,
+          problemSummary: `${rw.months.toFixed(1)} mo cash runway remaining`,
           detail: `At ${fmtMonth(rw.report.month).split(" ")[0]}'s burn of ${fmtMoney(rw.report.numbers.burn!.value, c.currency)}.${last ? ` Last report arrived ${fmtDay(last.receivedAt!)}.` : ""} Options: help raise a bridge, cut burn, or look for a buyer.`,
           blockers: q ? [`Your question on ${q.about!.label.toLowerCase()} to ${q.owner.split(" ")[0]} is ${daysBetween(q.due, today) > 0 ? `${daysBetween(q.due, today)} days overdue` : "still open"}.`] : [],
           owner: c.owner,
         });
       }
-      if (c.nextRound) {
+      if (c.nextRound && !resolved[`round-${c.id}`]) {
         decided.add(c.id);
         const facts = portfolioFacts(c, today);
         const conflict = facts.find((f) => f.status === "Conflict");
@@ -252,8 +282,9 @@ function usePartnerData() {
           key: `round-${c.id}`,
           kind: "Portfolio",
           company: c.name,
-          href: `/portfolio/${c.id}`,
+          href: `/portfolio/${c.id}?tab=numbers`,
           question: `${c.nextRound.round} in ${c.nextRound.when}. Take the fund's pro-rata?`,
+          problemSummary: "Series A pro-rata decision & MIS mismatch",
           detail: `The fund owns ${c.investment.ownershipPct}% after a ${usd(c.investment.amountUsd)} ${c.investment.round}. Source: ${c.nextRound.source}.`,
           blockers: conflict ? [`Clear first: ${conflict.why.charAt(0).toLowerCase()}${conflict.why.slice(1)}`] : [],
           owner: c.owner,
@@ -371,7 +402,8 @@ function PartnerHome() {
   const p = usePortfolio();
   const store = useStore();
   const panels = usePanels();
-  const { decisions } = usePartnerData();
+  const [resolvedTrigger, setResolvedTrigger] = useState(0);
+  const { decisions } = usePartnerData(resolvedTrigger);
   const { rows, market, today } = useDealFlow();
   const byId = (id: string) => p.companies.find((c) => c.id === id);
 
@@ -412,7 +444,22 @@ function PartnerHome() {
           meta: d.blockers.length ? <span className="font-medium text-red-700">! {d.blockers.join(" ")}</span> : undefined,
           tone: d.blockers.length ? "urgent" : "info",
           href: d.href,
-          cta: "Decide",
+          cta: "Go to problem →",
+          action: (
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                saveResolvedDecision(d.key);
+                setResolvedTrigger((n: number) => n + 1);
+              }}
+              className="inline-flex items-center gap-1 rounded bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-2xs ring-1 ring-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:ring-emerald-300"
+              title="Mark this decision as resolved and remove from dashboard"
+            >
+              ✓ Decided
+            </button>
+          ),
         } satisfies Entry;
       }),
     },
@@ -448,14 +495,78 @@ function PartnerHome() {
       <NewPitchHighlightBanner rows={rows} />
       {!rows.length && <ZeroState />}
       {decisions.length > 0 && (
-        <button onClick={() => panels.open("decide")} className="flex w-full items-center gap-3 rounded-2xl bg-white px-5 py-3.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-red-200 transition hover:ring-red-300">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-red-50 text-sm font-semibold text-red-700">{decisions.length}</span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium text-slate-900">{decisions.length === 1 ? "A decision needs you" : `${decisions.length} decisions need you`}</span>
-            <span className="block truncate text-sm text-slate-500">{decisions.map((d) => d.company).join(", ")}</span>
-          </span>
-          <span className="text-sm font-medium text-indigo-700">Review →</span>
-        </button>
+        <div className="rounded-2xl border border-red-200/90 bg-white p-4 shadow-[0_2px_8px_-2px_rgba(239,68,68,0.12)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-100/70 pb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-red-100 text-xs font-bold text-red-700">
+                {decisions.length}
+              </span>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {decisions.length === 1 ? "1 decision needs you" : `${decisions.length} decisions need you`}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Click any company below to jump directly to the exact issue tab, or review all.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => panels.open("decide")}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+            >
+              Review all ({decisions.length}) →
+            </button>
+          </div>
+
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {decisions.map((d) => (
+              <div
+                key={d.key}
+                className="group relative flex flex-col justify-between rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 transition hover:border-red-300 hover:bg-red-50/20"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={d.href}
+                      className="text-xs font-bold text-slate-900 hover:underline group-hover:text-red-700"
+                    >
+                      {d.company}
+                    </Link>
+                    <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
+                      {d.kind}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-medium text-slate-700 line-clamp-1">
+                    {d.question}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-2">
+                    {d.problemSummary || d.detail}
+                  </p>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/60 pt-2">
+                  <Link
+                    href={d.href}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800"
+                  >
+                    Go to problem →
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      saveResolvedDecision(d.key);
+                      setResolvedTrigger((n: number) => n + 1);
+                    }}
+                    className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 shadow-2xs ring-1 ring-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:ring-emerald-300"
+                    title="Mark this decision as resolved and remove from dashboard"
+                  >
+                    ✓ Decided
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-5 text-white shadow-lg ring-1 ring-white/10 sm:p-6">

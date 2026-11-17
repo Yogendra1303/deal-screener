@@ -304,9 +304,9 @@ export function LandingPage() {
                       setLightbox({
                         src: "/images/aarka/hero-workspace.png",
                         width: 1024,
-                        height: 573,
-                        alt: "Aarka main investment workspace showing deal-flow velocity, pending decisions, sector heatmap and team workload.",
-                        caption: "Main Investment Workspace: Active pipeline velocity, pending partner decisions, sector heatmap and analyst workload.",
+                        height: 575,
+                        alt: "Aarka main investment workspace showing active deal-flow pipeline, team distribution, sector momentum map and incoming pitches.",
+                        caption: "Main Investment Workspace: Live deal flow, sector heatmaps, partner notifications, team workload and incoming pitches.",
                       })
                     }
                     className="cursor-pointer text-[11px] font-medium text-slate-600 hover:text-slate-950"
@@ -321,9 +321,9 @@ export function LandingPage() {
                     setLightbox({
                       src: "/images/aarka/hero-workspace.png",
                       width: 1024,
-                      height: 573,
-                      alt: "Aarka main investment workspace showing deal-flow velocity, pending decisions, sector heatmap and team workload.",
-                      caption: "Main Investment Workspace: Active pipeline velocity, pending partner decisions, sector heatmap and analyst workload.",
+                      height: 575,
+                      alt: "Aarka main investment workspace showing active deal-flow pipeline, team distribution, sector momentum map and incoming pitches.",
+                      caption: "Main Investment Workspace: Live deal flow, sector heatmaps, partner notifications, team workload and incoming pitches.",
                     })
                   }
                   aria-label="Inspect Main Investment Workspace screenshot in full size"
@@ -331,9 +331,9 @@ export function LandingPage() {
                 >
                   <Image
                     src="/images/aarka/hero-workspace.png"
-                    alt="Aarka main investment workspace showing deal-flow velocity, pending decisions, sector heatmap and team workload."
+                    alt="Aarka main investment workspace showing active deal-flow pipeline, team distribution, sector momentum map and incoming pitches."
                     width={1024}
-                    height={573}
+                    height={575}
                     unoptimized
                     priority
                     className="block h-auto w-full object-contain"

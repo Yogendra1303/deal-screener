@@ -471,16 +471,15 @@ function NotificationMenu() {
               filtered.slice(0, 20).map((item) => {
                 const isUnread = !readIds[item.id];
                 return (
-                  <button
+                  <Link
                     key={item.id}
-                    type="button"
+                    href={item.href}
                     onClick={() => {
                       markRead(item.id);
                       setOpen(false);
-                      router.push(item.href);
                     }}
                     className={cx(
-                      "flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50",
+                      "flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-100/80 focus:bg-slate-100 focus:outline-none",
                       item.isLiveSubmission && isUnread
                         ? "bg-blue-50/60"
                         : isUnread
@@ -502,7 +501,7 @@ function NotificationMenu() {
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-xs font-semibold text-slate-900">{item.title}</span>
+                        <span className="truncate text-xs font-semibold text-slate-900 group-hover:text-blue-600">{item.title}</span>
                         {item.isLiveSubmission ? (
                           <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
                             New Pitch
@@ -516,7 +515,7 @@ function NotificationMenu() {
                       <p className="mt-0.5 truncate text-xs text-slate-600">{item.subtitle}</p>
                       <p className="mt-0.5 text-[11px] text-slate-400">{item.meta}</p>
                     </div>
-                  </button>
+                  </Link>
                 );
               })
             )}
