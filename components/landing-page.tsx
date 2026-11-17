@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { signIn as nextAuthSignIn } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -135,7 +136,7 @@ export function LandingPage() {
               type="button"
               onClick={handleSignIn}
               disabled={SigningIn}
-              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-[13px] font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-[13px] font-medium text-white transition-all duration-200 hover:scale-[1.02] hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60"
             >
               <span>{SigningIn ? "Connecting…" : "Partner Sign In"}</span>
             </button>
@@ -213,61 +214,85 @@ export function LandingPage() {
         <section className="border-b border-slate-200/80 bg-white pt-14 pb-16 sm:pt-20 sm:pb-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
-              <div className="flex items-center justify-center">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-blue-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
-                  INVITE-ONLY INSTITUTIONAL PLATFORM
-                </span>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              >
+                <div className="flex items-center justify-center">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-blue-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
+                    INVITE-ONLY INSTITUTIONAL PLATFORM
+                  </span>
+                </div>
 
-              <h1 className="mt-4 font-serif text-4xl font-normal tracking-[-0.02em] text-balance text-slate-950 sm:text-5xl lg:text-[52px] lg:leading-[1.08]">
-                See beyond the pitch.
-              </h1>
+                <h1 className="mt-4 font-serif text-4xl font-normal tracking-[-0.02em] text-balance text-slate-950 sm:text-5xl lg:text-[52px] lg:leading-[1.08]">
+                  See beyond the pitch.
+                </h1>
+              </motion.div>
 
-              <p className="mt-3 text-base font-medium tracking-[-0.01em] text-slate-800 sm:text-lg">
-                One workspace for more informed investment decisions.
-              </p>
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+              >
+                <p className="mt-3 text-base font-medium tracking-[-0.01em] text-slate-800 sm:text-lg">
+                  One workspace for more informed investment decisions.
+                </p>
 
-              <p className="mx-auto mt-3.5 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-[15px]">
-                Reduce the manual work involved in screening, structuring and reviewing investment opportunities without removing human investment judgment. Turn incoming pitches into structured records, validate financial claims and track your pipeline with clarity.
-              </p>
+                <p className="mx-auto mt-3.5 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-[15px]">
+                  Reduce the manual work involved in screening, structuring and reviewing investment opportunities without removing human investment judgment. Turn incoming pitches into structured records, validate financial claims and track your pipeline with clarity.
+                </p>
+              </motion.div>
 
-              <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  onClick={() => setIsInviteModalOpen(true)}
-                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-[13.5px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  <span>Explore the Platform →</span>
-                </button>
-                <Link
-                  href="/pitch"
-                  className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-transparent px-5 text-[13.5px] font-medium text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950"
-                >
-                  Submit a Pitch
-                </Link>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+              >
+                <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsInviteModalOpen(true)}
+                    className="group inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-[13.5px] font-semibold text-white shadow-sm transition-all duration-200 hover:scale-[1.02] hover:bg-blue-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    <span>Explore the Platform</span>
+                    <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
+                  </button>
+                  <Link
+                    href="/pitch"
+                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-transparent px-5 text-[13.5px] font-medium text-slate-800 transition-all duration-200 hover:scale-[1.02] hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950 active:scale-[0.98]"
+                  >
+                    Submit a Pitch
+                  </Link>
+                </div>
 
-              <p className="mx-auto mt-3.5 max-w-xl text-xs leading-relaxed text-slate-500">
-                <strong className="font-medium text-slate-700">Invite-only fund workspace:</strong> Verified fund partners and analysts enter with credentials. If you are exploring for a fund, click{" "}
-                <button
-                  type="button"
-                  onClick={() => setIsInviteModalOpen(true)}
-                  className="font-medium text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-800 cursor-pointer"
-                >
-                  Explore the Platform
-                </button>{" "}
-                to request trial access. Founders submit decks via{" "}
-                <Link href="/pitch" className="font-medium text-slate-800 underline decoration-slate-300 underline-offset-4 hover:text-slate-950">
-                  Pitch Form
-                </Link>
-                .
-              </p>
+                <p className="mx-auto mt-3.5 max-w-xl text-xs leading-relaxed text-slate-500">
+                  <strong className="font-medium text-slate-700">Invite-only fund workspace:</strong> Verified fund partners and analysts enter with credentials. If you are exploring for a fund, click{" "}
+                  <button
+                    type="button"
+                    onClick={() => setIsInviteModalOpen(true)}
+                    className="cursor-pointer font-medium text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-800"
+                  >
+                    Explore the Platform
+                  </button>{" "}
+                  to request trial access. Founders submit decks via{" "}
+                  <Link href="/pitch" className="font-medium text-slate-800 underline decoration-slate-300 underline-offset-4 hover:text-slate-950">
+                    Pitch Form
+                  </Link>
+                  .
+                </p>
+              </motion.div>
             </div>
 
             {/* Centered Hero Product Showcase (880px max width) */}
-            <div className="mx-auto mt-12 max-w-[880px]">
-              <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_12px_36px_-12px_rgba(15,23,42,0.08)]">
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+              className="mx-auto mt-12 max-w-[880px]"
+            >
+              <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_12px_36px_-12px_rgba(15,23,42,0.08)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                 <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-4 py-2">
                   <div className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-slate-300" />
@@ -306,7 +331,7 @@ export function LandingPage() {
                     })
                   }
                   aria-label="Inspect Main Investment Workspace screenshot in full size"
-                  className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                  className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                 >
                   <Image
                     src="/images/aarka/hero-workspace.png"
@@ -315,14 +340,14 @@ export function LandingPage() {
                     height={575}
                     unoptimized
                     priority
-                    className="block h-auto w-full object-contain"
+                    className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                   />
                 </button>
               </div>
               <p className="mt-2.5 text-center text-[11px] text-slate-400">
                 Sample demonstration pipeline and company records shown for illustration. Click any preview to inspect full size.
               </p>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -331,7 +356,13 @@ export function LandingPage() {
            =================================================================== */}
         <section id="workflow" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="max-w-2xl"
+            >
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 THE INVESTMENT WORKFLOW
               </p>
@@ -341,13 +372,17 @@ export function LandingPage() {
               <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-[15px]">
                 Every stage of a deal carries manual work—extracting deck claims, cross-checking CSV sheets, verifying registry dates and tracking monthly reports. Aarka structures and validates the record so your team can focus on judgment.
               </p>
-            </div>
+            </motion.div>
 
             <div className="mt-10 border-t border-slate-200/90 pt-8">
               <ol className="grid gap-6 md:grid-cols-5 md:gap-6">
-                {WORKFLOW_STEPS.map((step) => (
-                  <li
+                {WORKFLOW_STEPS.map((step, idx) => (
+                  <motion.li
                     key={step.num}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.45, delay: idx * 0.07, ease: "easeOut" }}
                     className="relative border-l border-slate-300 pl-4 md:border-l-0 md:pl-0"
                   >
                     <button
@@ -360,13 +395,13 @@ export function LandingPage() {
                           {step.num}
                         </span>
                         <span className="text-slate-300">—</span>
-                        <h3 className="text-sm font-semibold text-slate-950 group-hover:text-blue-700">
+                        <h3 className="text-sm font-semibold text-slate-950 transition-colors group-hover:text-blue-700">
                           {step.title}
                         </h3>
                       </div>
                       <p className="mt-2 text-xs leading-relaxed text-slate-600">{step.body}</p>
                     </button>
-                  </li>
+                  </motion.li>
                 ))}
               </ol>
             </div>
@@ -378,7 +413,13 @@ export function LandingPage() {
            =================================================================== */}
         <section id="capabilities" className="scroll-mt-16 border-b border-slate-200/80 bg-white py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
+              className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12"
+            >
               <div className="lg:col-span-5">
                 <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
                   01 · FINANCIAL DUE DILIGENCE
@@ -421,8 +462,8 @@ export function LandingPage() {
                         onClick={() => setDiligenceTab("audit")}
                         className={
                           diligenceTab === "audit"
-                            ? "cursor-pointer rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-950 shadow-2xs"
-                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-950"
+                            ? "cursor-pointer rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-950 shadow-2xs transition-all duration-200"
+                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-950"
                         }
                       >
                         Diligence Checks
@@ -432,8 +473,8 @@ export function LandingPage() {
                         onClick={() => setDiligenceTab("compare")}
                         className={
                           diligenceTab === "compare"
-                            ? "cursor-pointer rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-950 shadow-2xs"
-                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-950"
+                            ? "cursor-pointer rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-950 shadow-2xs transition-all duration-200"
+                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-950"
                         }
                       >
                         Growth Benchmark
@@ -442,7 +483,7 @@ export function LandingPage() {
                     <span className="text-[11px] text-slate-400">Click to enlarge ↗</span>
                   </div>
 
-                  <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)]">
+                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                     {diligenceTab === "audit" ? (
                       <button
                         type="button"
@@ -456,7 +497,7 @@ export function LandingPage() {
                           })
                         }
                         aria-label="Inspect Company Diligence screenshot in full size"
-                        className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                        className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                       >
                         <Image
                           src="/images/aarka/financial-diligence-rahatrail.png"
@@ -464,7 +505,7 @@ export function LandingPage() {
                           width={992}
                           height={675}
                           unoptimized
-                          className="block h-auto w-full object-contain"
+                          className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                         />
                       </button>
                     ) : (
@@ -480,7 +521,7 @@ export function LandingPage() {
                           })
                         }
                         aria-label="Inspect Growth Comparison screenshot in full size"
-                        className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                        className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                       >
                         <Image
                           src="/images/aarka/financial-comparison-growth.png"
@@ -488,14 +529,14 @@ export function LandingPage() {
                           width={992}
                           height={636}
                           unoptimized
-                          className="block h-auto w-full object-contain"
+                          className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                         />
                       </button>
                     )}
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -504,7 +545,13 @@ export function LandingPage() {
            =================================================================== */}
         <section id="market" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
+              className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12"
+            >
               <div className="order-2 lg:order-1 lg:col-span-7">
                 <div className="mx-auto max-w-[560px]">
                   <div className="mb-2.5 flex items-center justify-between">
@@ -514,8 +561,8 @@ export function LandingPage() {
                         onClick={() => setMarketTab("momentum")}
                         className={
                           marketTab === "momentum"
-                            ? "cursor-pointer rounded bg-slate-900 px-2.5 py-1 text-xs font-medium text-white"
-                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-950"
+                            ? "cursor-pointer rounded bg-slate-900 px-2.5 py-1 text-xs font-medium text-white transition-all duration-200"
+                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-950"
                         }
                       >
                         Momentum Map
@@ -525,8 +572,8 @@ export function LandingPage() {
                         onClick={() => setMarketTab("sector")}
                         className={
                           marketTab === "sector"
-                            ? "cursor-pointer rounded bg-slate-900 px-2.5 py-1 text-xs font-medium text-white"
-                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-950"
+                            ? "cursor-pointer rounded bg-slate-900 px-2.5 py-1 text-xs font-medium text-white transition-all duration-200"
+                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-950"
                         }
                       >
                         B2B Software Drilldown
@@ -559,7 +606,7 @@ export function LandingPage() {
                     </button>
                   </div>
 
-                  <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)]">
+                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                     {marketTab === "momentum" ? (
                       <button
                         type="button"
@@ -573,7 +620,7 @@ export function LandingPage() {
                           })
                         }
                         aria-label="Inspect full Market Intelligence dashboard in lightbox"
-                        className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                        className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                       >
                         <Image
                           src="/images/aarka/market-momentum-chart-crop.png"
@@ -581,7 +628,7 @@ export function LandingPage() {
                           width={570}
                           height={446}
                           unoptimized
-                          className="mx-auto block h-auto w-full object-contain"
+                          className="mx-auto block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                         />
                       </button>
                     ) : (
@@ -597,7 +644,7 @@ export function LandingPage() {
                           })
                         }
                         aria-label="Inspect B2B Software Sector Drilldown in lightbox"
-                        className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                        className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                       >
                         <Image
                           src="/images/aarka/market-sector-b2b.png"
@@ -605,7 +652,7 @@ export function LandingPage() {
                           width={994}
                           height={637}
                           unoptimized
-                          className="block h-auto w-full object-contain"
+                          className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                         />
                       </button>
                     )}
@@ -639,7 +686,7 @@ export function LandingPage() {
                   </div>
                 </dl>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -648,7 +695,13 @@ export function LandingPage() {
            =================================================================== */}
         <section id="pipeline" className="scroll-mt-16 border-b border-slate-200/80 bg-white py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
+              className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12"
+            >
               <div className="lg:col-span-5">
                 <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
                   03 · DEAL-FLOW MANAGEMENT
@@ -682,7 +735,7 @@ export function LandingPage() {
                     <span className="text-xs font-medium text-slate-600">Deal Flow Pulse (/deals)</span>
                     <span className="text-[11px] text-slate-400">Click to enlarge ↗</span>
                   </div>
-                  <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)]">
+                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                     <button
                       type="button"
                       onClick={() =>
@@ -695,7 +748,7 @@ export function LandingPage() {
                         })
                       }
                       aria-label="Inspect Deal Flow Pulse screenshot in full size"
-                      className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                      className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                     >
                       <Image
                         src="/images/aarka/dealflow-pulse.png"
@@ -703,13 +756,13 @@ export function LandingPage() {
                         width={1012}
                         height={660}
                         unoptimized
-                        className="block h-auto w-full object-contain"
+                        className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                       />
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -718,7 +771,13 @@ export function LandingPage() {
            =================================================================== */}
         <section id="portfolio" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
+              className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12"
+            >
               <div className="order-2 lg:order-1 lg:col-span-7">
                 <div className="mx-auto max-w-[560px]">
                   <div className="mb-2 flex items-center justify-between">
@@ -740,7 +799,7 @@ export function LandingPage() {
                     </button>
                   </div>
 
-                  <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)]">
+                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                     <button
                       type="button"
                       onClick={() =>
@@ -753,7 +812,7 @@ export function LandingPage() {
                         })
                       }
                       aria-label="Inspect full Portfolio Overview screenshot in lightbox"
-                      className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                      className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                     >
                       <Image
                         src="/images/aarka/portfolio-cards-crop.png"
@@ -761,7 +820,7 @@ export function LandingPage() {
                         width={788}
                         height={472}
                         unoptimized
-                        className="block h-auto w-full object-contain"
+                        className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                       />
                     </button>
                   </div>
@@ -794,7 +853,7 @@ export function LandingPage() {
                   </div>
                 </dl>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -803,7 +862,13 @@ export function LandingPage() {
            =================================================================== */}
         <section id="architecture" className="scroll-mt-16 border-b border-slate-200/80 bg-[#0F172A] py-16 text-white sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
+              className="max-w-2xl"
+            >
               <p className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
                 THE AARKA ARCHITECTURE
               </p>
@@ -813,10 +878,16 @@ export function LandingPage() {
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
                 Aarka separates document reading, financial calculation and investment judgment into three distinct layers so every figure remains traceable to its source.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 md:grid-cols-3">
-              <div className="bg-[#131C31] p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, delay: 0.08, ease: "easeOut" }}
+              className="mt-10 grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 md:grid-cols-3"
+            >
+              <div className="bg-[#131C31] p-6 transition-colors duration-300 hover:bg-[#17223B]">
                 <span className="font-mono text-xs font-medium text-slate-400">01 · AI Layer</span>
                 <h3 className="mt-3 font-serif text-lg font-normal text-white">
                   Extracts, structures and explains.
@@ -826,7 +897,7 @@ export function LandingPage() {
                 </p>
               </div>
 
-              <div className="bg-[#131C31] p-6">
+              <div className="bg-[#131C31] p-6 transition-colors duration-300 hover:bg-[#17223B]">
                 <span className="font-mono text-xs font-medium text-emerald-400">02 · Code Layer</span>
                 <h3 className="mt-3 font-serif text-lg font-normal text-white">
                   Validates and calculates deterministically.
@@ -836,7 +907,7 @@ export function LandingPage() {
                 </p>
               </div>
 
-              <div className="bg-[#131C31] p-6">
+              <div className="bg-[#131C31] p-6 transition-colors duration-300 hover:bg-[#17223B]">
                 <span className="font-mono text-xs font-medium text-slate-400">03 · Human Layer</span>
                 <h3 className="mt-3 font-serif text-lg font-normal text-white">
                   Reviews evidence and makes the call.
@@ -845,9 +916,15 @@ export function LandingPage() {
                   Analysts and partners inspect source quotes, resolve conflicts with founders, override bands with written reasoning when warranted and record the final investment decision.
                 </p>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="mt-8 grid items-center gap-8 rounded-xl border border-white/10 bg-[#131C31]/70 p-5 sm:p-6 lg:grid-cols-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, delay: 0.14, ease: "easeOut" }}
+              className="group mt-8 grid items-center gap-8 rounded-xl border border-white/10 bg-[#131C31]/70 p-5 transition-all duration-500 ease-out hover:-translate-y-1 hover:border-white/25 hover:shadow-xl sm:p-6 lg:grid-cols-12"
+            >
               <div className="lg:col-span-5">
                 <span className="font-mono text-[11px] text-slate-400">Data Lineage (/sources)</span>
                 <h3 className="mt-1.5 font-serif text-xl font-normal text-white">
@@ -887,7 +964,7 @@ export function LandingPage() {
                       })
                     }
                     aria-label="Inspect Data Transparency Lineage screenshot in full size"
-                    className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                    className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                   >
                     <Image
                       src="/images/aarka/data-transparency-lineage.png"
@@ -895,12 +972,12 @@ export function LandingPage() {
                       width={998}
                       height={655}
                       unoptimized
-                      className="block h-auto w-full object-contain"
+                      className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -909,7 +986,13 @@ export function LandingPage() {
            =================================================================== */}
         <section id="teams" className="scroll-mt-16 border-b border-slate-200/80 bg-white py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
+              className="max-w-2xl"
+            >
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 ROLE-VERIFIED ACCESS
               </p>
@@ -919,11 +1002,17 @@ export function LandingPage() {
               <p className="mt-3 text-sm leading-relaxed text-slate-600">
                 One unified Google Sign-In routes authorised investment team members to the fund workspace and directs all other visitors straight to the Founder Pitch Form.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="mt-10 grid gap-8 lg:grid-cols-12 lg:items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.55, delay: 0.08, ease: "easeOut" }}
+              className="mt-10 grid gap-8 lg:grid-cols-12 lg:items-center"
+            >
               <div className="space-y-4 lg:col-span-6">
-                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5">
+                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5 transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-slate-950">Investment Partners</h3>
                     <span className="font-mono text-[11px] text-slate-500">Invite-Only · Partner View</span>
@@ -933,7 +1022,7 @@ export function LandingPage() {
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5">
+                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5 transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-slate-950">Investment Analysts</h3>
                     <span className="font-mono text-[11px] text-slate-500">Invite-Only · Analyst View</span>
@@ -943,7 +1032,7 @@ export function LandingPage() {
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5">
+                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5 transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-slate-950">Founders</h3>
                     <span className="font-mono text-[11px] text-slate-500">Open Pitch Intake</span>
@@ -960,7 +1049,7 @@ export function LandingPage() {
                     <span className="text-xs font-medium text-slate-600">Founder Pitch Submission (/pitch)</span>
                     <span className="text-[11px] text-slate-400">Click to enlarge ↗</span>
                   </div>
-                  <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)]">
+                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
                     <button
                       type="button"
                       onClick={() =>
@@ -973,7 +1062,7 @@ export function LandingPage() {
                         })
                       }
                       aria-label="Inspect Founder Pitch Portal screenshot in full size"
-                      className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
+                      className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
                     >
                       <Image
                         src="/images/aarka/founder-pitch-portal.png"
@@ -981,13 +1070,13 @@ export function LandingPage() {
                         width={605}
                         height={657}
                         unoptimized
-                        className="block h-auto w-full object-contain"
+                        className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                       />
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -995,7 +1084,13 @@ export function LandingPage() {
             FINAL CONVERSION SECTION
            =================================================================== */}
         <section className="border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-20">
-          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
+            className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8"
+          >
             <h2 className="font-serif text-3xl font-normal tracking-[-0.015em] text-balance text-slate-950 sm:text-4xl">
               Make every investment decision more informed.
             </h2>
@@ -1007,18 +1102,18 @@ export function LandingPage() {
                 type="button"
                 onClick={handleSignIn}
                 disabled={SigningIn}
-                className="inline-flex h-10 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-slate-900 px-5 text-[13.5px] font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+                className="inline-flex h-10 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-slate-900 px-5 text-[13.5px] font-medium text-white transition-all duration-200 hover:scale-[1.02] hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60"
               >
                 <span>{SigningIn ? "Redirecting to Google…" : "Sign In with Google"}</span>
               </button>
               <Link
                 href="/pitch"
-                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-5 text-[13.5px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-5 text-[13.5px] font-medium text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 active:scale-[0.98]"
               >
                 Submit a Founder Pitch
               </Link>
             </div>
-          </div>
+          </motion.div>
         </section>
       </main>
 

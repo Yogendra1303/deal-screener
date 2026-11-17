@@ -10,6 +10,7 @@ export interface AccessRequestItem {
   background: string;
   firm?: string;
   intent: string;
+  additionalContext?: string;
   createdAt: string;
   status: "pending" | "approved" | "invited";
 }
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
     const background = typeof body.background === "string" ? body.background.trim() : "Investor";
     const firm = typeof body.firm === "string" ? body.firm.trim() : "";
     const intent = typeof body.intent === "string" ? body.intent.trim() : "Evaluating platform";
+    const additionalContext = typeof body.additionalContext === "string" ? body.additionalContext.trim() : "";
 
     if (!email || !email.includes("@")) {
       return NextResponse.json({ error: "Please provide a valid email address." }, { status: 400 });
@@ -45,6 +47,7 @@ export async function POST(req: NextRequest) {
       background,
       firm: firm || undefined,
       intent,
+      additionalContext: additionalContext || undefined,
       createdAt: new Date().toISOString(),
       status: "pending",
     };
@@ -78,6 +81,7 @@ export async function POST(req: NextRequest) {
                   <li><strong>Background:</strong> ${item.background}</li>
                   ${firm ? `<li><strong>Firm/Fund:</strong> ${firm}</li>` : ""}
                   <li><strong>Reason for Exploring:</strong> ${item.intent}</li>
+                  ${additionalContext ? `<li><strong>Additional Context:</strong> ${additionalContext}</li>` : ""}
                   <li><strong>Received:</strong> ${new Date().toLocaleString("en-US")}</li>
                 </ul>
                 <p style="margin-top: 24px; font-size: 13px; color: #94a3b8;">

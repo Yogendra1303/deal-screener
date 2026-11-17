@@ -1,7 +1,8 @@
 "use client";
 
 import { ZeroState } from "@/components/mode";
-import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useEffect, useMemo, useState } from "react";
 import {
   healthOf,
   usePanels,
@@ -51,14 +52,40 @@ export default function HomePage() {
   return w.role === "Partner" ? <PartnerHome /> : <AnalystHome />;
 }
 
+function getGreetingForHour(hour: number): string {
+  if (hour >= 0 && hour <= 11) return "Good morning";
+  if (hour >= 12 && hour <= 16) return "Good afternoon";
+  return "Good evening";
+}
+
+function useTimeGreeting(): string {
+  const [greeting, setGreeting] = useState<string>("Welcome back");
+
+  useEffect(() => {
+    const update = () => setGreeting(getGreetingForHour(new Date().getHours()));
+    update();
+    const timer = window.setInterval(update, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return greeting;
+}
+
 function Greeting({ name, line }: { name: string; line: string }) {
+  const { data: session } = useSession();
   const w = useWorkspace();
-  const firstName = (w.userName || name).split(" ")[0];
+  const greeting = useTimeGreeting();
+
+  const rawName = session?.user?.name?.trim() || w.userName?.trim() || name?.trim() || "";
+  const firstName = rawName ? rawName.split(/\s+/)[0] : "Partner";
+
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div>
         <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Q4 2026 · Active Pipeline</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Good afternoon, {firstName}</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl" suppressHydrationWarning>
+          {greeting}, {firstName}
+        </h1>
         <p className="mt-1 text-sm text-slate-600">{line}</p>
       </div>
     </div>
