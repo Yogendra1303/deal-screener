@@ -52,15 +52,14 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Unauthenticated visitor: allow /login and / (which renders LoginScreen), redirect protected routes to /login.
-  if (pathname === "/" || pathname.startsWith("/login")) {
+  // Unauthenticated visitor: / is the single public entry point (Landing Page).
+  // Redirect /login and all unauthenticated protected routes directly to /.
+  if (pathname === "/" || pathname.startsWith("/welcome")) {
     return NextResponse.next();
   }
 
-  if (isVcRoute(pathname) || pathname === "/founder" || pathname.startsWith("/founder/home")) {
-    const url = new URL("/login", req.nextUrl.origin);
-    url.searchParams.set("callbackUrl", pathname + search);
-    return NextResponse.redirect(url);
+  if (pathname.startsWith("/login") || isVcRoute(pathname) || pathname === "/founder" || pathname.startsWith("/founder/home")) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
 
   return NextResponse.next();

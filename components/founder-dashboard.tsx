@@ -50,7 +50,7 @@ export function FounderDashboard({
 }) {
   const links = useLinks();
   const [pitches, setPitches] = useState<FounderPitchSummary[]>(initialPitches);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState<boolean>(() => initialPitches.length === 0);
 
   // Pitch intake state
   const [founderName, setFounderName] = useState(user.name || "");
@@ -268,7 +268,7 @@ export function FounderDashboard({
             </div>
             <button
               type="button"
-              onClick={() => void nextAuthSignOut({ callbackUrl: "/login" })}
+              onClick={() => void nextAuthSignOut({ callbackUrl: "/" })}
               className="inline-flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50"
             >
               Sign out
@@ -278,21 +278,35 @@ export function FounderDashboard({
       </header>
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-2xs">
+          <span>
+            <strong className="font-semibold text-slate-900">Invite-Only Fund Workspace:</strong> Internal investment views are restricted to authorised Aarka partners and analysts. Founders can submit a pitch deck below or track existing submissions.
+          </span>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Your Pitches</h1>
-            <p className="mt-1 text-sm text-slate-600">Submit your deck to Aarka and track high-level review status.</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+              {allPitches.length === 0 ? "Submit Your Pitch to Aarka" : "Your Pitches"}
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              {allPitches.length === 0
+                ? "Early-stage mandate up to $4M. Share your pitch deck and core company details for review."
+                : "Submit a new deck to Aarka or track high-level review status."}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setShowForm((v) => !v);
-              setError(null);
-            }}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
-          >
-            {showForm ? "Close form" : "Submit a New Pitch"}
-          </button>
+          {allPitches.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm((v) => !v);
+                setError(null);
+              }}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+            >
+              {showForm ? "Close form" : "Submit a New Pitch"}
+            </button>
+          )}
         </div>
 
         {successMsg && (
@@ -465,13 +479,8 @@ export function FounderDashboard({
           </form>
         )}
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-          {allPitches.length === 0 ? (
-            <div className="p-10 text-center">
-              <p className="text-sm font-medium text-slate-900">No pitches submitted yet</p>
-              <p className="mt-1 text-xs text-slate-500">Click &ldquo;Submit a New Pitch&rdquo; above to send your deck to the investment team.</p>
-            </div>
-          ) : (
+        {allPitches.length > 0 && (
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -500,8 +509,8 @@ export function FounderDashboard({
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );

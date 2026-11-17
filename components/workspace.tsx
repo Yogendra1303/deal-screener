@@ -3,7 +3,7 @@
 // Who is signed in (partner or analyst), and the questions between them. The sign-in stays in this
 // browser; the questions are saved on the server too, laid over the sample questions that ship with the app.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
 import { DEMO_DATE } from "@/lib/portfolio/health";
 import { SEED_QUESTIONS, type Answer, type Question } from "@/lib/questions";
 import { signInCheck, type Session } from "@/lib/auth";
@@ -107,7 +107,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       // Ignore URL cleanup errors.
     }
     const preferredRole = urlOverride ?? readStoredRole();
-    const localSession = saved && saved.name && saved.role ? saved : null;
+    const localSession: Session | null =
+      saved && saved.name && saved.role
+        ? saved
+        : urlOverride
+          ? {
+              name: urlOverride === "Partner" ? "Kabir Shah" : "Riya Menon",
+              role: urlOverride,
+              email: urlOverride === "Partner" ? "kabir@aarkavc.xyz" : "riya@aarkavc.xyz",
+            }
+          : null;
     if (localSession && preferredRole && localSession.role !== preferredRole) {
       localSession.role = preferredRole;
       localSession.name = preferredRole === "Partner" ? "Kabir Shah" : "Riya Menon";
@@ -186,18 +195,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Nothing saved to remove.
     }
-    fetch("/api/auth/csrf", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { csrfToken?: string } | null) => {
-        if (d?.csrfToken) {
-          return fetch("/api/auth/signout", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ csrfToken: d.csrfToken, json: "true" }),
-          });
-        }
-      })
-      .catch(() => undefined);
+    void nextAuthSignOut({ callbackUrl: "/" });
   }, []);
 
   const update = useCallback((fn: (l: LocalQuestions) => LocalQuestions) => {

@@ -164,7 +164,7 @@ function UserCard() {
           type="button"
           onClick={() => {
             w.signOut();
-            router.replace("/login");
+            router.replace("/");
           }}
           className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
         >
@@ -443,20 +443,24 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </form>
 
         <div className="flex items-center gap-2.5">
-          <RoleViewDropdown compact />
+          <div className="lg:hidden">
+            <RoleViewDropdown compact />
+          </div>
           <Link
             href={`/pitch?ref=${encodeURIComponent(w.userName || w.me || "Analyst")}`}
             target="_blank"
             rel="noreferrer"
-            className="hidden items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50 sm:inline-flex"
+            className="hidden items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 sm:inline-flex"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
             </svg>
-            Share link
+            Share pitch link
           </Link>
-          <Avatar name={w.userName || w.me} size="sm" image={w.userImage} />
+          <div className="lg:hidden">
+            <Avatar name={w.userName || w.me} size="sm" image={w.userImage} />
+          </div>
         </div>
       </header>
 

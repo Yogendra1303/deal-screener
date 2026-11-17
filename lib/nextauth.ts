@@ -49,7 +49,7 @@ declare module "next-auth/jwt" {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
   session: { strategy: "jwt", maxAge: 60 * 60 * 12 },
-  pages: { signIn: "/login" },
+  pages: { signIn: "/" },
   trustHost: true,
   debug: false,
   logger: {
