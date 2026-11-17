@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { FounderDashboard } from "@/components/founder-dashboard";
 import { listFounderDeals, type FounderPitchSummary } from "@/lib/db/repository";
@@ -10,15 +11,48 @@ export default async function FounderPortalPage() {
     image: null as string | null,
   };
 
+  // 1. Check NextAuth
   if (authEnabled()) {
-    const session = await auth();
-    if (!session?.user?.email) {
-      redirect("/login?callbackUrl=/founder");
+    try {
+      const session = await auth();
+      if (session?.user?.email) {
+        user = {
+          name: session.user.name?.trim() || session.user.email.split("@")[0],
+          email: session.user.email,
+          image: session.user.image ?? null,
+        };
+      }
+    } catch {
+      // ignore
     }
+  }
+
+  // 2. Check aarka_session cookie fallback
+  if (!user.email) {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get("aarka_session")?.value;
+    if (raw) {
+      try {
+        const data = JSON.parse(raw);
+        if (data.email) {
+          user = {
+            name: data.name || data.email.split("@")[0],
+            email: data.email,
+            image: null,
+          };
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // If no user email, default to demo founder view or redirect
+  if (!user.email) {
     user = {
-      name: session.user.name?.trim() || session.user.email.split("@")[0],
-      email: session.user.email,
-      image: session.user.image ?? null,
+      name: "Founder",
+      email: "founder@sehatflow.io",
+      image: null,
     };
   }
 

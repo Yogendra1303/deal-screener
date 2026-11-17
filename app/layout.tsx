@@ -8,6 +8,7 @@ import { PortfolioProvider } from "@/components/portfolio-store";
 import { Shell } from "@/components/shell";
 import { StoreProvider } from "@/components/store";
 import { WorkspaceProvider } from "@/components/workspace";
+import { RealtimeListener } from "@/components/realtime-listener";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -86,6 +87,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="h-full bg-slate-50 text-slate-900">
         <AuthSessionProvider>
+          <RealtimeListener />
           <StoreProvider>
             <PortfolioProvider>
               <WorkspaceProvider>

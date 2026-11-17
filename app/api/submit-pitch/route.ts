@@ -15,6 +15,7 @@ import {
   recordUploadedFile,
 } from "@/lib/db/repository";
 import { logAndNotify } from "@/lib/notify";
+import { broadcastRealtimeEvent } from "@/lib/realtime";
 import { finishDeal, processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
 import type { DealResult, Flag, FormInput, SheetRow } from "@/lib/types";
@@ -434,6 +435,22 @@ export async function POST(req: Request) {
 
     revalidatePath("/deals");
     revalidatePath("/");
+
+    try {
+      broadcastRealtimeEvent("deal.created", {
+        id,
+        company_name: companyName,
+        founder_name: founderName,
+        founder_email: founderEmail,
+        sector,
+        stage,
+        ask_amount: askAmount,
+        receivedAt,
+        fileUrl,
+      });
+    } catch {
+      // broadcast non-blocking
+    }
 
     return NextResponse.json({
       ok: true,

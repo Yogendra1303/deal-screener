@@ -15,6 +15,10 @@ export interface Member {
 }
 
 export const TEAM: Member[] = [
+  { name: "Yogendra Kapkoti", role: "Partner", initials: "YK", tone: "bg-blue-600 text-white" },
+  { name: "Ashutosh Sinha", role: "Partner", initials: "AS", tone: "bg-purple-600 text-white" },
+  { name: "Gopal Ahuja", role: "Partner", initials: "GA", tone: "bg-emerald-600 text-white" },
+  { name: "Sanchit Kumar", role: "Partner", initials: "SK", tone: "bg-cyan-600 text-white" },
   { name: "Kabir Shah", role: "Partner", initials: "KS", tone: "bg-indigo-600 text-white" },
   { name: "Riya Menon", role: "Analyst", initials: "RM", tone: "bg-teal-600 text-white" },
   { name: "Arjun Bhat", role: "Analyst", initials: "AB", tone: "bg-amber-500 text-white" },

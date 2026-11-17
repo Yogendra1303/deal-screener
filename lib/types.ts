@@ -14,7 +14,9 @@ export type CheckId =
   | "round_deck_vs_form"
   | "founded_vs_registry"
   | "founder_vs_profile"
-  | "missing_core_facts";
+  | "missing_core_facts"
+  | "vc_high_burn_multiple"
+  | "vc_critical_runway";
 
 export const CHECK_LABELS: Record<CheckId, string> = {
   revenue_deck_vs_sheet: "Revenue: deck vs monthly sheet",
@@ -27,6 +29,8 @@ export const CHECK_LABELS: Record<CheckId, string> = {
   founded_vs_registry: "Founding date: deck vs registry",
   founder_vs_profile: "Founder roles: deck vs profile",
   missing_core_facts: "Missing core facts",
+  vc_high_burn_multiple: "VC metrics: high burn multiple",
+  vc_critical_runway: "VC metrics: critical runway alert",
 };
 
 export interface SourceRef {
@@ -38,7 +42,7 @@ export interface SourceRef {
 
 export interface Flag {
   checkId: CheckId;
-  kind: "conflict" | "missing";
+  kind: "conflict" | "missing" | "warning";
   title: string;
   detail: string;
   sources: SourceRef[];

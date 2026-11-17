@@ -192,10 +192,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.removeItem(KEYS.session);
       window.sessionStorage.removeItem(ROLE_STORAGE_KEY);
       window.localStorage.removeItem(ROLE_STORAGE_KEY);
+      fetch("/api/auth/session", { method: "DELETE" }).catch(() => {});
     } catch {
       // Nothing saved to remove.
     }
-    void nextAuthSignOut({ callbackUrl: "/" });
+    void nextAuthSignOut({ callbackUrl: "/login" });
   }, []);
 
   const update = useCallback((fn: (l: LocalQuestions) => LocalQuestions) => {

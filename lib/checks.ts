@@ -4,6 +4,7 @@ import type { DealRecord, MoneyFactT, NumberFactT } from "./schema";
 import { fmtMoney, fmtMonth, fmtNum } from "./format";
 import { rowFor, sheetGrowth } from "./sheet";
 import { MISSING_FLAG_THRESHOLD, missingCoreFacts, usd } from "./rules";
+import { calculateVCMetrics } from "./vc-metrics";
 
 /** Gaps above this share are flagged. */
 export const GAP_TOLERANCE = 0.1;
@@ -23,8 +24,9 @@ export function runChecks(args: {
   form: FormInput;
   sheet: SheetRow[] | null;
   registry: RegistryRecord | null;
+  includeVCMetrics?: boolean;
 }): Flag[] {
-  const { record, form, sheet, registry } = args;
+  const { record, form, sheet, registry, includeVCMetrics } = args;
   const t = record.traction;
   const flags: Flag[] = [];
 
@@ -193,6 +195,30 @@ export function runChecks(args: {
       detail: `Not stated: ${missing.join(", ")}. Ask the founder before scoring traction.`,
       sources: [],
     });
+  }
+
+  // 10. Institutional VC Metrics: Burn Multiple, Runway, and Mandate Checks
+  if (includeVCMetrics) {
+    const vc = calculateVCMetrics(sheet, record, form.amountUsd);
+    if (vc.burnMultiple.tier === "High Burn Alarm" && vc.burnMultiple.value != null) {
+      flags.push({
+        checkId: "vc_high_burn_multiple",
+        kind: "warning",
+        title: `High Burn Multiple: ${vc.burnMultiple.formatted} per $1 net new ARR`,
+        detail: `${vc.burnMultiple.explanation} Top early-stage funds look for burn multiple < 1.5x.`,
+        sources: [{ label: "VC Metrics", value: vc.burnMultiple.formatted }],
+      });
+    }
+
+    if (vc.runway.status === "Critical" && vc.runway.months != null) {
+      flags.push({
+        checkId: "vc_critical_runway",
+        kind: "warning",
+        title: `Critical Runway: only ${vc.runway.formatted} remaining (${vc.runway.zeroCashDate})`,
+        detail: vc.runway.explanation,
+        sources: [{ label: "Runway", value: vc.runway.formatted }],
+      });
+    }
   }
 
   return flags;

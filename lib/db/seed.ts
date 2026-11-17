@@ -10,6 +10,7 @@ export const PARTNER_EMAILS: PermittedUser[] = [
   { email: "yogendrakapkoti1309@gmail.com", name: "Yogendra Kapkoti", role: "partner", active: true },
   { email: "02.ashutosh@gmail.com", name: "Ashutosh Sinha", role: "partner", active: true },
   { email: "hello@gopalahuja.com", name: "Gopal Ahuja", role: "partner", active: true },
+  { email: "sanchitkr7@gmail.com", name: "Sanchit Kumar", role: "partner", active: true },
 ];
 
 export async function seedDatabase(): Promise<{

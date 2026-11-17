@@ -338,18 +338,26 @@ export function FounderDashboard({
                 : "Submit a new deck to Aarka or track high-level review status."}
             </p>
           </div>
-          {(allPitches.length > 0 || !showForm) && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm((v) => !v);
-                setError(null);
-              }}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/founder/dataroom"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-blue-600/30 bg-blue-50 px-3.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 transition-colors"
             >
-              {showForm ? "Close form" : "Submit a New Pitch"}
-            </button>
-          )}
+              📁 Data Room Portal →
+            </Link>
+            {(allPitches.length > 0 || !showForm) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm((v) => !v);
+                  setError(null);
+                }}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+              >
+                {showForm ? "Close form" : "Submit a New Pitch"}
+              </button>
+            )}
+          </div>
         </div>
 
         {successMsg && (

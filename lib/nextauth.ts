@@ -8,7 +8,13 @@ import { logAndNotify } from "./notify";
 
 export type AuthRole = UserRole; // "VC" | "FOUNDER"
 
-const DEFAULT_VC_EMAILS = ["yogendrakapkoti1309@gmail.com", "yogendrakapkoti13@gmail.com", "02.ashutosh@gmail.com", "hello@gopalahuja.com"];
+const DEFAULT_VC_EMAILS = [
+  "yogendrakapkoti1309@gmail.com",
+  "yogendrakapkoti13@gmail.com",
+  "02.ashutosh@gmail.com",
+  "hello@gopalahuja.com",
+  "sanchitkr7@gmail.com",
+];
 
 function getVcEmailSet(): Set<string> {
   const extra = (process.env.VC_EMAILS ?? "")
