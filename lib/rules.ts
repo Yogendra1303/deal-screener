@@ -121,7 +121,10 @@ export function bandFor(scores: Score[]): { band: Band; reasons: string[] } {
 
 /** Re-run the code-made parts with the current fund rules (used in the browser). */
 export function rescore(deal: DealResult, rules: FundRules): DealResult {
-  const scores = deal.scores.map((s) => (s.key === "fit" ? fitScore(deal.form, rules) : s));
+  const baseScores = Array.isArray(deal?.scores) ? deal.scores : [];
+  const scores = deal?.form
+    ? baseScores.map((s) => (s.key === "fit" ? fitScore(deal.form, rules) : s))
+    : baseScores;
   const { band, reasons } = bandFor(scores);
   return { ...deal, scores, band, bandReasons: reasons };
 }

@@ -46,6 +46,30 @@ function read<T>(key: string, fallback: T): T {
 
 const write = persist;
 
+function isValidDealResult(v: unknown): v is DealResult {
+  if (!v || typeof v !== "object") return false;
+  const d = v as Partial<DealResult>;
+  return Boolean(
+    typeof d.id === "string" &&
+      d.id &&
+      d.form &&
+      typeof d.form === "object" &&
+      d.record &&
+      typeof d.record === "object" &&
+      Array.isArray(d.scores) &&
+      Array.isArray(d.flags),
+  );
+}
+
+function sanitizeDealMap(raw: unknown): Record<string, DealResult> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, DealResult> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (isValidDealResult(v)) out[k] = v;
+  }
+  return out;
+}
+
 export type FactCheck = "right" | "wrong";
 
 interface Store {
@@ -116,7 +140,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Load what this browser saved earlier. Runs once, after the first render.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocal(read(KEYS.deals, {}));
+    setLocal(sanitizeDealMap(read(KEYS.deals, {})));
     setRulesState(read(KEYS.rules, DEFAULT_RULES));
     setOverrules(read(KEYS.overrules, {}));
     setFactChecks(read(KEYS.factChecks, {}));
@@ -142,11 +166,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     health().then(setServer);
     // Merge remote server copy cleanly without overwriting live deals pushed by subscribeDealSync.
     const hasLocal = (key: string) => (window.localStorage.getItem(key) ? read(key, null) : null);
-    hydrate<Record<string, DealResult>>(KEYS.deals, (remote) => setLocal((prev) => ({ ...prev, ...remote })), hasLocal(KEYS.deals));
+    hydrate<Record<string, DealResult>>(
+      KEYS.deals,
+      (remote) => setLocal((prev) => ({ ...prev, ...sanitizeDealMap(remote) })),
+      hasLocal(KEYS.deals),
+    );
     const unsubscribe = subscribeDealSync((deals) => {
       const fromRows: Record<string, DealResult> = {};
       for (const row of deals) {
-        if (row.record_json) fromRows[row.id] = row.record_json as DealResult;
+        if (isValidDealResult(row.record_json)) fromRows[row.id] = row.record_json;
       }
       if (Object.keys(fromRows).length) {
         setLocal((prev) => ({ ...prev, ...fromRows }));
@@ -164,8 +192,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [isVc]);
 
   const deals = useMemo(() => {
-    const all: Record<string, DealResult> = { ...SEED_RESULTS, ...local };
-    return Object.values(all).map((d) => rescore(d, rules));
+    const all: Record<string, DealResult> = { ...SEED_RESULTS, ...sanitizeDealMap(local) };
+    return Object.values(all)
+      .filter(isValidDealResult)
+      .map((d) => rescore(d, rules));
   }, [local, rules]);
 
   const unprocessed = useMemo(() => SAMPLES.filter((s) => !deals.some((d) => d.id === s.id)), [deals]);
