@@ -369,53 +369,81 @@ function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
   const liveNew = rows.filter((r) => r.isLiveSubmission);
   if (liveNew.length === 0) return null;
   return (
-    <section className="overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/40 p-4 shadow-xs sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/70 pb-3">
+    <section className="rounded-2xl border border-blue-200/90 bg-white p-4 shadow-[0_2px_8px_-2px_rgba(37,99,235,0.12)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100/80 pb-3">
         <div className="flex items-center gap-2.5">
-          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-blue-600 ring-4 ring-blue-100 animate-pulse" />
-          <h2 className="text-sm font-semibold text-slate-900">
-            {liveNew.length === 1 ? "1 New Pitch Submission Received" : `${liveNew.length} New Pitch Submissions Received`}
-          </h2>
-          <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            Live Queue
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+            {liveNew.length}
           </span>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-900">
+                {liveNew.length === 1
+                  ? "1 New Pitch Submission Received"
+                  : `${liveNew.length} New Pitch Submissions Received`}
+              </h2>
+              <span className="inline-flex items-center gap-1 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                Live Queue
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Click any company tile below to open the pitch deck, financials, and automated checks.
+            </p>
+          </div>
         </div>
-        <Link href="/deals?tab=read" className="text-xs font-semibold text-blue-700 hover:text-blue-900">
-          View all in Pitches →
+        <Link
+          href="/deals?tab=read"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900"
+        >
+          View all ({liveNew.length}) in Pitches →
         </Link>
       </div>
-      <div className="mt-3 divide-y divide-blue-100/80">
+
+      <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {liveNew.slice(0, 6).map((r) => (
-          <Link
+          <div
             key={r.id}
-            href={r.href}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-white/80"
+            className="group relative flex flex-col justify-between rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50/20 hover:shadow-sm"
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold text-slate-900 hover:text-blue-700">{r.name}</span>
-                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-800">
+            <div>
+              <div className="flex items-start justify-between gap-2">
+                <Link
+                  href={r.href}
+                  className="truncate text-xs font-bold text-slate-900 hover:underline group-hover:text-blue-700"
+                >
+                  {r.name}
+                </Link>
+                <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-blue-800">
                   {r.status}
                 </span>
-                <span className="text-xs text-slate-500">
-                  {r.stage}
-                  {r.askUsd ? ` · Asking ${usd(r.askUsd)}` : ""} · {r.sector}
-                </span>
               </div>
-              <p className="mt-0.5 truncate text-xs text-slate-600">
-                {r.founderName ? `Submitted by ${r.founderName}${r.founderEmail ? ` (${r.founderEmail})` : ""} · ` : ""}
-                {r.line || `${r.sub} · ${r.city}`}
+
+              <p className="mt-1 text-xs font-medium text-slate-700 line-clamp-1">
+                {r.sector} · {r.stage}
+                {r.askUsd ? ` · Asking ${usd(r.askUsd)}` : ""}
+              </p>
+
+              <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-2">
+                {r.founderName
+                  ? `Submitted by ${r.founderName}${r.founderEmail ? ` (${r.founderEmail})` : ""}`
+                  : r.line || `${r.sub} · ${r.city}`}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-3 text-right">
-              <span className="font-mono text-xs font-medium tabular-nums text-slate-600">
+
+            <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/60 pt-2">
+              <span className="font-mono text-[11px] font-medium tabular-nums text-slate-500">
                 {fmtDay(r.last)}
               </span>
-              <span className="inline-flex h-7 items-center rounded-md bg-blue-600 px-2.5 text-xs font-medium text-white shadow-2xs hover:bg-blue-700">
-                Open pitch →
-              </span>
+              <Link
+                href={r.href}
+                className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs transition-all duration-150 hover:bg-blue-700"
+              >
+                <span>Open pitch</span>
+                <span className="inline-block transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+              </Link>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
     </section>
