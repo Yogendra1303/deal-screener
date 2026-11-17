@@ -245,11 +245,11 @@ function NotificationMenu() {
     };
     const companyMine = (owner?: string) => partner || owner === w.me;
 
-    // 1. Live submitted pitches & unscreened new pitches
+    // 1. Live submitted pitches & unscreened new pitches (only status === "New")
     for (const d of store.deals) {
       const isLive = !SEED_IDS.has(d.id);
       const isNew = store.statusOf(d.id) === "New";
-      if (!isLive && (!isNew || !pitchMine(d.id))) continue;
+      if (!isNew || (!isLive && !pitchMine(d.id))) continue;
       const founder = d.form.founders?.[0]?.name;
       const rec = d.receivedAt || "";
       list.push({
@@ -269,7 +269,7 @@ function NotificationMenu() {
       if (!i?.id || store.deals.some((d) => d.id === i.id)) continue;
       const isLive = !SEED_IDS.has(i.id);
       const isNew = store.statusOf(i.id) === "New";
-      if (!isLive && (!isNew || !pitchMine(i.id))) continue;
+      if (!isNew || (!isLive && !pitchMine(i.id))) continue;
       const founder = i.form?.founders?.[0]?.name;
       const rec = i.receivedAt || "";
       list.push({
@@ -359,9 +359,33 @@ function NotificationMenu() {
     );
   }, [store, p, w, links]);
 
-  const unreadCount = items.filter((i) => !readIds[i.id]).length;
-  const liveUnreadCount = items.filter((i) => i.isLiveSubmission && !readIds[i.id]).length;
-  const filtered = items.filter((i) => (filter === "all" ? true : filter === "pitch" ? i.kind === "pitch" : i.kind === "portfolio" || i.kind === "dataroom"));
+  const pathname = usePathname();
+  const activeItems = useMemo(() => items.filter((i) => !readIds[i.id]), [items, readIds]);
+  const unreadCount = activeItems.length;
+  const liveUnreadCount = activeItems.filter((i) => i.isLiveSubmission).length;
+  const filtered = activeItems.filter((i) =>
+    filter === "all" ? true : filter === "pitch" ? i.kind === "pitch" : i.kind === "portfolio" || i.kind === "dataroom",
+  );
+
+  // Automatically dismiss notifications when the user visits the corresponding company/pitch route
+  useEffect(() => {
+    if (!pathname) return;
+    const matched = activeItems.filter((item) => {
+      const baseHref = item.href.split("?")[0];
+      return baseHref && pathname === baseHref;
+    });
+    if (matched.length === 0) return;
+    setReadIds((prev) => {
+      const next = { ...prev };
+      for (const m of matched) next[m.id] = true;
+      try {
+        window.localStorage.setItem("ds.notif.read.v1", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [pathname, activeItems]);
 
   function markRead(id: string) {
     setReadIds((prev) => {
@@ -434,7 +458,7 @@ function NotificationMenu() {
               <button
                 type="button"
                 onClick={markAllRead}
-                className="text-[11px] font-medium text-blue-600 hover:text-blue-800"
+                className="cursor-pointer text-[11px] font-medium text-blue-600 hover:text-blue-800"
               >
                 Mark all read
               </button>
@@ -444,9 +468,9 @@ function NotificationMenu() {
           <div className="flex items-center gap-1 border-b border-slate-100 px-3 py-1.5 text-xs">
             {(
               [
-                ["all", "All", items.length],
-                ["pitch", "Pitches", items.filter((i) => i.kind === "pitch").length],
-                ["portfolio", "Portfolio", items.filter((i) => i.kind !== "pitch").length],
+                ["all", "All", activeItems.length],
+                ["pitch", "Pitches", activeItems.filter((i) => i.kind === "pitch").length],
+                ["portfolio", "Portfolio", activeItems.filter((i) => i.kind !== "pitch").length],
               ] as const
             ).map(([k, label, cnt]) => (
               <button
@@ -454,7 +478,7 @@ function NotificationMenu() {
                 type="button"
                 onClick={() => setFilter(k)}
                 className={cx(
-                  "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  "inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
                   filter === k ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                 )}
               >
@@ -466,58 +490,66 @@ function NotificationMenu() {
 
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
             {filtered.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-slate-500">No notifications in this view.</div>
+              <div className="px-4 py-8 text-center text-xs text-slate-500">All caught up — no unread notifications.</div>
             ) : (
-              filtered.slice(0, 20).map((item) => {
-                const isUnread = !readIds[item.id];
-                return (
+              filtered.slice(0, 20).map((item) => (
+                <div
+                  key={item.id}
+                  className={cx(
+                    "group relative flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-100/80",
+                    item.isLiveSubmission ? "bg-blue-50/60" : "bg-slate-50/40",
+                  )}
+                >
+                  <span
+                    className={cx(
+                      "mt-1 h-2 w-2 shrink-0 rounded-full",
+                      item.isLiveSubmission
+                        ? "bg-blue-600 ring-2 ring-blue-200"
+                        : item.urgent
+                          ? "bg-red-500"
+                          : "bg-blue-500",
+                    )}
+                  />
                   <Link
-                    key={item.id}
                     href={item.href}
                     onClick={() => {
                       markRead(item.id);
                       setOpen(false);
                     }}
-                    className={cx(
-                      "flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-100/80 focus:bg-slate-100 focus:outline-none",
-                      item.isLiveSubmission && isUnread
-                        ? "bg-blue-50/60"
-                        : isUnread
-                          ? "bg-slate-50/40"
-                          : "bg-white",
-                    )}
+                    className="min-w-0 flex-1 focus:outline-none"
                   >
-                    <span
-                      className={cx(
-                        "mt-1 h-2 w-2 shrink-0 rounded-full",
-                        item.isLiveSubmission
-                          ? "bg-blue-600 ring-2 ring-blue-200"
-                          : item.urgent
-                            ? "bg-red-500"
-                            : isUnread
-                              ? "bg-blue-500"
-                              : "bg-slate-300",
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-xs font-semibold text-slate-900 group-hover:text-blue-600">{item.title}</span>
+                      {item.isLiveSubmission ? (
+                        <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                          New Pitch
+                        </span>
+                      ) : (
+                        <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+                          {item.kind === "pitch" ? "Pitch" : item.kind === "portfolio" ? "Portfolio" : "Data room"}
+                        </span>
                       )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-xs font-semibold text-slate-900 group-hover:text-blue-600">{item.title}</span>
-                        {item.isLiveSubmission ? (
-                          <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
-                            New Pitch
-                          </span>
-                        ) : (
-                          <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
-                            {item.kind === "pitch" ? "Pitch" : item.kind === "portfolio" ? "Portfolio" : "Data room"}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 truncate text-xs text-slate-600">{item.subtitle}</p>
-                      <p className="mt-0.5 text-[11px] text-slate-400">{item.meta}</p>
                     </div>
+                    <p className="mt-0.5 truncate text-xs text-slate-600">{item.subtitle}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">{item.meta}</p>
                   </Link>
-                );
-              })
+                  <button
+                    type="button"
+                    aria-label={`Dismiss ${item.title}`}
+                    title="Dismiss notification"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markRead(item.id);
+                    }}
+                    className="mt-0.5 shrink-0 cursor-pointer rounded p-1 text-slate-400 opacity-70 transition-colors hover:bg-slate-200/70 hover:text-slate-700 group-hover:opacity-100"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))
             )}
           </div>
 

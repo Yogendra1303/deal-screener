@@ -366,7 +366,8 @@ function usePartnerData(resolvedTrigger = 0) {
 }
 
 function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
-  const liveNew = rows.filter((r) => r.isLiveSubmission);
+  const store = useStore();
+  const liveNew = rows.filter((r) => r.isLiveSubmission && r.status === "New");
   if (liveNew.length === 0) return null;
   return (
     <section className="rounded-2xl border border-blue-200/90 bg-white p-4 shadow-[0_2px_8px_-2px_rgba(37,99,235,0.12)]">
@@ -388,16 +389,24 @@ function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              Click any company tile below to open the pitch deck, financials, and automated checks.
+              Click any company tile to review. Once you move a pitch to On hold, Meetings, or Passed, it leaves this queue automatically.
             </p>
           </div>
         </div>
-        <Link
-          href="/deals?tab=read"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900"
-        >
-          View all ({liveNew.length}) in Pitches →
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/deals?tab=hold"
+            className="text-xs font-medium text-slate-600 hover:text-slate-900"
+          >
+            On hold →
+          </Link>
+          <Link
+            href="/deals?tab=read"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900"
+          >
+            View all ({liveNew.length}) in Pitches →
+          </Link>
+        </div>
       </div>
 
       <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -431,17 +440,27 @@ function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
               </p>
             </div>
 
-            <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/60 pt-2">
+            <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-200/60 pt-2">
               <span className="font-mono text-[11px] font-medium tabular-nums text-slate-500">
                 {fmtDay(r.last)}
               </span>
-              <Link
-                href={r.href}
-                className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs transition-all duration-150 hover:bg-blue-700"
-              >
-                <span>Open pitch</span>
-                <span className="inline-block transition-transform duration-150 group-hover:translate-x-0.5">→</span>
-              </Link>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => store.setStatus(r.id, "On hold")}
+                  title="Move pitch to On hold and remove from Home"
+                  className="cursor-pointer rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  On hold
+                </button>
+                <Link
+                  href={r.href}
+                  className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs transition-all duration-150 hover:bg-blue-700"
+                >
+                  <span>Open pitch</span>
+                  <span className="inline-block transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+                </Link>
+              </div>
             </div>
           </div>
         ))}

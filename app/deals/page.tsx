@@ -22,7 +22,8 @@ const TABS: { key: string; label: string; test: (r: FlowRow) => boolean }[] = [
   { key: "read", label: "To read", test: (r) => OPEN.has(r.label) },
   { key: "look", label: "Look again", test: (r) => Boolean(r.look.event) },
   { key: "meet", label: "Meetings", test: (r) => r.status === "Meeting set" },
-  { key: "passed", label: "Passed", test: (r) => r.status === "Passed" || r.status === "On hold" },
+  { key: "hold", label: "On hold", test: (r) => r.status === "On hold" },
+  { key: "passed", label: "Passed", test: (r) => r.status === "Passed" },
   { key: "all", label: "All", test: () => true },
 ];
 
@@ -51,6 +52,14 @@ const CHIPS: { key: string; dot: string; label: string; hint: string; on: string
     hint: "The submission leaves out at least one of the 8 core facts: revenue, growth, customers, team, round, founding year, burn, founders' past roles.",
     on: "border-amber-300 bg-amber-50 text-amber-800",
     test: (r) => Boolean(r.cover?.missing.length),
+  },
+  {
+    key: "hold",
+    dot: "bg-blue-600",
+    label: "On Hold",
+    hint: "Pitches placed on hold pending follow-up, missing data, or partner alignment.",
+    on: "border-blue-300 bg-blue-50 text-blue-800",
+    test: (r) => r.status === "On hold",
   },
   {
     key: "reengage",
@@ -110,7 +119,8 @@ export default function DealsPage() {
   const toggle = (key: string) => {
     const on = !chips.includes(key);
     setChips((cur) => (on ? [...cur, key] : cur.filter((k) => k !== key)));
-    if (on && key === "reengage" && tab !== "passed" && tab !== "look" && tab !== "all") setTab("passed");
+    if (on && key === "reengage" && tab !== "passed" && tab !== "hold" && tab !== "look" && tab !== "all") setTab("passed");
+    if (on && key === "hold" && tab !== "hold" && tab !== "all") setTab("hold");
   };
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
   const list = narrowed.filter(current.test);
