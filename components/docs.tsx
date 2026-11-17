@@ -16,7 +16,7 @@ import { useStore } from "./store";
 import { cx } from "./ui";
 
 const json = (form: object) => JSON.stringify(form, null, 2) + "\n";
-const SAMPLE_NOTE = "Fictional sample company. The deck and sheet are test files made for this prototype.";
+const SAMPLE_NOTE = "Sample company record included in the workspace.";
 
 /** Every source document for one deal, real files first. Works for test decks, uploads and the archived history. */
 export function useDocs() {
@@ -100,7 +100,7 @@ export function useDocs() {
         const a = archiveById(id)!;
         const slug = slugFile(h.name);
         const last = lastDeck(h);
-        const note = "Archived deal record. These figures are fictional sample data made for the prototype, then checked by the same code as live decks.";
+        const note = "Archived deal record checked by deterministic financial verification.";
         out.push({
           code: "DECK",
           title: "Deck summary",

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useLinks } from "@/components/links-store";
 import { DropdownSelect, cx } from "@/components/ui";
@@ -181,7 +182,16 @@ function PitchForm() {
             <span className="text-slate-300">·</span>
             <span className="font-medium text-slate-800">Status: New · Unscreened</span>
           </div>
-          <div className="mt-7 border-t border-slate-100 pt-5">
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3 border-t border-slate-100 pt-5">
+            <Link
+              href="/"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              Back to home
+            </Link>
             <button
               type="button"
               onClick={() => {
@@ -195,7 +205,7 @@ function PitchForm() {
                 setAskRaw("");
                 setDeck(null);
               }}
-              className="inline-flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50"
+              className="inline-flex h-8 items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-medium text-white shadow-xs transition-colors hover:bg-slate-800"
             >
               Submit another pitch
             </button>
@@ -208,19 +218,30 @@ function PitchForm() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-2xl space-y-5">
-        {/* Minimal institutional brand header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        {/* Minimal institutional brand header with Back button */}
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/" className="inline-flex items-center gap-2.5 transition-opacity hover:opacity-80">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/aarka-logo.png" alt="Aarka" className="h-7 w-7 shrink-0 rounded-md object-cover shadow-xs" />
             <span className="text-sm font-semibold text-slate-900">{FUND_NAME}</span>
+          </Link>
+          <div className="flex items-center gap-2.5">
+            {ref && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-2xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                Shared by {ref}
+              </span>
+            )}
+            <Link
+              href="/"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              Back
+            </Link>
           </div>
-          {ref && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-2xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-              Shared by {ref}
-            </span>
-          )}
         </div>
 
         <form onSubmit={onSubmit} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -369,8 +390,19 @@ function PitchForm() {
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
-              <p className="text-xs text-slate-500">Reviewed directly by the investment team.</p>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                  Back
+                </Link>
+                <p className="text-xs text-slate-500">Reviewed directly by the investment team.</p>
+              </div>
               <button
                 type="submit"
                 disabled={submitting || overMandate}

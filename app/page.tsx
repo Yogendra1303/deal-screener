@@ -438,7 +438,7 @@ function PartnerHome() {
 
       <SectorHeatmap rows={rows} market={market} />
 
-      <section className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+      <section className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/80">
         <div className="min-w-0 flex-1 basis-56">
           <h2 className="font-semibold text-slate-900">Portfolio</h2>
           <p className="text-sm text-slate-500">{p.companies.length} companies. Reports, cash and health live on the Portfolio screen.</p>
@@ -457,7 +457,7 @@ function PartnerHome() {
           <span className="block text-xl font-semibold tabular-nums text-slate-900">{missed.length}</span>
           <span className="text-[11px] text-slate-500">raised after our pass</span>
         </button>
-        <Link href="/portfolio" className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700">
+        <Link href="/portfolio" className="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3.5 py-1.5 text-sm font-medium text-white shadow-xs transition-colors hover:bg-slate-800">
           Open portfolio
         </Link>
       </section>
@@ -738,7 +738,7 @@ function AnalystHome() {
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {today.map((t) => (
-          <button key={t.key} onClick={() => panels.open(t.key)} className="group rounded-2xl bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-md">
+          <button key={t.key} onClick={() => panels.open(t.key)} className="group rounded-2xl bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/80 transition hover:-translate-y-0.5 hover:shadow-md">
             <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <span className={cx("h-2 w-2 rounded-full", t.dot)} />
               {t.label}
@@ -774,7 +774,7 @@ function AnalystHome() {
 
       <SectorHeatmap rows={fund.rows} market={fund.market} />
 
-      <section className="rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+      <section className="rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/80">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="min-w-0 flex-1 basis-56">
             <h2 className="font-semibold text-slate-900">My portfolio companies</h2>
@@ -788,7 +788,7 @@ function AnalystHome() {
               <span className="text-[11px] text-slate-500">{t.title.toLowerCase()}</span>
             </button>
           ))}
-          <Link href="/portfolio" className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+          <Link href="/portfolio" className="inline-flex items-center justify-center rounded-md bg-slate-900 px-3.5 py-1.5 text-sm font-medium text-white shadow-xs transition-colors hover:bg-slate-800">
             Open portfolio
           </Link>
         </div>

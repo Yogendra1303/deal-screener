@@ -28,40 +28,53 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://aarkavc.xyz"),
+  metadataBase: new URL("https://www.aarkavc.xyz"),
   title: {
-    default: "Aarka | Investment Intelligence & Deal-Flow Platform for Venture Capital",
+    default: "Aarka — Investment Intelligence Platform",
     template: "%s | Aarka",
   },
   description:
-    "See beyond the pitch. Aarka reduces the manual work of screening, structuring and validating investment opportunities—combining AI extraction, deterministic financial verification and portfolio monitoring in one workspace for modern venture capital teams.",
+    "Investment Intelligence Platform for Venture Capital. Screen, structure and validate early-stage investment opportunities with source-cited AI extraction, deterministic financial verification and portfolio monitoring.",
   applicationName: "Aarka",
+  icons: {
+    icon: "/aarka-logo.png",
+    shortcut: "/aarka-logo.png",
+    apple: "/aarka-logo.png",
+  },
   alternates: {
-    canonical: "https://aarkavc.xyz",
+    canonical: "https://www.aarkavc.xyz",
   },
   openGraph: {
-    title: "Aarka — Investment Intelligence for Venture Capital",
+    title: "Aarka — Investment Intelligence Platform",
     description:
-      "Turn incoming pitches into structured intelligence. Validate financial claims, track sector momentum and manage your venture pipeline and portfolio from one connected workspace.",
-    url: "https://aarkavc.xyz",
-    siteName: "Aarka",
+      "Screen, structure and validate early-stage investment opportunities with source-cited AI extraction, deterministic financial verification and portfolio monitoring.",
+    url: "https://www.aarkavc.xyz",
+    siteName: "Aarka — Investment Intelligence Platform",
     locale: "en_US",
     type: "website",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://www.aarkavc.xyz/og-card.png",
         width: 1200,
         height: 630,
-        alt: "Aarka — Investment Intelligence for Modern Venture Capital Teams",
+        type: "image/png",
+        alt: "Aarka — Investment Intelligence Platform",
+      },
+      {
+        url: "https://www.aarkavc.xyz/aarka-social-logo.png",
+        width: 400,
+        height: 400,
+        type: "image/png",
+        alt: "Aarka Logo",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Aarka — Investment Intelligence for Venture Capital",
+    title: "Aarka — Investment Intelligence Platform",
     description:
-      "Turn incoming pitches into structured intelligence. Validate financial claims, track sector momentum and manage your venture pipeline from one connected workspace.",
-    images: ["/og-image.png"],
+      "Screen, structure and validate early-stage investment opportunities with source-cited AI extraction, deterministic financial verification and portfolio monitoring.",
+    images: ["https://www.aarkavc.xyz/og-card.png"],
   },
 };
 

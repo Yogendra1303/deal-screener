@@ -322,11 +322,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const w = useWorkspace();
   const [open, setOpen] = useState(false);
-  const isPublic = path.startsWith("/founder") || path.startsWith("/login") || path.startsWith("/pitch");
+  const isPublic = path.startsWith("/founder") || path.startsWith("/login") || path.startsWith("/pitch") || path.startsWith("/welcome");
 
   // Everything except the home landing, login and founder pages needs a signed-in person.
   useEffect(() => {
-    if (w.ready && !w.session && !isPublic && path !== "/") router.replace("/login");
+    if (w.ready && !w.session && !isPublic && path !== "/") router.replace("/");
   }, [w.ready, w.session, isPublic, path, router]);
 
   useEffect(() => {
@@ -343,15 +343,26 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-full flex-col">
         <header className="border-b border-slate-200 bg-white">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <span className="flex items-center gap-2.5">
+            <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/aarka-logo.png" alt="Aarka" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
               <span className="text-[15px] font-semibold text-slate-900">{FUND_NAME}</span>
               <span className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">for founders</span>
-            </span>
-            <Link href="/founder" className="hidden text-xs text-slate-500 hover:text-slate-900 sm:inline">
-              Founder portal
             </Link>
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900"
+              >
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+                Back
+              </Link>
+              <Link href="/founder" className="hidden text-xs font-medium text-slate-600 hover:text-slate-900 sm:inline">
+                Founder portal
+              </Link>
+            </div>
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 overflow-x-clip px-4 pt-8 pb-20 sm:px-6">{children}</main>
@@ -402,50 +413,82 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Brand />
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const q = new FormData(e.currentTarget).get("q")?.toString().trim();
-            router.push(q ? `/deals?q=${encodeURIComponent(q)}` : "/deals");
-          }}
-          className="hidden max-w-md flex-1 items-center gap-2 lg:flex"
-        >
-          <div className="relative w-full">
-            <svg
-              viewBox="0 0 24 24"
-              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
+        <div className="hidden max-w-xl flex-1 items-center gap-2 lg:flex">
+          {path !== "/" && (
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900"
             >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              name="q"
-              type="search"
-              placeholder="Search companies, sectors, or founders…"
-              className="w-full rounded-md border border-slate-200 bg-slate-50/60 py-1.5 pr-3 pl-9 text-sm leading-tight text-slate-900 placeholder:text-slate-500 transition-colors focus:border-blue-600 focus:bg-white focus:outline-none"
-            />
-          </div>
-          <Link
-            href="/upload"
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium leading-tight text-white shadow-sm transition-colors hover:bg-blue-700"
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              Back
+            </button>
+          )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = new FormData(e.currentTarget).get("q")?.toString().trim();
+              router.push(q ? `/deals?q=${encodeURIComponent(q)}` : "/deals");
+            }}
+            className="flex flex-1 items-center gap-2"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Create pitch
-          </Link>
-        </form>
+            <div className="relative w-full">
+              <svg
+                viewBox="0 0 24 24"
+                className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                name="q"
+                type="search"
+                placeholder="Search companies, sectors, or founders…"
+                className="w-full rounded-md border border-slate-200 bg-slate-50/60 py-1.5 pr-3 pl-9 text-sm leading-tight text-slate-900 placeholder:text-slate-500 transition-colors focus:border-blue-600 focus:bg-white focus:outline-none"
+              />
+            </div>
+            <Link
+              href="/upload"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium leading-tight text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Create pitch
+            </Link>
+          </form>
+        </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          {path !== "/" && (
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 lg:hidden"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              Back
+            </button>
+          )}
           <div className="lg:hidden">
             <RoleViewDropdown compact />
           </div>
+          <Link
+            href="/welcome"
+            className="hidden items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium leading-tight text-slate-600 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900 md:inline-flex"
+          >
+            Public site
+          </Link>
           <Link
             href={`/pitch?ref=${encodeURIComponent(w.userName || w.me || "Analyst")}`}
             target="_blank"
