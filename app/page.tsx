@@ -41,6 +41,7 @@ import { usd } from "@/lib/rules";
 import { ANALYSTS, DEAL_OWNERS, PARTNER } from "@/lib/team";
 import type { DealResult } from "@/lib/types";
 import { LandingPage } from "@/components/landing-page";
+import { TrafficPanel } from "@/components/traffic-panel";
 
 export default function HomePage() {
   const w = useWorkspace();
@@ -671,6 +672,8 @@ function PartnerHome() {
           </div>
         </div>
       </section>
+
+      <TrafficPanel />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:items-stretch">
         <MarketCard market={market} height={296} />

@@ -25,6 +25,8 @@ function isPublicApi(pathname: string, method: string, hasPitchToken: boolean): 
   if (pathname === "/api/access-request" && method === "POST") return true;
   // Client error telemetry ingestion (POST only; GET stays locked to VC)
   if (pathname === "/api/errors" && method === "POST") return true;
+  // Anonymous public pageview beacon (POST only; GET analytics stays locked to VC)
+  if (pathname === "/api/track" && method === "POST") return true;
   // Minimal non-sensitive health probe
   if (pathname === "/api/health" && method === "GET") return true;
   // Token-authenticated founder pitch tracking & data room endpoints (strict HMAC verified inside each handler)

@@ -8,9 +8,12 @@ import { PortfolioProvider } from "@/components/portfolio-store";
 import { Shell } from "@/components/shell";
 import { StoreProvider } from "@/components/store";
 import { WorkspaceProvider } from "@/components/workspace";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RealtimeListener } from "@/components/realtime-listener";
 import { ErrorMonitor } from "@/components/error-monitor";
 import { ScrollManager } from "@/components/scroll-manager";
+import { TrafficTracker } from "@/components/traffic-tracker";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -90,6 +93,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="h-full bg-slate-50 text-slate-900">
         <AuthSessionProvider>
           <ScrollManager />
+          <TrafficTracker />
           <ErrorMonitor />
           <RealtimeListener />
           <StoreProvider>
@@ -104,6 +108,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </PortfolioProvider>
           </StoreProvider>
         </AuthSessionProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

@@ -119,6 +119,16 @@ async function run() {
   });
   check("POST /api/webhooks/deals blocks unauthenticated callers (401)", webhookRes.status === 401, `status ${webhookRes.status}`);
 
+  const trackGetRes = await fetch(`${BASE}/api/track`, { cache: "no-store" });
+  check("GET /api/track (analytics) blocks unauthenticated callers (401)", trackGetRes.status === 401, `status ${trackGetRes.status}`);
+
+  const trackPostRes = await fetch(`${BASE}/api/track`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "User-Agent": "curl/verify-bot" },
+    body: JSON.stringify({ path: "/" }),
+  });
+  check("POST /api/track beacon endpoint responds 200 (bot-safe)", trackPostRes.status === 200, `status ${trackPostRes.status}`);
+
   // 6. Access Request Waitlist Check — NEVER sets a session cookie
   const reqPostRes = await fetch(`${BASE}/api/access-request`, {
     method: "POST",
