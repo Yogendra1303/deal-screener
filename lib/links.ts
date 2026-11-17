@@ -7,7 +7,7 @@ import { daysBetween } from "./portfolio/health";
 import type { FormInput } from "./types";
 import type { ManualReading } from "./upload";
 
-export const FUND_NAME = "Sample Fund";
+export const FUND_NAME = "Aarka";
 export const REPLY_PROMISE_DAYS = 14;
 
 export interface LinkFile {

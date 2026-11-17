@@ -1,4 +1,4 @@
--- Fund Hub: Supabase schema. Safe to paste into the SQL editor more than once.
+-- Aarka: Supabase schema. Safe to paste into the SQL editor more than once.
 -- The app talks to these tables from the server with SUPABASE_SERVICE_ROLE_KEY (never from the browser).
 
 create table if not exists public.deals (

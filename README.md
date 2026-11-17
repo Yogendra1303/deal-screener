@@ -1,4 +1,4 @@
-# Fund Hub (prototype)
+# Aarka (prototype)
 
 One place for a venture fund and the companies it works with, built around how a partner and an analyst
 actually work. A left menu with five places:

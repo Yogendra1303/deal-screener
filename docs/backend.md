@@ -1,6 +1,6 @@
-# Fund Hub as a working application
+# Aarka as a working application
 
-Everything a person does in Fund Hub is now saved on a server, not only in the browser that did it:
+Everything a person does in Aarka is now saved on a server, not only in the browser that did it:
 uploading a deck, changing a status, passing with a reason, writing an analyst note, setting a score by
 hand, logging a signal, editing the fund rules, switching the workspace mode. Open the app in another
 browser and the same state is there.

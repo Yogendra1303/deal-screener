@@ -1,4 +1,4 @@
-// Tests the parts that make Fund Hub a working app rather than a static demo: the server store and its
+// Tests the parts that make Aarka a working app rather than a static demo: the server store and its
 // projections, the CSV figures, and the account bridge (prompt out, JSON in, the same checks and band as
 // an API run). Code only, no AI and no network. Run with `npm test`.
 import { mkdtempSync } from "node:fs";

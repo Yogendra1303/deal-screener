@@ -243,8 +243,9 @@ export function FounderDashboard({
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-blue-600 text-xs font-bold text-white shadow-xs">F</span>
-            <span className="text-sm font-semibold text-slate-900">Fund Hub</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/aarka-logo.png" alt="Aarka" className="h-7 w-7 shrink-0 rounded-md object-cover shadow-xs" />
+            <span className="text-sm font-semibold text-slate-900">Aarka</span>
             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">Founder Portal</span>
           </div>
           <div className="flex items-center gap-3">
@@ -280,7 +281,7 @@ export function FounderDashboard({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Your Pitches</h1>
-            <p className="mt-1 text-sm text-slate-600">Submit your deck to Fund Hub and track high-level review status.</p>
+            <p className="mt-1 text-sm text-slate-600">Submit your deck to Aarka and track high-level review status.</p>
           </div>
           <button
             type="button"

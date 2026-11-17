@@ -56,7 +56,7 @@ export default function SourcesPage() {
       <div className="max-w-3xl">
         <h1 className="text-2xl font-semibold tracking-tight">Where data comes from</h1>
         <p className="mt-1 text-slate-600">
-          Every number in Fund Hub starts in a file someone sent or a public record. This page shows the route it takes, what the AI does,
+          Every number in Aarka starts in a file someone sent or a public record. This page shows the route it takes, what the AI does,
           what plain code checks, and what is real today versus planned.
         </p>
       </div>
@@ -80,7 +80,7 @@ export default function SourcesPage() {
             ))}
           </FlowColumn>
           <Arrow />
-          <FlowColumn title="2. Fund Hub works on it" tone="bg-slate-900 text-white ring-slate-900">
+          <FlowColumn title="2. Aarka works on it" tone="bg-slate-900 text-white ring-slate-900">
             {[
               ["Read", "AI", "Reads pages, charts and tables into one standard record. Keeps the file, page and a short quote for every fact."],
               ["Clean", "Code", "One company name, one currency, one meaning per metric (revenue is never GMV)."],

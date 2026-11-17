@@ -78,7 +78,7 @@ export function useDocs() {
                 line: inb.oneLiner ?? `${inb.form.sector}, ${inb.form.stage}`,
                 facts: up ? deckFacts(up.record) : [],
                 meta: [["Sector", inb.form.sector], ["Stage", inb.form.stage], ["Country", inb.form.country], ["Deck file", pdf?.name ?? "Not on file"]],
-                note: "Made by Fund Hub from the intake details. Sample data.",
+                note: "Made by Aarka from the intake details. Sample data.",
               }),
           });
         if (csv?.key) out.push({ code: "CSV", title: "Monthly sheet", fileName: csv.name, mime: "text/csv", view: "csv", origin: "Uploaded sheet.", storeKey: csv.key, url: csv.url });

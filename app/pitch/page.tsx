@@ -211,7 +211,8 @@ function PitchForm() {
         {/* Minimal institutional brand header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-blue-600 text-xs font-bold text-white shadow-xs">F</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/aarka-logo.png" alt="Aarka" className="h-7 w-7 shrink-0 rounded-md object-cover shadow-xs" />
             <span className="text-sm font-semibold text-slate-900">{FUND_NAME}</span>
           </div>
           {ref && (

@@ -13,7 +13,7 @@ export interface LogDetails extends Record<string, unknown> {
 }
 
 const ALERT_TO = process.env.ALERT_EMAIL ?? "yogendrakapkoti13@gmail.com";
-const ALERT_FROM = process.env.RESEND_FROM ?? "Fund Hub Alerts <onboarding@resend.dev>";
+const ALERT_FROM = process.env.RESEND_FROM ?? "Aarka Alerts <onboarding@resend.dev>";
 
 function buildEmail(eventType: AuditEventType, actorEmail: string, details: LogDetails): { subject: string; text: string; html: string } {
   if (eventType === "FOUNDER_SUBMIT") {
@@ -66,7 +66,7 @@ function renderHtml(subject: string, bodyText: string, actorEmail: string, detai
 <html>
   <body style="margin:0;padding:24px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;">
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;">
-      <div style="font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#2563eb;">Fund Hub · Operational Alert</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#2563eb;">Aarka · Operational Alert</div>
       <h1 style="margin:8px 0 0;font-size:18px;font-weight:600;color:#0f172a;">${escapeHtml(subject)}</h1>
       <p style="margin:12px 0 0;font-size:14px;line-height:1.5;color:#334155;">${escapeHtml(bodyText)}</p>
       <table style="margin-top:18px;border-top:1px solid #f1f5f9;padding-top:12px;width:100%;border-collapse:collapse;">

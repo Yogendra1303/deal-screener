@@ -31,8 +31,9 @@ export function LoginScreen({ callbackUrl = "/" }: { callbackUrl?: string }) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center text-center">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-base font-bold text-white shadow-sm">F</div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">Sign in to Fund Hub</h1>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/aarka-logo.png" alt="Aarka" className="h-10 w-10 rounded-xl object-cover shadow-sm" />
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">Sign in to Aarka</h1>
           <p className="mt-1.5 text-sm text-slate-600">
             Investment workspace for fund partners and live pitch portal for founders.
           </p>
@@ -80,7 +81,7 @@ export function LoginScreen({ callbackUrl = "/" }: { callbackUrl?: string }) {
         </div>
 
         <p className="text-center text-[11px] text-slate-400">
-          Fund Hub · Secured with Google OAuth &amp; server-side role verification
+          Aarka · Secured with Google OAuth &amp; server-side role verification
         </p>
       </div>
     </div>

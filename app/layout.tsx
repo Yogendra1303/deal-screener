@@ -10,18 +10,18 @@ import { WorkspaceProvider } from "@/components/workspace";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aarkavc.xyz"),
-  title: "Fund Hub",
+  title: "Aarka",
   description:
-    "Fund Hub prototype: one record per company from first pitch to latest monthly report. Every number shows where it came from and whether anything checked it. AI sorts and explains; people decide.",
+    "Aarka prototype: one record per company from first pitch to latest monthly report. Every number shows where it came from and whether anything checked it. AI sorts and explains; people decide.",
   alternates: {
     canonical: "https://aarkavc.xyz",
   },
   openGraph: {
-    title: "Fund Hub",
+    title: "Aarka",
     description:
-      "Fund Hub prototype: one record per company from first pitch to latest monthly report. Every number shows where it came from and whether anything checked it. AI sorts and explains; people decide.",
+      "Aarka prototype: one record per company from first pitch to latest monthly report. Every number shows where it came from and whether anything checked it. AI sorts and explains; people decide.",
     url: "https://aarkavc.xyz",
-    siteName: "Fund Hub",
+    siteName: "Aarka",
     type: "website",
   },
 };

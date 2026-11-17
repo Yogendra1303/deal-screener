@@ -92,7 +92,7 @@ export function deckSheetHtml(o: { name: string; line: string; facts: [string, s
 <div class="note">${esc(o.note)}</div>
 <h2>Company</h2><table>${o.meta.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>
 <h2>Numbers stated in the deck</h2><table>${o.facts.map(([k, v]) => `<tr><th>${esc(k)}</th><td class="n">${esc(v)}</td></tr>`).join("")}</table>
-<p class="foot">Fund Hub prototype. Fictional sample data.</p>`,
+<p class="foot">Aarka prototype. Fictional sample data.</p>`,
   );
 }
 

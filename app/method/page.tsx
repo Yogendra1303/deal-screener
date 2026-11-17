@@ -1,6 +1,6 @@
 "use client";
 
-// How every number in Fund Hub is worked out, and how one action moves the others. The thresholds on
+// How every number in Aarka is worked out, and how one action moves the others. The thresholds on
 // this page are read from the same constants the code uses, so the page can't drift from the app.
 import Link from "next/link";
 import { useStore } from "@/components/store";

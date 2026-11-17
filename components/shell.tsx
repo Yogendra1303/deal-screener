@@ -103,9 +103,10 @@ export function Avatar({ name, size = "sm", image }: { name: string; size?: "xs"
 function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
-      <span className="grid h-7 w-7 place-items-center rounded-md bg-blue-600 text-xs font-bold text-white shadow-xs">F</span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/aarka-logo.png" alt="Aarka" className="h-7 w-7 shrink-0 rounded-md object-cover shadow-xs" />
       <span className="leading-tight">
-        <span className="block text-sm font-semibold text-slate-900">Fund Hub</span>
+        <span className="block text-sm font-semibold text-slate-900">Aarka</span>
         <span className="block text-[11px] font-medium text-slate-500">Fund I · Active Workspace</span>
       </span>
     </Link>
@@ -343,7 +344,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <header className="border-b border-slate-200 bg-white">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <span className="flex items-center gap-2.5">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-sm font-bold text-white">F</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/aarka-logo.png" alt="Aarka" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
               <span className="text-[15px] font-semibold text-slate-900">{FUND_NAME}</span>
               <span className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">for founders</span>
             </span>
