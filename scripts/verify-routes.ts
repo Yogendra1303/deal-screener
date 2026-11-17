@@ -34,9 +34,18 @@ async function run() {
   check("GET /pitch returns 200", pitchRes.status === 200, `status ${pitchRes.status}`);
   check("/pitch renders valid page shell", pitchHtml.includes("Submit your pitch") || pitchHtml.includes("Loading pitch form"));
 
-  // 3. Login Page (/login)
+  // 3. Login Page (/login) — strictly Google Sign-In, zero public magic link or test accounts
   const loginRes = await fetch(`${BASE}/login`, { cache: "no-store" });
+  const loginHtml = await loginRes.text();
   check("GET /login returns 200", loginRes.status === 200, `status ${loginRes.status}`);
+  check("/login hides public Magic Link & Test Accounts", !loginHtml.includes("Send Magic Link") && !loginHtml.includes("1-Click Quick Partner Access"));
+
+  const magicRes = await fetch(`${BASE}/api/auth/magic-link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "attacker@example.com" }),
+  });
+  check("POST /api/auth/magic-link blocks unauthenticated public calls (403)", magicRes.status === 403, `status ${magicRes.status}`);
 
   // 4. Founder Data Room (/founder/dataroom)
   const drRes = await fetch(`${BASE}/founder/dataroom`, { cache: "no-store" });
