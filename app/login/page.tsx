@@ -1,278 +1,80 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { signIn as nextAuthSignIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { cx } from "@/components/ui";
 
-const PARTNERS = [
-  { name: "Yogendra Kapkoti", email: "yogendrakapkoti13@gmail.com", role: "Managing Partner", initials: "YK", tone: "bg-blue-600 text-white" },
-  { name: "Ashutosh Sinha", email: "02.ashutosh@gmail.com", role: "General Partner", initials: "AS", tone: "bg-purple-600 text-white" },
-  { name: "Gopal Ahuja", email: "hello@gopalahuja.com", role: "Partner", initials: "GA", tone: "bg-emerald-600 text-white" },
-  { name: "Sanchit Kumar", email: "sanchitkr7@gmail.com", role: "Partner", initials: "SK", tone: "bg-cyan-600 text-white" },
-  { name: "Founder Test Account", email: "founder@sehatflow.io", role: "Portfolio CEO", initials: "FC", tone: "bg-amber-600 text-white" },
-];
-
-function LoginForm() {
-  const router = useRouter();
+function LoginContent() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const [signingIn, setSigningIn] = useState(false);
 
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"email" | "otp">("email");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
-
-  async function handleSendMagicLink(targetEmail?: string) {
-    const e = (targetEmail || email).trim().toLowerCase();
-    if (!e || !e.includes("@")) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setInfo(null);
-
-    try {
-      const res = await fetch("/api/auth/magic-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: e, callbackUrl }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send magic link");
-
-      setEmail(e);
-      setStep("otp");
-      setInfo(`We sent a 6-digit verification code and a one-click magic link to ${e}.`);
-      if (data.devOtp) {
-        setOtp(data.devOtp);
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to send login code");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerifyOtp(codeToVerify?: string) {
-    const code = (codeToVerify || otp).trim();
-    if (code.length !== 6) {
-      setError("Please enter the 6-digit verification code.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp: code, callbackUrl }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Verification failed");
-
-      router.push(data.redirectUrl || "/");
-      router.refresh();
-    } catch (err: any) {
-      setError(err.message || "Invalid verification code");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleQuickPartnerLogin(partnerEmail: string) {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/auth/magic-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: partnerEmail, callbackUrl }),
-      });
-      const data = await res.json();
-      if (data.devOtp) {
-        await handleVerifyOtp(data.devOtp);
-      } else {
-        setEmail(partnerEmail);
-        setStep("otp");
-        setInfo(`Sent code to ${partnerEmail}. Please check your inbox.`);
-      }
-    } catch (err: any) {
-      setError(err.message || "Quick sign-in failed");
-    } finally {
-      setLoading(false);
-    }
+  function handleGoogleSignIn() {
+    setSigningIn(true);
+    void nextAuthSignIn("google", { callbackUrl });
   }
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/25">
-            ▲
+        <div className="flex flex-col items-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Aarka" className="h-7 w-auto object-contain" />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-white">Aarka</span>
+          <h1 className="mt-4 text-xl font-semibold tracking-tight text-white">
+            Aarka Partner Sign In
+          </h1>
+          <p className="mt-1 text-center text-xs text-zinc-400">
+            Invite-only institutional workspace
+          </p>
         </div>
-        <h2 className="mt-4 text-center text-xl font-semibold tracking-tight text-slate-200">
-          Investment Intelligence Platform
-        </h2>
-        <p className="mt-1 text-center text-xs text-slate-400">
-          Partner Workspace & Founder Portal
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-[#0f172a] py-8 px-6 shadow-2xl rounded-2xl border border-slate-800 sm:px-10">
-          {error && (
-            <div className="mb-5 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-xs text-red-400">
-              {error}
-            </div>
-          )}
+        <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl sm:p-8">
+          <p className="text-center text-xs leading-relaxed text-zinc-400">
+            Sign in with your pre-authorised Google account to access the fund dashboard. Founders submitting decks should use the public pitch form.
+          </p>
 
-          {info && (
-            <div className="mb-5 rounded-lg bg-blue-500/10 border border-blue-500/30 p-3 text-xs text-blue-300">
-              {info}
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={signingIn}
+            className="mt-6 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2.5 text-sm font-medium text-black transition-all duration-200 hover:scale-[1.01] hover:bg-zinc-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true">
+              <path
+                fill="#4285F4"
+                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24Z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14Z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"
+              />
+            </svg>
+            <span>{signingIn ? "Redirecting to Google…" : "Continue with Google"}</span>
+          </button>
 
-          {step === "email" ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMagicLink();
-              }}
-              className="space-y-4"
+          <div className="mt-5 border-t border-zinc-800 pt-4 text-center">
+            <Link
+              href="/pitch"
+              className="text-xs font-medium text-zinc-400 transition-colors hover:text-white"
             >
-              <div>
-                <label htmlFor="email" className="block text-xs font-medium text-slate-300">
-                  Email address
-                </label>
-                <div className="mt-1.5">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="partner@aarkavc.com or founder@company.com"
-                    className="block w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
-              >
-                {loading ? "Sending Magic Link…" : "Send Magic Link & 6-Digit Code →"}
-              </button>
-            </form>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleVerifyOtp();
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <label htmlFor="otp" className="block text-xs font-medium text-slate-300">
-                    6-Digit Verification Code
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setStep("email")}
-                    className="text-xs text-blue-400 hover:text-blue-300"
-                  >
-                    Change email
-                  </button>
-                </div>
-                <div className="mt-1.5">
-                  <input
-                    id="otp"
-                    name="otp"
-                    type="text"
-                    maxLength={6}
-                    autoFocus
-                    value={otp}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "");
-                      setOtp(val);
-                      if (val.length === 6) {
-                        handleVerifyOtp(val);
-                      }
-                    }}
-                    placeholder="e.g. 849201"
-                    className="block w-full text-center tracking-[8px] font-mono text-xl font-bold rounded-lg border border-slate-700 bg-slate-900/80 px-3.5 py-2.5 text-blue-400 placeholder-slate-600 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-                <p className="mt-1 text-center text-xs text-slate-500">
-                  Code sent to <span className="text-slate-300">{email}</span>
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || otp.length !== 6}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
-              >
-                {loading ? "Verifying…" : "Sign In to Workspace"}
-              </button>
-            </form>
-          )}
-
-          {/* Quick Partner Access Section */}
-          <div className="mt-6 pt-6 border-t border-slate-800">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                1-Click Quick Partner Access
-              </span>
-              <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-full">
-                Test Mode Active
-              </span>
-            </div>
-
-            <div className="grid gap-2">
-              {PARTNERS.map((p) => (
-                <button
-                  key={p.email}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleQuickPartnerLogin(p.email)}
-                  className="flex items-center justify-between w-full p-2.5 rounded-lg border border-slate-800 hover:border-slate-700 bg-slate-900/60 hover:bg-slate-900 transition-colors text-left group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className={cx("w-7 h-7 rounded-md flex items-center justify-center font-bold text-xs", p.tone)}>
-                      {p.initials}
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-slate-200 group-hover:text-white">
-                        {p.name}
-                      </div>
-                      <div className="text-[10px] text-slate-400">{p.email}</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-medium text-slate-500 group-hover:text-blue-400">
-                    {p.role} →
-                  </span>
-                </button>
-              ))}
-            </div>
+              Submitting a startup pitch? Go to the Founder Pitch Form →
+            </Link>
           </div>
         </div>
 
-        <div className="mt-4 text-center">
-          <Link href="/" className="text-xs text-slate-500 hover:text-slate-400">
+        <div className="mt-5 text-center">
+          <Link href="/" className="text-xs text-zinc-500 transition-colors hover:text-zinc-300">
             ← Return to public website
           </Link>
         </div>
@@ -283,8 +85,14 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#070b14] flex items-center justify-center text-slate-400 text-xs">Loading…</div>}>
-      <LoginForm />
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-xs text-zinc-400">
+          Loading…
+        </div>
+      }
+    >
+      <LoginContent />
     </Suspense>
   );
 }

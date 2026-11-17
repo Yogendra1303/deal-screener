@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/nextauth";
 import { createMagicLinkToken, sendMagicLinkEmail } from "@/lib/magic-link";
 
+/**
+ * Admin-only invite magic link dispatch.
+ * Public self-service magic links are disabled; only an authenticated VC Partner session can issue invite links.
+ */
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.email || session.role !== "VC") {
+      return NextResponse.json(
+        { error: "Forbidden: Magic link invitations can only be issued by authorised fund partners." },
+        { status: 403 },
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const callbackUrl = typeof body.callbackUrl === "string" ? body.callbackUrl : "/";
@@ -13,12 +26,11 @@ export async function POST(req: NextRequest) {
 
     const { token, otp, role, name } = await createMagicLinkToken(email, callbackUrl);
 
-    // Determine base URL
     const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "www.aarkavc.xyz";
     const proto = req.headers.get("x-forwarded-proto") || "https";
     const origin = `${proto}://${host}`;
 
-    const emailResult = await sendMagicLinkEmail({
+    await sendMagicLinkEmail({
       email,
       name,
       role,
@@ -30,12 +42,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Verification code and magic link sent to ${email}`,
+      message: `Partner invite link sent to ${email}`,
       email,
       role,
       name,
-      // Provide preview OTP in development / non-production to guarantee zero lockouts
-      devOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
     });
   } catch (err) {
     console.error("[api/auth/magic-link] error:", err);

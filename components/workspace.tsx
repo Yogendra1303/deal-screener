@@ -196,7 +196,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Nothing saved to remove.
     }
-    void nextAuthSignOut({ callbackUrl: "/login" });
+    void nextAuthSignOut({ callbackUrl: "/" });
   }, []);
 
   const update = useCallback((fn: (l: LocalQuestions) => LocalQuestions) => {
