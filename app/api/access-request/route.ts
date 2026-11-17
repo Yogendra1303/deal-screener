@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getState, putState, driver } from "@/lib/db/repository";
-import { logAndNotify } from "@/lib/notify";
+import { getState, putState } from "@/lib/db/repository";
+import { recordAndAlertError } from "@/lib/error-logger";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 
 export interface AccessRequestItem {
@@ -133,13 +133,41 @@ export async function POST(req: NextRequest) {
       // non-blocking
     }
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       ok: true,
       message: "Access request recorded successfully",
       item,
     });
-  } catch (err: any) {
+
+    // Grant 24-hour Institutional Guest Preview session cookie so "Enter Preview Workspace" works immediately
+    res.cookies.set({
+      name: "aarka_session",
+      value: JSON.stringify({
+        email: item.email,
+        name: item.name,
+        role: "VC",
+        isGuestPreview: true,
+        issuedAt: Date.now(),
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      }),
+      path: "/",
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 24 * 60 * 60,
+    });
+
+    return res;
+  } catch (err: unknown) {
     console.error("[api/access-request] error:", err);
+    const e = err instanceof Error ? err : new Error(String(err));
+    void recordAndAlertError({
+      source: "api_route",
+      message: e.message || "Failed to submit access request",
+      stack: e.stack,
+      url: "/api/access-request",
+      component: "POST /api/access-request",
+    });
     return NextResponse.json({ error: "Failed to submit request" }, { status: 500 });
   }
 }

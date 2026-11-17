@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { cx } from "./ui";
 
 const BACKGROUND_OPTIONS = [
   "Venture Capital (Partner / Principal / Associate)",
@@ -22,6 +21,9 @@ const INTENT_OPTIONS = [
   "Other",
 ];
 
+const inputCls =
+  "w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
+
 export function AccessRequestModal({
   isOpen,
   onClose,
@@ -36,10 +38,20 @@ export function AccessRequestModal({
   const [background, setBackground] = useState(BACKGROUND_OPTIONS[0]);
   const [firm, setFirm] = useState("");
   const [intent, setIntent] = useState(INTENT_OPTIONS[0]);
+  const [customIntent, setCustomIntent] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -49,9 +61,15 @@ export function AccessRequestModal({
       setError("Please enter a valid work or personal email address.");
       return;
     }
+    if (intent === "Other" && !customIntent.trim()) {
+      setError("Please specify your reason for exploring Aarka.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
+
+    const finalIntent = intent === "Other" ? `Other: ${customIntent.trim()}` : intent;
 
     try {
       const res = await fetch("/api/access-request", {
@@ -62,7 +80,7 @@ export function AccessRequestModal({
           email: email.trim().toLowerCase(),
           background,
           firm: firm.trim(),
-          intent,
+          intent: finalIntent,
         }),
       });
 
@@ -70,8 +88,9 @@ export function AccessRequestModal({
       if (!res.ok) throw new Error(data.error || "Submission failed");
 
       setSubmitted(true);
-    } catch (err: any) {
-      setError(err.message || "Failed to submit access request");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to submit access request";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -79,20 +98,26 @@ export function AccessRequestModal({
 
   function handleEnterPreview() {
     onClose();
-    // Redirect to partner workspace with role=Partner query
-    router.push("/?role=Partner");
+    window.location.href = "/?role=Partner";
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-[#0d1527] border border-slate-700/80 rounded-2xl shadow-2xl p-6 sm:p-8 text-white overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-6 text-zinc-100 shadow-2xl sm:p-8"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-white transition-colors p-1"
+          aria-label="Close modal"
+          className="absolute top-5 right-5 cursor-pointer rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -100,128 +125,164 @@ export function AccessRequestModal({
         {!submitted ? (
           <div>
             {/* Header */}
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
+            <div className="mb-2 flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 font-bold text-white shadow-sm">
                 ▲
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-white tracking-tight">Request Institutional Access</h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30 font-semibold uppercase">
+                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                    Request Institutional Access
+                  </h3>
+                  <span className="rounded-full border border-blue-500/30 bg-blue-600/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-400">
                     Invite Only
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="mt-0.5 text-xs text-zinc-400">
                   Aarka is an invite-only workspace. Submit your details to unlock preview access.
                 </p>
               </div>
             </div>
 
             {error && (
-              <div className="my-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400">
+              <div className="my-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-3.5 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Your Full Name</label>
+                  <label htmlFor="req-name" className="mb-1 block font-medium text-zinc-300">
+                    Your Full Name
+                  </label>
                   <input
+                    id="req-name"
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Rahul Verma"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900/90 px-3 py-2 text-white placeholder-slate-500 text-xs focus:border-blue-500 focus:outline-none"
+                    className={inputCls}
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Work / Preferred Email *</label>
+                  <label htmlFor="req-email" className="mb-1 block font-medium text-zinc-300">
+                    Work / Preferred Email *
+                  </label>
                   <input
+                    id="req-email"
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@firm.com or gmail"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900/90 px-3 py-2 text-white placeholder-slate-500 text-xs focus:border-blue-500 focus:outline-none"
+                    className={inputCls}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Professional Role</label>
+                  <label htmlFor="req-role" className="mb-1 block font-medium text-zinc-300">
+                    Professional Role
+                  </label>
                   <select
+                    id="req-role"
                     value={background}
                     onChange={(e) => setBackground(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-2 text-white text-xs focus:border-blue-500 focus:outline-none"
+                    className={inputCls}
                   >
                     {BACKGROUND_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt} className="bg-slate-900 text-white">
+                      <option key={opt} value={opt} className="bg-zinc-900 text-zinc-100">
                         {opt}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Fund / Company Name (Optional)</label>
+                  <label htmlFor="req-firm" className="mb-1 block font-medium text-zinc-300">
+                    Fund / Company Name (Optional)
+                  </label>
                   <input
+                    id="req-firm"
                     type="text"
                     value={firm}
                     onChange={(e) => setFirm(e.target.value)}
                     placeholder="e.g. Peak XV / Independent"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900/90 px-3 py-2 text-white placeholder-slate-500 text-xs focus:border-blue-500 focus:outline-none"
+                    className={inputCls}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Why do you want to explore Aarka?</label>
+                <label htmlFor="req-intent" className="mb-1 block font-medium text-zinc-300">
+                  Why do you want to explore Aarka?
+                </label>
                 <select
+                  id="req-intent"
                   value={intent}
-                  onChange={(e) => setIntent(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-2 text-white text-xs focus:border-blue-500 focus:outline-none"
+                  onChange={(e) => {
+                    const nextVal = e.target.value;
+                    setIntent(nextVal);
+                    if (nextVal !== "Other") setCustomIntent("");
+                  }}
+                  className={inputCls}
                 >
                   {INTENT_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt} className="bg-slate-900 text-white">
+                    <option key={opt} value={opt} className="bg-zinc-900 text-zinc-100">
                       {opt}
                     </option>
                   ))}
                 </select>
+
+                {intent === "Other" && (
+                  <div className="mt-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <textarea
+                      id="req-custom-intent"
+                      rows={3}
+                      required
+                      autoFocus
+                      value={customIntent}
+                      onChange={(e) => setCustomIntent(e.target.value)}
+                      placeholder="Please specify..."
+                      className={`${inputCls} resize-none`}
+                    />
+                  </div>
+                )}
               </div>
 
-              <p className="text-[11px] text-slate-500 pt-1">
+              <p className="pt-1 text-[11px] leading-relaxed text-zinc-500">
                 Your request is recorded and sent to Yogendra Kapkoti. Upon submission, you will receive immediate Guest Access to test the live platform.
               </p>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-lg shadow-blue-600/30 text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-zinc-950 disabled:opacity-50"
               >
                 {loading ? "Recording Request…" : "Submit & Unlock Preview Workspace →"}
               </button>
             </form>
           </div>
         ) : (
-          <div className="text-center py-6 space-y-4">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl mx-auto">
+          <div className="space-y-4 py-6 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-blue-500/40 bg-blue-600/20 text-2xl text-blue-400">
               ✓
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Access Request Recorded</h3>
-              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                Thank you, <strong className="text-slate-200">{name || email}</strong>. Your invitation request has been forwarded to Yogendra Kapkoti and the investment committee.
+              <h3 className="text-lg font-semibold text-white">Access Request Recorded</h3>
+              <p className="mx-auto mt-1 max-w-sm text-xs text-zinc-400">
+                Thank you, <strong className="text-zinc-200">{name || email}</strong>. Your invitation request has been forwarded to Yogendra Kapkoti and the investment committee.
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 text-left space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-[10px]">
+            <div className="space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-3.5 text-left text-xs text-zinc-300">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400">
                 <span className="font-semibold text-blue-400">Preview Access Granted:</span>
-                <span>Active</span>
+                <span className="font-medium text-blue-400">Active</span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-zinc-400">
                 You can now explore the live pipeline, thesis extraction, and mathematical verification modules in full Institutional Guest Mode.
               </p>
             </div>
@@ -229,7 +290,7 @@ export function AccessRequestModal({
             <button
               type="button"
               onClick={handleEnterPreview}
-              className="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-lg shadow-blue-600/30 text-xs"
+              className="w-full cursor-pointer rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
             >
               Enter Preview Workspace Now →
             </button>

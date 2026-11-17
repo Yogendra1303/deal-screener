@@ -15,6 +15,7 @@ import {
   recordUploadedFile,
 } from "@/lib/db/repository";
 import { logAndNotify } from "@/lib/notify";
+import { recordAndAlertError } from "@/lib/error-logger";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 import { finishDeal, processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
@@ -464,6 +465,14 @@ export async function POST(req: Request) {
       financialFileUrl,
     });
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message || "Failed to submit pitch." }, { status: 500 });
+    const err = e as Error;
+    void recordAndAlertError({
+      source: "api_route",
+      message: err?.message || "Failed to submit pitch.",
+      stack: err?.stack,
+      url: "/api/submit-pitch",
+      component: "POST /api/submit-pitch",
+    });
+    return NextResponse.json({ error: err?.message || "Failed to submit pitch." }, { status: 500 });
   }
 }

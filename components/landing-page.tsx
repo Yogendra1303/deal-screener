@@ -130,27 +130,15 @@ export function LandingPage() {
             </button>
           </nav>
 
-          <div className="hidden items-center gap-4 md:flex">
-            <Link
-              href="/pitch"
-              className="text-[13.5px] font-medium text-slate-600 transition-colors hover:text-slate-950"
-            >
-              Submit a Pitch
-            </Link>
+          <div className="hidden items-center md:flex">
             <button
               type="button"
-              onClick={() => setIsInviteModalOpen(true)}
-              className="text-[13.5px] font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
+              onClick={handleSignIn}
+              disabled={SigningIn}
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-[13px] font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
             >
-              Request Access
+              <span>{SigningIn ? "Connecting…" : "Partner Sign In"}</span>
             </button>
-            <span aria-hidden className="h-4 w-px bg-slate-200" />
-            <Link
-              href="/login"
-              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-[13px] font-medium text-white transition-colors hover:bg-slate-800"
-            >
-              Sign In
-            </Link>
           </div>
 
           <button
@@ -204,21 +192,14 @@ export function LandingPage() {
                 For Venture Teams
               </button>
             </nav>
-            <div className="mt-4 grid grid-cols-2 gap-2.5 border-t border-slate-100 pt-4">
-              <Link
-                href="/pitch"
-                onClick={() => setMobileMenuOpen(false)}
-                className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
-              >
-                Submit a Pitch
-              </Link>
+            <div className="mt-4 border-t border-slate-100 pt-4">
               <button
                 type="button"
                 onClick={handleSignIn}
                 disabled={SigningIn}
-                className="inline-flex h-9 items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-medium text-white"
+                className="inline-flex h-9 w-full items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
               >
-                {SigningIn ? "Connecting…" : "Sign In"}
+                {SigningIn ? "Connecting…" : "Partner Sign In"}
               </button>
             </div>
           </div>
@@ -255,37 +236,13 @@ export function LandingPage() {
                 <button
                   type="button"
                   onClick={() => setIsInviteModalOpen(true)}
-                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-[13.5px] font-semibold text-white shadow-md shadow-blue-600/25 transition-all hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-600/35"
+                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-[13.5px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
                   <span>Explore the Platform →</span>
                 </button>
                 <Link
-                  href="/login"
-                  className="inline-flex h-10 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-slate-900 px-5 text-[13.5px] font-medium text-white transition-colors hover:bg-slate-800"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden>
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24Z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14Z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"
-                    />
-                  </svg>
-                  <span>Partner Sign In</span>
-                </Link>
-                <Link
                   href="/pitch"
-                  className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-5 text-[13.5px] font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+                  className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-transparent px-5 text-[13.5px] font-medium text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950"
                 >
                   Submit a Pitch
                 </Link>
