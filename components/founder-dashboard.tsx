@@ -168,7 +168,14 @@ export function FounderDashboard({
         res = await fetch("/api/submit-pitch", { method: "POST", body: fd });
       }
 
-      const data = (await res.json().catch(() => null)) as { ok?: boolean; id?: string; receivedAt?: string; error?: string } | null;
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        id?: string;
+        receivedAt?: string;
+        fileUrl?: string;
+        financialFileUrl?: string | null;
+        error?: string;
+      } | null;
       if (!res.ok || !data?.ok) {
         setSubmitPhase(null);
         setError(data?.error || "Could not submit your pitch. Please try again.");
@@ -176,10 +183,12 @@ export function FounderDashboard({
       }
 
       const receivedAt = data.receivedAt || new Date().toISOString();
+      const pitchId = data.id || `pitch-${Date.now().toString(36)}`;
       const locParts = location.split(",").map((s) => s.trim()).filter(Boolean);
       const parsedCountry = locParts.length >= 2 ? locParts[locParts.length - 1] : "India";
       await links.addInbound(
         {
+          id: pitchId,
           via: "Website",
           receivedAt,
           oneLiner: oneLinePitch.trim() || `${sector} · ${stage}${location.trim() ? ` · ${location.trim()}` : ""}`,
@@ -193,13 +202,33 @@ export function FounderDashboard({
             founders: [{ name: founderName.trim(), profileUrl: linkedinUrl.trim() }],
             email: founderEmail.trim(),
           },
+          preUploadedFiles: [
+            {
+              name: deck.name,
+              size: deck.size,
+              at: receivedAt.slice(0, 10),
+              key: `pitch:${pitchId}`,
+              url: data.fileUrl || `/api/files/${encodeURIComponent(pitchId)}/deck_pdf`,
+            },
+            ...(financials && data.financialFileUrl
+              ? [
+                  {
+                    name: financials.name,
+                    size: financials.size,
+                    at: receivedAt.slice(0, 10),
+                    key: `fin:${pitchId}`,
+                    url: data.financialFileUrl,
+                  },
+                ]
+              : []),
+          ],
         },
         [deck, ...(financials ? [financials] : [])],
       );
 
       setPitches((prev) => [
         {
-          id: data.id || `pitch-${Date.now()}`,
+          id: pitchId,
           companyName: companyName.trim(),
           sector,
           askAmount: parsedAsk,
@@ -211,7 +240,9 @@ export function FounderDashboard({
 
       setSubmitPhase("Complete.");
       await new Promise((r) => setTimeout(r, 600));
-      setSuccessMsg(`Pitch submitted for ${companyName.trim()}.`);
+      setSuccessMsg(
+        `Thank you for your submission, ${founderName.trim().split(/\s+/)[0]}! Your pitch for ${companyName.trim()} is in our live review queue and a confirmation from yogendrakapkoti13@gmail.com has been sent to ${founderEmail.trim()}.`,
+      );
       setCompanyName("");
       setWebsite("");
       setSector("");

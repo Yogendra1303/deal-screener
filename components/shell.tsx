@@ -5,17 +5,27 @@ import { DB_TEXT, useDbInfo } from "@/lib/db/client";
 import { MODE_TEXT } from "@/lib/mode";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLinks } from "./links-store";
 import { usePortfolio } from "./portfolio-store";
 import { useStore } from "./store";
 import { DropdownSelect, cx } from "./ui";
 import { useWorkspace } from "./workspace";
-import { attentionFor, needsAttention } from "@/lib/portfolio/attention";
+import { attentionFor, latestRunway, needsAttention, WATCH_RUNWAY_MONTHS } from "@/lib/portfolio/attention";
+import { missingItems } from "@/lib/portfolio/health";
 import { stateOf } from "@/lib/questions";
 import { member, type Role } from "@/lib/team";
-import { FUND_NAME } from "@/lib/links";
+import { FUND_NAME, SEED_INBOUND } from "@/lib/links";
+import { SAMPLES, SEED_RESULTS } from "@/lib/data";
+import { fmtDay } from "@/lib/dates";
 import { fmtDate } from "@/lib/format";
+import { usd } from "@/lib/rules";
+
+const SEED_IDS = new Set<string>([
+  ...Object.keys(SEED_RESULTS),
+  ...SAMPLES.map((s) => s.id),
+  ...SEED_INBOUND.map((i) => i.id),
+]);
 
 type IconName = "reset" | "week" | "team" | "deals" | "portfolio" | "compare" | "sources" | "rules" | "test" | "library" | "room" | "method" | "market";
 
@@ -171,6 +181,365 @@ function UserCard() {
           Sign out
         </button>
       </div>
+    </div>
+  );
+}
+
+interface NotificationEntry {
+  id: string;
+  kind: "pitch" | "portfolio" | "dataroom";
+  isLiveSubmission?: boolean;
+  title: string;
+  subtitle: string;
+  meta: string;
+  href: string;
+  sortDate: string;
+  urgent?: boolean;
+}
+
+function NotificationMenu() {
+  const store = useStore();
+  const p = usePortfolio();
+  const w = useWorkspace();
+  const links = useLinks();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<"all" | "pitch" | "portfolio">("all");
+  const [readIds, setReadIds] = useState<Record<string, boolean>>({});
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("ds.notif.read.v1");
+      if (saved) setReadIds(JSON.parse(saved) as Record<string, boolean>);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const items = useMemo<NotificationEntry[]>(() => {
+    if (!store.ready || !p.ready || !w.ready || !links.ready) return [];
+    const list: NotificationEntry[] = [];
+    const partner = w.role === "Partner";
+    const pitchMine = (id: string) => {
+      const o = links.ownerOf(id);
+      return partner || !o || o === w.me;
+    };
+    const companyMine = (owner?: string) => partner || owner === w.me;
+
+    // 1. Live submitted pitches & unscreened new pitches
+    for (const d of store.deals) {
+      const isLive = !SEED_IDS.has(d.id);
+      const isNew = store.statusOf(d.id) === "New";
+      if (!isLive && (!isNew || !pitchMine(d.id))) continue;
+      const founder = d.form.founders?.[0]?.name;
+      const rec = d.receivedAt || "";
+      list.push({
+        id: `pitch-${d.id}`,
+        kind: "pitch",
+        isLiveSubmission: isLive,
+        title: `${d.form.companyName}`,
+        subtitle: `${founder ? `${founder} · ` : ""}${d.form.stage}${d.form.amountUsd ? ` · ${usd(d.form.amountUsd)}` : ""} · ${d.form.sector}`,
+        meta: `Received ${fmtDay(rec.slice(0, 10))}`,
+        href: `/deals/${d.id}`,
+        sortDate: rec,
+        urgent: isLive && isNew,
+      });
+    }
+
+    for (const i of links.inbound) {
+      if (!i?.id || store.deals.some((d) => d.id === i.id)) continue;
+      const isLive = !SEED_IDS.has(i.id);
+      const isNew = store.statusOf(i.id) === "New";
+      if (!isLive && (!isNew || !pitchMine(i.id))) continue;
+      const founder = i.form?.founders?.[0]?.name;
+      const rec = i.receivedAt || "";
+      list.push({
+        id: `pitch-${i.id}`,
+        kind: "pitch",
+        isLiveSubmission: isLive,
+        title: `${i.form?.companyName || "New Pitch"}`,
+        subtitle: `${founder ? `${founder} · ` : ""}${i.form?.stage || "Seed"}${i.form?.amountUsd ? ` · ${usd(i.form.amountUsd)}` : ""} · ${i.form?.sector || "Technology"}`,
+        meta: `Received ${fmtDay(rec.slice(0, 10))}`,
+        href: `/deals/${i.id}`,
+        sortDate: rec,
+        urgent: isLive && isNew,
+      });
+    }
+
+    for (const s of store.unprocessed) {
+      if (store.statusOf(s.id) !== "New" || !pitchMine(s.id)) continue;
+      list.push({
+        id: `pitch-${s.id}`,
+        kind: "pitch",
+        isLiveSubmission: false,
+        title: `${s.form.companyName}`,
+        subtitle: `${s.form.stage}${s.form.amountUsd ? ` · ${usd(s.form.amountUsd)}` : ""} · ${s.form.sector}`,
+        meta: `Received ${fmtDay(s.receivedAt.slice(0, 10))}`,
+        href: `/deals/${s.id}`,
+        sortDate: s.receivedAt,
+      });
+    }
+
+    // 2. Portfolio alerts (runway & overdue MIS reports)
+    for (const c of p.companies) {
+      if (!companyMine(c.owner)) continue;
+      const rw = latestRunway(c, p.today);
+      if (rw && rw.months < WATCH_RUNWAY_MONTHS) {
+        list.push({
+          id: `port-runway-${c.id}`,
+          kind: "portfolio",
+          title: `${c.name} · Cash Runway Alert`,
+          subtitle: `${rw.months.toFixed(1)} months of cash left at latest monthly burn`,
+          meta: `Portfolio · ${c.sector}`,
+          href: `/portfolio/${c.id}?tab=numbers`,
+          sortDate: rw.report.receivedAt || p.today,
+          urgent: rw.months < 6,
+        });
+      }
+      const overdue = missingItems(c, p.today).filter((m) => !m.key.endsWith(":question"));
+      if (overdue.length > 0) {
+        const worst = overdue[0];
+        list.push({
+          id: `port-report-${c.id}`,
+          kind: "portfolio",
+          title: `${c.name} · ${worst.what}`,
+          subtitle: worst.detail,
+          meta: `${worst.overdueDays > 0 ? `${worst.overdueDays} days overdue` : "Due now"} · Portfolio`,
+          href: `/portfolio/${c.id}?tab=reporting`,
+          sortDate: p.today,
+          urgent: worst.overdueDays > 30,
+        });
+      }
+    }
+
+    // 3. Unchecked founder files in Data room
+    for (const r of links.requests) {
+      const owner = r.side === "pitch" ? links.ownerOf(r.companyId) : p.get(r.companyId)?.owner;
+      if (!companyMine(owner)) continue;
+      for (const item of r.items) {
+        const ans = r.answers[item.id];
+        if (ans?.state === "Sent" && !r.checked[item.id]) {
+          list.push({
+            id: `room-${r.id}-${item.id}`,
+            kind: "dataroom",
+            title: `${r.companyName} · New Founder File`,
+            subtitle: `Uploaded for "${item.label}"`,
+            meta: `Received ${fmtDay(ans.at || p.today)} · Data room`,
+            href: `/dataroom/${r.companyId}`,
+            sortDate: ans.at || p.today,
+          });
+        }
+      }
+    }
+
+    return list.sort(
+      (a, b) =>
+        Number(Boolean(b.isLiveSubmission)) - Number(Boolean(a.isLiveSubmission)) ||
+        Number(Boolean(b.urgent)) - Number(Boolean(a.urgent)) ||
+        (b.sortDate ?? "").localeCompare(a.sortDate ?? ""),
+    );
+  }, [store, p, w, links]);
+
+  const unreadCount = items.filter((i) => !readIds[i.id]).length;
+  const liveUnreadCount = items.filter((i) => i.isLiveSubmission && !readIds[i.id]).length;
+  const filtered = items.filter((i) => (filter === "all" ? true : filter === "pitch" ? i.kind === "pitch" : i.kind === "portfolio" || i.kind === "dataroom"));
+
+  function markRead(id: string) {
+    setReadIds((prev) => {
+      const next = { ...prev, [id]: true };
+      try {
+        window.localStorage.setItem("ds.notif.read.v1", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
+
+  function markAllRead() {
+    const next: Record<string, boolean> = { ...readIds };
+    for (const i of items) next[i.id] = true;
+    setReadIds(next);
+    try {
+      window.localStorage.setItem("ds.notif.read.v1", JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Notifications"
+        aria-expanded={open}
+        title="Notifications — New pitches & portfolio updates"
+        className={cx(
+          "relative inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900",
+          open ? "border-blue-600 ring-2 ring-blue-500/20" : "border-slate-200",
+        )}
+      >
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
+        {unreadCount > 0 && (
+          <span
+            className={cx(
+              "absolute -top-1 -right-1 inline-flex min-w-[16px] items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold leading-none text-white shadow-2xs",
+              liveUnreadCount > 0 ? "bg-blue-600 ring-2 ring-white" : "bg-red-600 ring-2 ring-white",
+            )}
+          >
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Notifications"
+          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl sm:w-96"
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-3.5 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-900">Notifications</span>
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-200/70">
+                  {unreadCount} new
+                </span>
+              )}
+            </div>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={markAllRead}
+                className="text-[11px] font-medium text-blue-600 hover:text-blue-800"
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 border-b border-slate-100 px-3 py-1.5 text-xs">
+            {(
+              [
+                ["all", "All", items.length],
+                ["pitch", "Pitches", items.filter((i) => i.kind === "pitch").length],
+                ["portfolio", "Portfolio", items.filter((i) => i.kind !== "pitch").length],
+              ] as const
+            ).map(([k, label, cnt]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setFilter(k)}
+                className={cx(
+                  "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  filter === k ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                )}
+              >
+                <span>{label}</span>
+                <span className={cx("text-[10px] tabular-nums", filter === k ? "text-slate-300" : "text-slate-400")}>{cnt}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+            {filtered.length === 0 ? (
+              <div className="px-4 py-8 text-center text-xs text-slate-500">No notifications in this view.</div>
+            ) : (
+              filtered.slice(0, 20).map((item) => {
+                const isUnread = !readIds[item.id];
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      markRead(item.id);
+                      setOpen(false);
+                      router.push(item.href);
+                    }}
+                    className={cx(
+                      "flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50",
+                      item.isLiveSubmission && isUnread
+                        ? "bg-blue-50/60"
+                        : isUnread
+                          ? "bg-slate-50/40"
+                          : "bg-white",
+                    )}
+                  >
+                    <span
+                      className={cx(
+                        "mt-1 h-2 w-2 shrink-0 rounded-full",
+                        item.isLiveSubmission
+                          ? "bg-blue-600 ring-2 ring-blue-200"
+                          : item.urgent
+                            ? "bg-red-500"
+                            : isUnread
+                              ? "bg-blue-500"
+                              : "bg-slate-300",
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-xs font-semibold text-slate-900">{item.title}</span>
+                        {item.isLiveSubmission ? (
+                          <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                            New Pitch
+                          </span>
+                        ) : (
+                          <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+                            {item.kind === "pitch" ? "Pitch" : item.kind === "portfolio" ? "Portfolio" : "Data room"}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-slate-600">{item.subtitle}</p>
+                      <p className="mt-0.5 text-[11px] text-slate-400">{item.meta}</p>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-3.5 py-2 text-[11px] font-medium">
+            <Link
+              href="/deals?tab=read"
+              onClick={() => setOpen(false)}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              Open new pitches →
+            </Link>
+            <Link
+              href="/portfolio"
+              onClick={() => setOpen(false)}
+              className="text-slate-600 hover:text-slate-900"
+            >
+              Portfolio updates →
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -483,12 +852,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="lg:hidden">
             <RoleViewDropdown compact />
           </div>
-          <Link
-            href="/welcome"
-            className="hidden items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium leading-tight text-slate-600 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900 md:inline-flex"
-          >
-            Public site
-          </Link>
+          <NotificationMenu />
           <Link
             href={`/pitch?ref=${encodeURIComponent(w.userName || w.me || "Analyst")}`}
             target="_blank"

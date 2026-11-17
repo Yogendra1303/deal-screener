@@ -17,8 +17,15 @@ import type { PortfolioCompany } from "@/lib/portfolio/types";
 import { portfolioFacts } from "@/lib/provenance";
 import { usd } from "@/lib/rules";
 import { useLinks } from "./links-store";
-import { viaText } from "@/lib/links";
+import { SEED_INBOUND, viaText } from "@/lib/links";
+import { SAMPLES, SEED_RESULTS } from "@/lib/data";
 import { Avatar } from "./shell";
+
+const SEED_PITCH_IDS = new Set<string>([
+  ...Object.keys(SEED_RESULTS),
+  ...SAMPLES.map((s) => s.id),
+  ...SEED_INBOUND.map((i) => i.id),
+]);
 
 export type Tone = "urgent" | "watch" | "info" | "good";
 
@@ -435,9 +442,12 @@ export interface PitchCardData {
   band?: string;
   conflicts: number;
   owner?: string;
+  isLiveSubmission?: boolean;
+  founderName?: string;
+  founderEmail?: string;
 }
 
-/** Every pitch as a card, screened or not, newest first. */
+/** Every pitch as a card, screened or not, newest first (live user submissions always prioritized first). */
 export function usePitches(filter: (owner?: string) => boolean): PitchCardData[] {
   const store = useStore();
   const links = useLinks();
@@ -447,6 +457,7 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
     const own = links.ownerOf;
     for (const d of store.deals) {
       if (!filter(own(d.id))) continue;
+      const isLive = !SEED_PITCH_IDS.has(d.id);
       out.push({
         id: d.id,
         href: `/deals/${d.id}`,
@@ -462,6 +473,9 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
         band: store.bandOf(d),
         conflicts: d.flags.filter((f) => f.kind === "conflict").length,
         owner: own(d.id),
+        isLiveSubmission: isLive,
+        founderName: d.form.founders?.[0]?.name,
+        founderEmail: d.form.email,
       });
     }
     for (const s of store.unprocessed) {
@@ -480,6 +494,7 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
         screened: false,
         conflicts: 0,
         owner: own(s.id),
+        isLiveSubmission: false,
       });
     }
     for (const i of links.inbound) {
@@ -490,6 +505,7 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
       const sector = i.form?.sector || "General";
       const country = i.form?.country || "Unknown";
       const amountUsd = i.form?.amountUsd;
+      const isLive = !SEED_PITCH_IDS.has(i.id);
       out.push({
         id: i.id,
         href: `/deals/${i.id}`,
@@ -504,9 +520,19 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
         screened: false,
         conflicts: 0,
         owner: own(i.id),
+        isLiveSubmission: isLive,
+        founderName: i.form?.founders?.[0]?.name,
+        founderEmail: i.form?.email,
       });
     }
-    return out.filter((c) => visibleIn(mode, c.id)).sort((a, b) => (b.receivedAt ?? "").localeCompare(a.receivedAt ?? ""));
+    return out
+      .filter((c) => visibleIn(mode, c.id))
+      .sort(
+        (a, b) =>
+          Number(Boolean(b.isLiveSubmission && b.isNew)) - Number(Boolean(a.isLiveSubmission && a.isNew)) ||
+          Number(Boolean(b.isLiveSubmission)) - Number(Boolean(a.isLiveSubmission)) ||
+          (b.receivedAt ?? "").localeCompare(a.receivedAt ?? ""),
+      );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, links, mode]);
 }

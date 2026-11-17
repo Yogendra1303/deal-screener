@@ -61,6 +61,10 @@ export interface FlowRow {
   /** What the code checks found; null when the deck hasn't been read yet. */
   cover: Coverage | null;
   sources: SourceKey[];
+  isLiveSubmission?: boolean;
+  founderName?: string;
+  founderEmail?: string;
+  receivedAtIso?: string;
 }
 
 export interface SectorStat {
@@ -104,8 +108,10 @@ export function useDealFlow(scope: (owner?: string) => boolean = EVERYONE) {
       if (!form) continue;
       const f = FUNNEL[c.id];
       const status = store.statusOf(c.id);
-      const at = c.receivedAt.slice(0, 10);
-      const unread = status === "New" && !c.owner && daysBetween(at, today) >= NEVER_OPENED_DAYS;
+      const at = (c.receivedAt || today).slice(0, 10);
+      const realToday = new Date().toISOString().slice(0, 10);
+      const refToday = c.isLiveSubmission ? realToday : today;
+      const unread = status === "New" && !c.owner && daysBetween(at, refToday) >= NEVER_OPENED_DAYS;
       const up = inb?.manual ? checkUploadCached(c.id, inb.form, inb.manual) : null;
       const fit = f ? founderFit(f.founders) : (up?.fit ?? null);
       base.push({
@@ -113,6 +119,10 @@ export function useDealFlow(scope: (owner?: string) => boolean = EVERYONE) {
         name: c.name,
         href: c.href,
         live: true,
+        isLiveSubmission: c.isLiveSubmission,
+        founderName: c.founderName ?? form.founders?.[0]?.name,
+        founderEmail: c.founderEmail ?? form.email,
+        receivedAtIso: c.receivedAt,
         sector: form.sector,
         sub: SUB_FOR[c.id] ?? f?.category ?? inb?.manual?.sub ?? form.sector,
         city: f?.city ?? (inb?.manual?.city || form.country),
@@ -177,14 +187,24 @@ export function useDealFlow(scope: (owner?: string) => boolean = EVERYONE) {
     const market: SectorStat[] = MARKET.map((m) => ({ sector: m.sector, counts: counts[m.sector], raised: m.raised, rounds: m.rounds, ...temperature({ inbound: counts[m.sector], raised: m.raised }) }));
     const heating = new Set(market.filter((m) => m.temp === "Heating up").map((m) => m.sector));
     const rows: FlowRow[] = base.map((r) => ({ ...r, look: lookAgain({ ...r, outcome: r.status === "Passed" || r.status === "On hold" ? r.status : "Waiting" }, heating, today) }));
-    rows.sort((a, b) => (b.last ?? "").localeCompare(a.last ?? ""));
+    rows.sort(
+      (a, b) =>
+        Number(Boolean(b.isLiveSubmission && b.status === "New")) - Number(Boolean(a.isLiveSubmission && a.status === "New")) ||
+        Number(Boolean(b.isLiveSubmission)) - Number(Boolean(a.isLiveSubmission)) ||
+        (b.receivedAtIso ?? b.last ?? "").localeCompare(a.receivedAtIso ?? a.last ?? ""),
+    );
     return { rows, market, heating, today };
   }, [cards, store, links, mode]);
   return scope === EVERYONE ? all : { ...all, rows: all.rows.filter((r) => scope(r.owner)) };
 }
 
-/** Live decks first in the order code ranks them: fits the rules, founder-market fit, then waiting longest. */
+/** Live decks first in the order code ranks them: new live user submissions first, then fits the rules, founder-market fit, then waiting longest. */
 export function triageOrder(a: FlowRow, b: FlowRow) {
+  const liveDiff = Number(Boolean(b.isLiveSubmission && b.status === "New")) - Number(Boolean(a.isLiveSubmission && a.status === "New"));
+  if (liveDiff !== 0) return liveDiff;
+  if (a.isLiveSubmission && b.isLiveSubmission) {
+    return (b.receivedAtIso ?? b.last ?? "").localeCompare(a.receivedAtIso ?? a.last ?? "");
+  }
   const fitRank = (r: FlowRow) => (r.fit === "Strong" ? 0 : r.fit === "Mixed" ? 1 : r.fit === "Weak" ? 2 : 3);
   return Number(b.fits) - Number(a.fits) || fitRank(a) - fitRank(b) || (a.last ?? "").localeCompare(b.last ?? "");
 }
@@ -406,17 +426,33 @@ function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boo
   const router = useRouter();
   const sig = r.look.latest ?? r.signals.at(-1);
   const td = "px-3.5 py-3 align-middle";
+  const isHighlightedNew = Boolean(r.isLiveSubmission && r.status === "New");
   return (
-    <tr onClick={() => router.push(r.href)} className="group cursor-pointer border-b border-slate-100 last:border-0 transition-colors hover:bg-slate-50/80">
+    <tr
+      onClick={() => router.push(r.href)}
+      className={cx(
+        "group cursor-pointer border-b border-slate-100 last:border-0 transition-colors",
+        isHighlightedNew ? "bg-blue-50/60 hover:bg-blue-50/90" : "hover:bg-slate-50/80",
+      )}
+    >
       {showPoints && <td className={cx(td, "text-right font-mono text-xs font-semibold tabular-nums text-slate-900")}>{r.look.points}</td>}
-      <td className={cx(td, "w-full min-w-[140px]")}>
-        <Link href={r.href} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 whitespace-nowrap font-medium leading-tight tracking-tight text-slate-900 hover:text-blue-600 hover:underline">
-          {r.name}
-          {r.live && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" title="Live pitch" />}
+      <td className={cx(td, "w-full min-w-[140px]", isHighlightedNew && "border-l-2 border-l-blue-600")}>
+        <Link href={r.href} onClick={(e) => e.stopPropagation()} className="flex flex-wrap items-center gap-1.5 whitespace-nowrap font-medium leading-tight tracking-tight text-slate-900 hover:text-blue-600 hover:underline">
+          <span>{r.name}</span>
+          {isHighlightedNew ? (
+            <span className="inline-flex items-center gap-1 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+              New Pitch
+            </span>
+          ) : (
+            r.live && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" title="Live pitch" />
+          )}
         </Link>
         <span className="mt-0.5 block whitespace-nowrap text-xs leading-tight text-slate-500">
+          {r.founderName ? `${r.founderName} · ` : ""}
           {r.city}
           <span className="@3xl:hidden"> · {r.stage}</span>
+          <span className="@2xl:hidden"> · {fmtDay(r.last)}</span>
         </span>
       </td>
       <td className={cx(td, "hidden @3xl:table-cell")}>

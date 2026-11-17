@@ -13,7 +13,65 @@ export interface LogDetails extends Record<string, unknown> {
 }
 
 const ALERT_TO = process.env.ALERT_EMAIL ?? "yogendrakapkoti13@gmail.com";
-const ALERT_FROM = process.env.RESEND_FROM ?? "Aarka Alerts <onboarding@resend.dev>";
+const SENDER_EMAIL = "yogendrakapkoti13@gmail.com";
+const ALERT_FROM = process.env.RESEND_FROM ?? "Yogendra Kapkoti · Aarka <onboarding@resend.dev>";
+
+function buildFounderThankYouEmail(actorEmail: string, details: LogDetails): { subject: string; text: string; html: string } {
+  const company = String(details.companyName ?? "your company");
+  const founder = String(details.name ?? "Founder");
+  const firstName = founder.split(/\s+/)[0] || founder;
+  const stage = String(details.stage ?? "Seed");
+  const sector = String(details.sector ?? "Technology");
+  const amount =
+    typeof details.amountUsd === "number"
+      ? `$${details.amountUsd.toLocaleString("en-US")}`
+      : details.amountUsd
+        ? `$${String(details.amountUsd)}`
+        : "Not specified";
+
+  const subject = `Thank you for your submission to Aarka — ${company}`;
+  const text = [
+    `Hi ${firstName},`,
+    "",
+    `Thank you for your submission to Aarka. We have received your pitch deck and company details for ${company} (${stage} · ${sector} · Ask: ${amount}).`,
+    "",
+    `Your submission is now logged in our live investment review queue. Our team reviews every deck and verifies core metrics directly against your materials. If we need any additional information, we will reach out to you at ${actorEmail}.`,
+    "",
+    "Warm regards,",
+    "Yogendra Kapkoti",
+    "Aarka Investment Team",
+    SENDER_EMAIL,
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:24px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#2563eb;">Aarka · Investment Team</div>
+      <h1 style="margin:10px 0 0;font-size:20px;font-weight:600;color:#0f172a;">Thank you for your submission, ${escapeHtml(firstName)}</h1>
+      <p style="margin:14px 0 0;font-size:14px;line-height:1.6;color:#334155;">
+        We have received the pitch deck and company details for <strong>${escapeHtml(company)}</strong> and logged your record into our live investment review queue.
+      </p>
+      <table style="margin-top:18px;border-top:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;padding:12px 0;width:100%;border-collapse:collapse;">
+        <tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:12px;">Company</td><td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:600;">${escapeHtml(company)}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:12px;">Founder</td><td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:500;">${escapeHtml(founder)} (${escapeHtml(actorEmail)})</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:12px;">Sector &amp; Stage</td><td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:500;">${escapeHtml(sector)} · ${escapeHtml(stage)}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:12px;">Funding Ask</td><td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:500;">${escapeHtml(amount)}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:12px;">Status</td><td style="padding:6px 0;color:#059669;font-size:13px;font-weight:600;">Received · In Live Review Queue</td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#475569;">
+        Our team reviews every submission and will follow up directly if we need additional context or financial sheets.
+      </p>
+      <div style="margin-top:20px;padding-top:14px;border-top:1px solid #f1f5f9;font-size:13px;color:#0f172a;">
+        <strong>Yogendra Kapkoti</strong><br />
+        <span style="color:#64748b;">Aarka · <a href="mailto:${SENDER_EMAIL}" style="color:#2563eb;text-decoration:none;">${SENDER_EMAIL}</a></span>
+      </div>
+    </div>
+  </body>
+</html>`;
+
+  return { subject, text, html };
+}
 
 function buildEmail(eventType: AuditEventType, actorEmail: string, details: LogDetails): { subject: string; text: string; html: string } {
   if (eventType === "FOUNDER_SUBMIT") {
@@ -83,13 +141,47 @@ async function sendAlertEmail(eventType: AuditEventType, actorEmail: string, det
   if (!apiKey) return;
   const resend = new Resend(apiKey);
   const { subject, text, html } = buildEmail(eventType, actorEmail, details);
-  await resend.emails.send({
-    from: ALERT_FROM,
-    to: ALERT_TO,
-    subject,
-    text,
-    html,
-  });
+
+  const tasks: Promise<unknown>[] = [
+    resend.emails.send({
+      from: ALERT_FROM,
+      to: ALERT_TO,
+      replyTo: eventType === "FOUNDER_SUBMIT" ? actorEmail : SENDER_EMAIL,
+      subject,
+      text,
+      html,
+    }),
+  ];
+
+  // Whenever a founder submits a pitch, send them a personalized Thank-You email with reply-to yogendrakapkoti13@gmail.com
+  // and also send a confirmation copy to yogendrakapkoti13@gmail.com.
+  if (eventType === "FOUNDER_SUBMIT" && actorEmail && actorEmail.includes("@")) {
+    const thankYou = buildFounderThankYouEmail(actorEmail, details);
+    tasks.push(
+      resend.emails.send({
+        from: ALERT_FROM,
+        to: actorEmail,
+        replyTo: SENDER_EMAIL,
+        subject: thankYou.subject,
+        text: thankYou.text,
+        html: thankYou.html,
+      }),
+    );
+    if (actorEmail.toLowerCase() !== ALERT_TO.toLowerCase()) {
+      tasks.push(
+        resend.emails.send({
+          from: ALERT_FROM,
+          to: ALERT_TO,
+          replyTo: actorEmail,
+          subject: `[Sent to ${actorEmail}] ${thankYou.subject}`,
+          text: thankYou.text,
+          html: thankYou.html,
+        }),
+      );
+    }
+  }
+
+  await Promise.allSettled(tasks);
 }
 
 /**

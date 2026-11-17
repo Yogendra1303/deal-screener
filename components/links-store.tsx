@@ -41,7 +41,7 @@ interface LinksStore {
   answer: (reqId: string, itemId: string, state: FounderAnswer | null, extra?: { note?: string; by?: string }) => void;
   addFiles: (reqId: string, itemId: string, files: File[]) => Promise<void>;
   markChecked: (reqId: string, itemId: string, by: string) => void;
-  addInbound: (i: Omit<Inbound, "files" | "id">, files: File[]) => Promise<Inbound>;
+  addInbound: (i: Omit<Inbound, "files" | "id"> & { id?: string; preUploadedFiles?: LinkFile[] }, files: File[]) => Promise<Inbound>;
   getInbound: (id: string) => Inbound | undefined;
   emails: EmailIn[];
   emailsFor: (companyId: string) => EmailIn[];
@@ -108,21 +108,81 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/deals", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { deals?: Array<{ intake_json?: Inbound | null; record_json?: unknown }> } | null) => {
-        if (!alive || !data?.deals) return;
-        const fromDb = data.deals
-          .filter((d): d is { intake_json: Inbound; record_json?: unknown } => {
-            const ij = d.intake_json as Partial<Inbound> | null | undefined;
-            return Boolean(ij && typeof ij === "object" && typeof ij.id === "string" && ij.id && ij.form && !d.record_json);
-          })
-          .map((d) => d.intake_json);
-        if (fromDb.length) setDbInbound(fromDb);
-      })
-      .catch(() => undefined);
+    const syncDeals = () => {
+      fetch("/api/deals", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then(
+          (
+            data: {
+              deals?: Array<{
+                id?: string;
+                company_name?: string;
+                sector?: string | null;
+                stage?: string | null;
+                country?: string | null;
+                ask_amount?: number | null;
+                founder_name?: string | null;
+                founder_email?: string | null;
+                linkedin_url?: string | null;
+                website?: string | null;
+                one_line_pitch?: string | null;
+                owner?: string | null;
+                received_at?: string | null;
+                is_historical?: boolean;
+                intake_json?: Inbound | null;
+                record_json?: unknown;
+              }>;
+            } | null,
+          ) => {
+            if (!alive || !data?.deals) return;
+            const fromDb: Inbound[] = [];
+            for (const d of data.deals) {
+              if (d.is_historical) continue;
+              const ij = d.intake_json as Partial<Inbound> | null | undefined;
+              if (ij && typeof ij === "object" && typeof ij.id === "string" && ij.id && ij.form) {
+                fromDb.push(ij as Inbound);
+              } else if (d.id && d.company_name) {
+                const receivedAt = d.received_at || new Date().toISOString();
+                fromDb.push({
+                  id: d.id,
+                  via: d.owner ? "Referral" : "Website",
+                  owner: d.owner || undefined,
+                  receivedAt,
+                  oneLiner: d.one_line_pitch || `${d.sector || "Technology"} · ${d.stage || "Seed"}`,
+                  form: {
+                    companyName: d.company_name,
+                    website: d.website || "",
+                    country: d.country || "India",
+                    sector: d.sector || "B2B software",
+                    stage: d.stage || "Seed",
+                    amountUsd: typeof d.ask_amount === "number" ? d.ask_amount : null,
+                    founders: [{ name: d.founder_name || "Founder", profileUrl: d.linkedin_url || "" }],
+                    email: d.founder_email || "",
+                  },
+                  files: [
+                    {
+                      name: `${d.company_name}-deck.pdf`,
+                      size: 0,
+                      at: receivedAt.slice(0, 10),
+                      key: `pitch:${d.id}`,
+                      url: `/api/files/${encodeURIComponent(d.id)}/deck_pdf`,
+                    },
+                  ],
+                });
+              }
+            }
+            setDbInbound(fromDb);
+          },
+        )
+        .catch(() => undefined);
+    };
+    syncDeals();
+    const interval = window.setInterval(syncDeals, 15000);
+    window.addEventListener("focus", syncDeals);
     return () => {
       alive = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", syncDeals);
     };
   }, []);
 
@@ -212,10 +272,23 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
         }),
       markChecked: (reqId, itemId, by) => edit(reqId, (r) => ({ ...r, checked: { ...r.checked, [itemId]: { by, at: today } } })),
       addInbound: async (i, files) => {
-        const id = `${(i.form.companyName || "pitch").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24)}-${Math.random().toString(36).slice(2, 6)}`;
-        const kept = await keep(`pitch:${id}`, id, files, today, true);
-        const entry: Inbound = { ...i, id, files: kept };
-        update((l) => ({ ...l, inbound: [...l.inbound, entry] }));
+        const id =
+          i.id ||
+          `${(i.form.companyName || "pitch").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24)}-${Math.random().toString(36).slice(2, 6)}`;
+        let kept: LinkFile[];
+        if (i.preUploadedFiles && i.preUploadedFiles.length) {
+          kept = i.preUploadedFiles;
+          for (const [idx, f] of files.entries()) {
+            const k = kept[idx]?.key ?? `pitch:${id}-${idx}`;
+            await saveDeck(k, f);
+          }
+        } else {
+          kept = await keep(`pitch:${id}`, id, files, today, true);
+        }
+        const { preUploadedFiles: _unused, ...rest } = i;
+        void _unused;
+        const entry: Inbound = { ...rest, id, files: kept };
+        update((l) => ({ ...l, inbound: [entry, ...l.inbound.filter((x) => x.id !== id)] }));
         return entry;
       },
       getInbound: (id) => inbound.find((x) => x.id === id),

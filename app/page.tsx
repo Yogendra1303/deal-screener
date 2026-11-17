@@ -307,6 +307,63 @@ function usePartnerData() {
   }, [store, p, w]);
 }
 
+function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
+  const liveNew = rows.filter((r) => r.isLiveSubmission);
+  if (liveNew.length === 0) return null;
+  return (
+    <section className="overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/40 p-4 shadow-xs sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/70 pb-3">
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-blue-600 ring-4 ring-blue-100 animate-pulse" />
+          <h2 className="text-sm font-semibold text-slate-900">
+            {liveNew.length === 1 ? "1 New Pitch Submission Received" : `${liveNew.length} New Pitch Submissions Received`}
+          </h2>
+          <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+            Live Queue
+          </span>
+        </div>
+        <Link href="/deals?tab=read" className="text-xs font-semibold text-blue-700 hover:text-blue-900">
+          View all in Pitches →
+        </Link>
+      </div>
+      <div className="mt-3 divide-y divide-blue-100/80">
+        {liveNew.slice(0, 6).map((r) => (
+          <Link
+            key={r.id}
+            href={r.href}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-white/80"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-slate-900 hover:text-blue-700">{r.name}</span>
+                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-800">
+                  {r.status}
+                </span>
+                <span className="text-xs text-slate-500">
+                  {r.stage}
+                  {r.askUsd ? ` · Asking ${usd(r.askUsd)}` : ""} · {r.sector}
+                </span>
+              </div>
+              <p className="mt-0.5 truncate text-xs text-slate-600">
+                {r.founderName ? `Submitted by ${r.founderName}${r.founderEmail ? ` (${r.founderEmail})` : ""} · ` : ""}
+                {r.line || `${r.sub} · ${r.city}`}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3 text-right">
+              <span className="font-mono text-xs font-medium tabular-nums text-slate-600">
+                {fmtDay(r.last)}
+              </span>
+              <span className="inline-flex h-7 items-center rounded-md bg-blue-600 px-2.5 text-xs font-medium text-white shadow-2xs hover:bg-blue-700">
+                Open pitch →
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ---------- Partner ----------
 
 function PartnerHome() {
@@ -318,7 +375,10 @@ function PartnerHome() {
   const { rows, market, today } = useDealFlow();
   const byId = (id: string) => p.companies.find((c) => c.id === id);
 
-  const monthly = MONTHS.map((ym) => rows.reduce((n, r) => n + r.dates.filter((d) => d.startsWith(ym)).length, 0));
+  const liveExtra = rows.filter((r) => r.isLiveSubmission && !r.dates.some((d) => d.startsWith(MONTHS.at(-1)!))).length;
+  const monthly = MONTHS.map((ym, idx) =>
+    rows.reduce((n, r) => n + r.dates.filter((d) => d.startsWith(ym)).length, 0) + (idx === MONTHS.length - 1 ? liveExtra : 0),
+  );
   const thisMonth = monthly.at(-1)!;
   const change = thisMonth / Math.max(1, monthly.at(-2)!) - 1;
   const toRead = rows.filter((r) => r.status === "New").sort(triageOrder);
@@ -385,6 +445,7 @@ function PartnerHome() {
         <Greeting name={w.me} line={`${thisMonth} decks this month, ${toRead.length} waiting to be read, ${lookNow.length} to look again now.`} />
         <HowItWorks />
       </div>
+      <NewPitchHighlightBanner rows={rows} />
       {!rows.length && <ZeroState />}
       {decisions.length > 0 && (
         <button onClick={() => panels.open("decide")} className="flex w-full items-center gap-3 rounded-2xl bg-white px-5 py-3.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-red-200 transition hover:ring-red-300">
@@ -430,6 +491,19 @@ function PartnerHome() {
         <MarketCard market={market} height={296} />
         <TeamPulse rows={rows} />
       </div>
+
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">New pitches to read</h2>
+            <p className="text-sm text-slate-500">Live submissions and unreviewed decks in the queue, with submission dates.</p>
+          </div>
+          <Link href="/deals?tab=read" className="shrink-0 whitespace-nowrap text-sm font-medium text-indigo-700 hover:text-indigo-900">
+            All pitches →
+          </Link>
+        </div>
+        <DeckList rows={toRead} pageSize={6} group={false} owners empty="No new pitches waiting." />
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <LookAgainList rows={rows} limit={4} />
@@ -734,6 +808,7 @@ function AnalystHome() {
         <Greeting name={me} line={`${toReadRows.length} decks to read, ${fromFounders.length} things from founders, ${lookMine.length} to look again.`} />
         <HowItWorks />
       </div>
+      <NewPitchHighlightBanner rows={pitchRows} />
       {!fund.rows.length && <ZeroState />}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">

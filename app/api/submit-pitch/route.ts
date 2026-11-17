@@ -249,7 +249,25 @@ export async function POST(req: Request) {
         },
       ]);
 
-      // 2. Link or store assets in Supabase Storage / local files
+      // 2. Also sync the inbound record into app_state (ds.links.v1) so every browser store & dashboard tab sees it immediately
+      try {
+        const existingLinks = (await getState<{
+          requests?: Record<string, unknown>;
+          inbound?: Array<{ id: string } & Record<string, unknown>>;
+          owners?: Record<string, string>;
+          emails?: Record<string, unknown>;
+        }>("ds.links.v1")) ?? { requests: {}, inbound: [], owners: {}, emails: {} };
+        const prevInbound = Array.isArray(existingLinks.inbound) ? existingLinks.inbound.filter((x) => x?.id !== id) : [];
+        await putState("ds.links.v1", {
+          ...existingLinks,
+          inbound: [intake, ...prevInbound],
+          ...(ref ? { owners: { ...(existingLinks.owners ?? {}), [id]: ref } } : {}),
+        });
+      } catch (stateErr) {
+        console.error("[submit-pitch][state-sync]", stateErr);
+      }
+
+      // 3. Link or store assets in Supabase Storage / local files
       if (directDeck) {
         await recordUploadedFile(id, "deck_pdf", directDeck.fileName, directDeck.mimeType || "application/pdf", directDeck.storagePath);
       } else if (formDeckFile) {
@@ -346,19 +364,18 @@ export async function POST(req: Request) {
       }
     }
 
-    after(() =>
-      logAndNotify("FOUNDER_SUBMIT", founderEmail, {
-        name: founderName,
-        companyName,
-        stage,
-        amountUsd: askAmount,
-        sector,
-        location: location || undefined,
-        dealId: id,
-        subject: `🚀 NEW PITCH: ${companyName}`,
-        message: `${founderName} just submitted a ${stage} pitch asking for $${askAmount.toLocaleString("en-US")}.`,
-      }),
-    );
+    await logAndNotify("FOUNDER_SUBMIT", founderEmail, {
+      name: founderName,
+      companyName,
+      stage,
+      amountUsd: askAmount,
+      sector,
+      location: location || undefined,
+      dealId: id,
+      receivedAt,
+      subject: `🚀 NEW PITCH: ${companyName}`,
+      message: `${founderName} (${founderEmail}) just submitted a ${stage} pitch for ${companyName} asking for $${askAmount.toLocaleString("en-US")}.`,
+    });
 
     revalidatePath("/deals");
     revalidatePath("/");
@@ -367,6 +384,8 @@ export async function POST(req: Request) {
       ok: true,
       id,
       receivedAt,
+      intake,
+      thankYouFrom: "yogendrakapkoti13@gmail.com",
       aiStatus: hasKey() && drv !== "none" ? "Processing" : "Complete",
       persisted: drv === "none" ? "client" : drv,
       fileUrl,

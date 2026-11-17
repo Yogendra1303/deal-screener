@@ -49,7 +49,7 @@ function PitchForm() {
     "Uploading secure documents to vault..." | "Analyzing financials..." | "Complete." | null
   >(null);
   const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState<{ id: string; companyName: string; receivedAt: string } | null>(null);
+  const [submitted, setSubmitted] = useState<{ id: string; founderName: string; founderEmail: string; companyName: string; receivedAt: string } | null>(null);
 
   const parsedAsk = useMemo(() => parseAsk(askRaw), [askRaw]);
   const overMandate = parsedAsk !== null && parsedAsk > MAX_MANDATE_USD;
@@ -104,7 +104,13 @@ function PitchForm() {
         res = await fetch("/api/submit-pitch", { method: "POST", body: fd });
       }
 
-      const data = (await res.json().catch(() => null)) as { ok?: boolean; id?: string; receivedAt?: string; error?: string } | null;
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        id?: string;
+        receivedAt?: string;
+        fileUrl?: string;
+        error?: string;
+      } | null;
       if (!res.ok || !data?.ok) {
         setSubmitPhase(null);
         setError(data?.error || "Could not submit your pitch. Please try again.");
@@ -112,8 +118,10 @@ function PitchForm() {
       }
 
       const receivedAt = data.receivedAt || new Date().toISOString();
+      const pitchId = data.id || `pitch-${Date.now().toString(36)}`;
       await links.addInbound(
         {
+          id: pitchId,
           via: ref ? "Referral" : "Website",
           owner: ref || undefined,
           receivedAt,
@@ -128,13 +136,28 @@ function PitchForm() {
             founders: [{ name: founderName.trim(), profileUrl: linkedinUrl.trim() }],
             email: founderEmail.trim(),
           },
+          preUploadedFiles: [
+            {
+              name: deck.name,
+              size: deck.size,
+              at: receivedAt.slice(0, 10),
+              key: `pitch:${pitchId}`,
+              url: data.fileUrl || `/api/files/${encodeURIComponent(pitchId)}/deck_pdf`,
+            },
+          ],
         },
         [deck],
       );
 
       setSubmitPhase("Complete.");
       await new Promise((r) => setTimeout(r, 600));
-      setSubmitted({ id: data.id || "submitted", companyName: companyName.trim(), receivedAt });
+      setSubmitted({
+        id: pitchId,
+        founderName: founderName.trim(),
+        founderEmail: founderEmail.trim(),
+        companyName: companyName.trim(),
+        receivedAt,
+      });
     } catch {
       setError("Network error while submitting your pitch. Please try again.");
     } finally {
@@ -172,9 +195,13 @@ function PitchForm() {
               <path d="M20 6 9 17l-5-5" />
             </svg>
           </div>
-          <h1 className="mt-5 text-xl font-semibold tracking-tight text-slate-900">Pitch received for {submitted.companyName}</h1>
+          <h1 className="mt-5 text-xl font-semibold tracking-tight text-slate-900">
+            Thank you for your submission, {submitted.founderName.split(/\s+/)[0]}!
+          </h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
-            Your deck is now in our live screening queue{ref ? ` with ${ref}` : ""}. Our team reviews every submission and verifies numbers directly against the deck.
+            We have received the pitch deck for <strong className="font-semibold text-slate-900">{submitted.companyName}</strong> and placed it into our live screening queue{ref ? ` with ${ref}` : ""}. A confirmation message from{" "}
+            <span className="font-medium text-slate-900">yogendrakapkoti13@gmail.com</span> has been sent to{" "}
+            <span className="font-medium text-slate-900">{submitted.founderEmail}</span>.
           </p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
