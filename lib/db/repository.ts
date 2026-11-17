@@ -21,6 +21,9 @@ export interface DealRow {
   currency: string | null;
   status: string | null;
   checks_status?: string | null;
+  ai_status?: string | null;
+  summary?: string | null;
+  checks_json?: unknown;
   band: string | null;
   founder_fit: string | null;
   owner: string | null;

@@ -14,6 +14,9 @@ create table if not exists public.deals (
   currency text,
   status text,
   checks_status text default 'Unscreened',
+  ai_status text default 'Pending',
+  summary text,
+  checks_json jsonb,
   band text,
   founder_fit text,
   owner text,
@@ -42,6 +45,9 @@ alter table public.deals add column if not exists one_line_pitch text;
 alter table public.deals add column if not exists location text;
 alter table public.deals add column if not exists prior_funding numeric;
 alter table public.deals add column if not exists financial_file_url text;
+alter table public.deals add column if not exists ai_status text default 'Pending';
+alter table public.deals add column if not exists summary text;
+alter table public.deals add column if not exists checks_json jsonb;
 create index if not exists deals_sector_idx on public.deals (sector);
 create index if not exists deals_status_idx on public.deals (status);
 create index if not exists deals_received_idx on public.deals (received_at desc);

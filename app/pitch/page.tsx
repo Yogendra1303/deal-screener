@@ -43,6 +43,7 @@ function PitchForm() {
   const [dragOver, setDragOver] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<"Uploading files..." | "Running AI Math Gap analysis..." | "Pitch submitted successfully." | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<{ id: string; companyName: string; receivedAt: string } | null>(null);
 
@@ -62,6 +63,10 @@ function PitchForm() {
     if (!deck) return setError("Please upload your pitch deck as a PDF.");
 
     setSubmitting(true);
+    setSubmitPhase("Uploading files...");
+    const phaseTimer = window.setTimeout(() => {
+      setSubmitPhase((cur) => (cur === "Uploading files..." ? "Running AI Math Gap analysis..." : cur));
+    }, 900);
     try {
       const fd = new FormData();
       fd.append("founderName", founderName.trim());
@@ -74,13 +79,15 @@ function PitchForm() {
       if (ref) fd.append("ref", ref);
       fd.append("deck", deck);
 
-      const res = await fetch("/api/pitch", { method: "POST", body: fd });
+      const res = await fetch("/api/submit-pitch", { method: "POST", body: fd });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; id?: string; receivedAt?: string; error?: string } | null;
       if (!res.ok || !data?.ok) {
+        setSubmitPhase(null);
         setError(data?.error || "Could not submit your pitch. Please try again.");
         return;
       }
 
+      setSubmitPhase("Running AI Math Gap analysis...");
       const receivedAt = data.receivedAt || new Date().toISOString();
       await links.addInbound(
         {
@@ -102,12 +109,36 @@ function PitchForm() {
         [deck],
       );
 
+      setSubmitPhase("Pitch submitted successfully.");
+      await new Promise((r) => setTimeout(r, 650));
       setSubmitted({ id: data.id || "submitted", companyName: companyName.trim(), receivedAt });
     } catch {
       setError("Network error while submitting your pitch. Please try again.");
     } finally {
+      window.clearTimeout(phaseTimer);
       setSubmitting(false);
+      setSubmitPhase(null);
     }
+  }
+
+  if (submitting && submitPhase) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-12 sm:px-6">
+        <div className="mx-auto max-w-2xl rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+            {submitPhase === "Pitch submitted successfully." ? (
+              <svg viewBox="0 0 24 24" className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            ) : (
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            )}
+          </div>
+          <p className="mt-4 text-base font-semibold text-slate-900">{submitPhase}</p>
+          <p className="mt-1 text-xs text-slate-500">Your deck is being audited against our investment checks.</p>
+        </div>
+      </div>
+    );
   }
 
   if (submitted) {

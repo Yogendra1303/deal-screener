@@ -125,6 +125,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Then the server's copy, which wins over this browser's unless something changed here first.
     const hasLocal = (key: string) => (window.localStorage.getItem(key) ? read(key, null) : null);
     hydrate<Record<string, DealResult>>(KEYS.deals, setLocal, hasLocal(KEYS.deals));
+    fetch("/api/deals", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { deals?: Array<{ id: string; record_json?: DealResult | null }> } | null) => {
+        if (!data?.deals) return;
+        const fromRows: Record<string, DealResult> = {};
+        for (const row of data.deals) {
+          if (row.record_json) fromRows[row.id] = row.record_json;
+        }
+        if (Object.keys(fromRows).length) {
+          setLocal((prev) => ({ ...fromRows, ...prev }));
+        }
+      })
+      .catch(() => undefined);
     hydrate<FundRules>(KEYS.rules, setRulesState, hasLocal(KEYS.rules));
     hydrate<Record<string, Overrule>>(KEYS.overrules, setOverrules, hasLocal(KEYS.overrules));
     hydrate<Record<string, FactCheck>>(KEYS.factChecks, setFactChecks, hasLocal(KEYS.factChecks));
