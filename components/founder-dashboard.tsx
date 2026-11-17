@@ -8,6 +8,8 @@ import type { FounderPitchSummary } from "@/lib/db/repository";
 import { SECTORS } from "@/lib/types";
 
 const MAX_MANDATE_USD = 4_000_000;
+const MAX_PRIOR_FUNDING_USD = 30_000_000;
+const STAGE_OPTIONS = ["Pre-seed", "Seed", "Series A", "Series B+"] as const;
 
 const inputCls =
   "h-8 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-shadow focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -56,14 +58,24 @@ export function FounderDashboard({
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
   const [sector, setSector] = useState("");
+  const [oneLinePitch, setOneLinePitch] = useState("");
+  const [stage, setStage] = useState<string>("Seed");
+  const [location, setLocation] = useState("");
+  const [priorFundingRaw, setPriorFundingRaw] = useState("");
   const [askRaw, setAskRaw] = useState("");
   const [deck, setDeck] = useState<File | null>(null);
+  const [financials, setFinancials] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const parsedAsk = useMemo(() => parseAsk(askRaw), [askRaw]);
   const overMandate = parsedAsk !== null && parsedAsk > MAX_MANDATE_USD;
+  const parsedPriorFunding = useMemo(() => {
+    const n = Number(priorFundingRaw);
+    return priorFundingRaw.trim() !== "" && Number.isFinite(n) && n >= 0 ? n : null;
+  }, [priorFundingRaw]);
+  const overPriorFunding = parsedPriorFunding !== null && parsedPriorFunding > MAX_PRIOR_FUNDING_USD;
 
   const allPitches = useMemo(() => {
     const emailLower = user.email.trim().toLowerCase();
@@ -106,8 +118,13 @@ export function FounderDashboard({
       fd.append("companyName", companyName.trim());
       fd.append("website", website.trim());
       fd.append("sector", sector);
+      fd.append("oneLinePitch", oneLinePitch.trim().slice(0, 60));
+      fd.append("stage", stage);
+      fd.append("location", location.trim());
+      if (parsedPriorFunding !== null) fd.append("priorFunding", String(parsedPriorFunding));
       fd.append("askAmount", String(parsedAsk));
       fd.append("deck", deck);
+      if (financials) fd.append("financials", financials);
 
       const res = await fetch("/api/pitch", { method: "POST", body: fd });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; id?: string; receivedAt?: string; error?: string } | null;
@@ -117,23 +134,25 @@ export function FounderDashboard({
       }
 
       const receivedAt = data.receivedAt || new Date().toISOString();
+      const locParts = location.split(",").map((s) => s.trim()).filter(Boolean);
+      const parsedCountry = locParts.length >= 2 ? locParts[locParts.length - 1] : "India";
       await links.addInbound(
         {
           via: "Website",
           receivedAt,
-          oneLiner: `${sector} · Founder portal${website.trim() ? ` · ${website.trim()}` : ""}`,
+          oneLiner: oneLinePitch.trim() || `${sector} · ${stage}${location.trim() ? ` · ${location.trim()}` : ""}`,
           form: {
             companyName: companyName.trim(),
             website: website.trim(),
-            country: "India",
+            country: parsedCountry,
             sector,
-            stage: "Seed",
+            stage,
             amountUsd: parsedAsk,
             founders: [{ name: founderName.trim(), profileUrl: linkedinUrl.trim() }],
             email: founderEmail.trim(),
           },
         },
-        [deck],
+        [deck, ...(financials ? [financials] : [])],
       );
 
       setPitches((prev) => [
@@ -152,9 +171,14 @@ export function FounderDashboard({
       setCompanyName("");
       setWebsite("");
       setSector("");
+      setOneLinePitch("");
+      setStage("Seed");
+      setLocation("");
+      setPriorFundingRaw("");
       setAskRaw("");
       setLinkedinUrl("");
       setDeck(null);
+      setFinancials(null);
       setShowForm(false);
     } catch {
       setError("Network error while submitting your pitch. Please try again.");
@@ -270,6 +294,58 @@ export function FounderDashboard({
                   buttonClassName="h-8 w-full text-sm border-slate-200 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              <label className="block space-y-1 sm:col-span-2">
+                <span className="flex items-center justify-between text-xs font-medium text-slate-700">
+                  <span>One-Line Pitch</span>
+                  <span className="text-[11px] font-normal text-slate-400 tabular-nums">{oneLinePitch.length}/60</span>
+                </span>
+                <input
+                  type="text"
+                  maxLength={60}
+                  placeholder="e.g. AI-powered accounts payable for SMEs"
+                  value={oneLinePitch}
+                  onChange={(e) => setOneLinePitch(e.target.value)}
+                  className={inputCls}
+                />
+              </label>
+              <div className="block space-y-1">
+                <span className="block text-xs font-medium text-slate-700">Current Stage</span>
+                <DropdownSelect
+                  value={stage}
+                  onChange={setStage}
+                  ariaLabel="Current Stage"
+                  options={STAGE_OPTIONS.map((s) => ({ value: s, label: s }))}
+                  className="w-full"
+                  buttonClassName="h-8 w-full text-sm border-slate-200 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <label className="block space-y-1">
+                <span className="block text-xs font-medium text-slate-700">HQ Location</span>
+                <input
+                  type="text"
+                  placeholder="City, Country"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className={inputCls}
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="block text-xs font-medium text-slate-700">Total Prior Funding (USD)</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  placeholder="e.g. 500000"
+                  value={priorFundingRaw}
+                  onChange={(e) => setPriorFundingRaw(e.target.value)}
+                  className={cx(inputCls, overPriorFunding && "border-amber-400 focus:border-amber-500 focus:ring-amber-500")}
+                />
+                {overPriorFunding && (
+                  <span className="block text-xs font-medium text-amber-700">
+                    Note: Our fund mandate is early-stage (prior funding is typically under $30M).
+                  </span>
+                )}
+              </label>
               <label className="block space-y-1">
                 <span className="block text-xs font-medium text-slate-700">Funding amount (USD, max $4M)</span>
                 <input
@@ -282,15 +358,27 @@ export function FounderDashboard({
                 />
                 {overMandate && <span className="block text-xs font-medium text-red-600">Our current fund mandate is strictly capped at $4M.</span>}
               </label>
-              <label className="block space-y-1">
-                <span className="block text-xs font-medium text-slate-700">Pitch deck (.pdf)</span>
-                <input
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  onChange={(e) => setDeck(e.target.files?.[0] ?? null)}
-                  className="block h-8 w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-0.5 file:text-xs file:font-medium"
-                />
-              </label>
+
+              <div className="grid gap-4 border-t border-slate-100 pt-4 sm:col-span-2 sm:grid-cols-2">
+                <label className="block space-y-1">
+                  <span className="block text-xs font-medium text-slate-700">Pitch deck (.pdf)</span>
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(e) => setDeck(e.target.files?.[0] ?? null)}
+                    className="block h-8 w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-0.5 file:text-xs file:font-medium"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="block text-xs font-medium text-slate-700">Financials / Metrics (Optional but recommended)</span>
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={(e) => setFinancials(e.target.files?.[0] ?? null)}
+                    className="block h-8 w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-0.5 file:text-xs file:font-medium"
+                  />
+                </label>
+              </div>
             </div>
 
             {error && <p role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{error}</p>}

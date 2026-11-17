@@ -28,6 +28,10 @@ export interface DealRow {
   linkedin_url?: string | null;
   founder_name?: string | null;
   founder_email?: string | null;
+  one_line_pitch?: string | null;
+  location?: string | null;
+  prior_funding?: number | null;
+  financial_file_url?: string | null;
   received_at: string | null;
   is_historical: boolean;
   record_json: unknown;
@@ -306,6 +310,10 @@ export async function putFile(dealId: string, fileType: string, fileName: string
 
 export async function putPitchDeck(dealId: string, fileName: string, mime: string, bytes: Uint8Array): Promise<FileRow> {
   return putFile(dealId, "deck_pdf", fileName, mime, bytes, "pitch_decks");
+}
+
+export async function putFinancialFile(dealId: string, fileType: string, fileName: string, mime: string, bytes: Uint8Array): Promise<FileRow> {
+  return putFile(dealId, fileType, fileName, mime, bytes, "pitch_decks");
 }
 
 export async function listFiles(dealId?: string): Promise<FileRow[]> {

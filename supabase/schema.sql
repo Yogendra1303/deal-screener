@@ -21,6 +21,10 @@ create table if not exists public.deals (
   linkedin_url text,
   founder_name text,
   founder_email text,
+  one_line_pitch text,
+  location text,
+  prior_funding numeric,
+  financial_file_url text,
   received_at timestamptz,
   is_historical boolean not null default false,
   record_json jsonb,
@@ -34,6 +38,10 @@ alter table public.deals add column if not exists linkedin_url text;
 alter table public.deals add column if not exists founder_name text;
 alter table public.deals add column if not exists founder_email text;
 alter table public.deals add column if not exists checks_status text default 'Unscreened';
+alter table public.deals add column if not exists one_line_pitch text;
+alter table public.deals add column if not exists location text;
+alter table public.deals add column if not exists prior_funding numeric;
+alter table public.deals add column if not exists financial_file_url text;
 create index if not exists deals_sector_idx on public.deals (sector);
 create index if not exists deals_status_idx on public.deals (status);
 create index if not exists deals_received_idx on public.deals (received_at desc);
