@@ -1,11 +1,11 @@
 "use client";
 
-// Pitches: every deck that reached the fund as one quiet list, with a few tabs. Live pitches carry a dot.
-// An analyst sees their own and the ones nobody has picked up; the partner sees the whole team's.
+// Pitches: every deck that reached the fund as one quiet list, with tabs, multi-axis filters, and sorting.
+// Live pitches carry a dot. Analysts see their own and unclaimed inbound; partners see the full pipeline.
 import { windowCounts } from "@/lib/change";
 import { ZeroState } from "@/components/mode";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DeckList, PillTabs, TempPill, slugOf as sectorSlug, triageOrder, useDealFlow, type FlowRow, type SectorStat } from "@/components/flow";
 import { Delta } from "@/components/charts";
 import { useStore } from "@/components/store";
@@ -14,10 +14,9 @@ import { useWorkspace } from "@/components/workspace";
 import { FLOW_NOTE } from "@/lib/flow";
 import { MARKET, PITCH_ADDRESS } from "@/lib/funnel";
 import { daysBetween } from "@/lib/portfolio/health";
-import { slugOf } from "@/lib/links";
-import { TEAM } from "@/lib/team";
 
 const OPEN = new Set(["New", "Never opened", "Reviewing"]);
+
 const TABS: { key: string; label: string; test: (r: FlowRow) => boolean }[] = [
   { key: "read", label: "To read", test: (r) => OPEN.has(r.label) },
   { key: "look", label: "Look again", test: (r) => Boolean(r.look.event) },
@@ -27,8 +26,63 @@ const TABS: { key: string; label: string; test: (r: FlowRow) => boolean }[] = [
   { key: "all", label: "All", test: () => true },
 ];
 
-/** Quick views that sit on top of any tab. Both are worked out by code from the same rows. */
+type SortKey = "newest" | "oldest" | "triage" | "sector" | "ask_desc" | "ask_asc" | "name";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "triage", label: "Priority triage" },
+  { value: "sector", label: "Market / Sector (A → Z)" },
+  { value: "ask_desc", label: "Ask: High → Low" },
+  { value: "ask_asc", label: "Ask: Low → High" },
+  { value: "name", label: "Company (A → Z)" },
+];
+
+const STAGE_OPTIONS = [
+  { value: "", label: "All stages" },
+  { value: "Pre-seed", label: "Pre-seed" },
+  { value: "Seed", label: "Seed" },
+  { value: "Series A", label: "Series A" },
+  { value: "Series B+", label: "Series B+" },
+];
+
+type AskBand = "" | "under_1m" | "1m_2m" | "2m_4m" | "over_4m";
+
+const ASK_OPTIONS: { value: AskBand; label: string }[] = [
+  { value: "", label: "Any ask" },
+  { value: "under_1m", label: "Under $1M" },
+  { value: "1m_2m", label: "$1M – $2M" },
+  { value: "2m_4m", label: "$2M – $4M" },
+  { value: "over_4m", label: "Over $4M" },
+];
+
+function matchesAskBand(askUsd: number | null, band: AskBand): boolean {
+  if (!band) return true;
+  if (askUsd == null) return false;
+  if (band === "under_1m") return askUsd < 1_000_000;
+  if (band === "1m_2m") return askUsd >= 1_000_000 && askUsd <= 2_000_000;
+  if (band === "2m_4m") return askUsd > 2_000_000 && askUsd <= 4_000_000;
+  return askUsd > 4_000_000;
+}
+
+/** Institutional VC quick filters derived deterministically from each row. */
 const CHIPS: { key: string; dot: string; label: string; hint: string; on: string; test: (r: FlowRow) => boolean }[] = [
+  {
+    key: "live",
+    dot: "bg-blue-600",
+    label: "Live Inbound",
+    hint: "New pitches submitted live through the public pitch portal or founder upload.",
+    on: "border-blue-300 bg-blue-50 text-blue-800",
+    test: (r) => Boolean(r.isLiveSubmission),
+  },
+  {
+    key: "mandate",
+    dot: "bg-indigo-600",
+    label: "Fits Mandate",
+    hint: "Matches the fund's sector, stage, geography, and check-size rules.",
+    on: "border-indigo-300 bg-indigo-50 text-indigo-800",
+    test: (r) => r.fits,
+  },
   {
     key: "strong",
     dot: "bg-emerald-600",
@@ -36,6 +90,22 @@ const CHIPS: { key: string; dot: string; label: string; hint: string; on: string
     hint: "Founders who worked directly on this problem for years, or built a company in the same space before.",
     on: "border-emerald-300 bg-emerald-50 text-emerald-800",
     test: (r) => r.fit === "Strong",
+  },
+  {
+    key: "repeat",
+    dot: "bg-teal-600",
+    label: "Repeat Founder",
+    hint: "Founder has previously founded or scaled a venture-backed startup.",
+    on: "border-teal-300 bg-teal-50 text-teal-800",
+    test: (r) => r.repeat,
+  },
+  {
+    key: "warm",
+    dot: "bg-violet-600",
+    label: "Warm Intro",
+    hint: "Referred through a known founder, co-investor, or partner contact.",
+    on: "border-violet-300 bg-violet-50 text-violet-800",
+    test: (r) => Boolean(r.warm),
   },
   {
     key: "gap",
@@ -79,6 +149,28 @@ const CHIPS: { key: string; dot: string; label: string; hint: string; on: string
   },
 ];
 
+function sortRows(rows: FlowRow[], sortBy: SortKey): FlowRow[] {
+  const copy = [...rows];
+  switch (sortBy) {
+    case "newest":
+      return copy.sort((a, b) => (b.last ?? "").localeCompare(a.last ?? "") || a.name.localeCompare(b.name));
+    case "oldest":
+      return copy.sort((a, b) => (a.last ?? "").localeCompare(b.last ?? "") || a.name.localeCompare(b.name));
+    case "triage":
+      return copy.sort(triageOrder);
+    case "sector":
+      return copy.sort((a, b) => a.sector.localeCompare(b.sector) || (b.last ?? "").localeCompare(a.last ?? ""));
+    case "ask_desc":
+      return copy.sort((a, b) => (b.askUsd ?? -1) - (a.askUsd ?? -1) || (b.last ?? "").localeCompare(a.last ?? ""));
+    case "ask_asc":
+      return copy.sort((a, b) => (a.askUsd ?? Number.MAX_SAFE_INTEGER) - (b.askUsd ?? Number.MAX_SAFE_INTEGER) || (b.last ?? "").localeCompare(a.last ?? ""));
+    case "name":
+      return copy.sort((a, b) => a.name.localeCompare(b.name));
+    default:
+      return copy;
+  }
+}
+
 export default function DealsPage() {
   const store = useStore();
   const w = useWorkspace();
@@ -86,8 +178,11 @@ export default function DealsPage() {
   const [tab, setTab] = useState("read");
   const [query, setQuery] = useState("");
   const [sector, setSector] = useState("");
-  const [who, setWho] = useState("");
+  const [stage, setStage] = useState("");
+  const [askBand, setAskBand] = useState<AskBand>("");
+  const [sortBy, setSortBy] = useState<SortKey>("newest");
   const [chips, setChips] = useState<string[]>([]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("tab");
@@ -99,6 +194,10 @@ export default function DealsPage() {
     if (s && MARKET.some((m) => m.sector === s)) {
       setSector(s);
     }
+    const st = params.get("stage");
+    if (st && STAGE_OPTIONS.some((x) => x.value === st)) {
+      setStage(st);
+    }
     const f = params.get("filter");
     if (f && CHIPS.some((c) => c.key === f)) {
       setChips([f]);
@@ -109,22 +208,49 @@ export default function DealsPage() {
       setTab("all");
     }
   }, []);
-  const flow = useDealFlow((o) => (analyst ? !o || o === w.me : !who || o === who));
+
+  const flow = useDealFlow((o) => (analyst ? !o || o === w.me : true));
 
   const q = query.trim().toLowerCase();
-  const searched = flow.rows.filter((r) => (!sector || r.sector === sector) && (!q || `${r.name} ${r.sector} ${r.sub} ${r.city} ${r.line ?? ""}`.toLowerCase().includes(q)));
+  const searched = useMemo(
+    () =>
+      flow.rows.filter(
+        (r) =>
+          (!sector || r.sector === sector) &&
+          (!stage ||
+            (stage === "Series B+"
+              ? /series\s*[b-z]|growth/i.test(r.stage)
+              : r.stage.toLowerCase() === stage.toLowerCase())) &&
+          matchesAskBand(r.askUsd, askBand) &&
+          (!q || `${r.name} ${r.sector} ${r.sub} ${r.city} ${r.stage} ${r.founderName ?? ""} ${r.line ?? ""}`.toLowerCase().includes(q)),
+      ),
+    [flow.rows, sector, stage, askBand, q],
+  );
+
   const active = CHIPS.filter((c) => chips.includes(c.key));
   const narrowed = searched.filter((r) => active.every((c) => c.test(r)));
-  // Re-engage only makes sense on passed and held deals, so it jumps to that tab rather than showing an empty one.
+
   const toggle = (key: string) => {
     const on = !chips.includes(key);
     setChips((cur) => (on ? [...cur, key] : cur.filter((k) => k !== key)));
     if (on && key === "reengage" && tab !== "passed" && tab !== "hold" && tab !== "look" && tab !== "all") setTab("passed");
     if (on && key === "hold" && tab !== "hold" && tab !== "all") setTab("hold");
   };
+
+  const hasAnyFilter = Boolean(q || sector || stage || askBand || active.length > 0 || sortBy !== "newest");
+  const resetAllFilters = () => {
+    setQuery("");
+    setSector("");
+    setStage("");
+    setAskBand("");
+    setSortBy("newest");
+    setChips([]);
+  };
+
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
   const list = narrowed.filter(current.test);
-  const sorted = tab === "read" ? [...list].sort(triageOrder) : list;
+  const sorted = useMemo(() => sortRows(list, sortBy), [list, sortBy]);
+  const useMonthGroups = tab !== "read" && (sortBy === "newest" || sortBy === "oldest");
 
   return (
     <div className="space-y-5">
@@ -136,27 +262,6 @@ export default function DealsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white p-0.5 text-xs shadow-sm" role="group" aria-label="Demo Role">
-            <span className="px-2 font-medium text-slate-600">Demo Role:</span>
-            {(["Partner", "Analyst"] as const).map((r) => {
-              const activeRole = w.role === r;
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => w.setDemoRole(r)}
-                  aria-pressed={activeRole}
-                  className={cx(
-                    "rounded px-2.5 py-1 font-medium leading-tight transition-colors",
-                    activeRole ? "bg-blue-600 text-white shadow-2xs" : "text-slate-700 hover:bg-slate-50 hover:text-slate-900",
-                  )}
-                >
-                  {r}
-                </button>
-              );
-            })}
-          </div>
-          <PitchLinkButton refSlug={analyst ? w.userName || w.me : undefined} />
           <Link
             href="/new"
             className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium leading-tight text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
@@ -184,8 +289,9 @@ export default function DealsPage() {
         <ZeroState />
       ) : (
         <>
-          <Pulse rows={searched} filtered={Boolean(q || sector || who)} market={flow.market} today={flow.today} onPick={setTab} />
-          <div className="space-y-2.5">
+          <Pulse rows={searched} filtered={Boolean(q || sector || stage || askBand)} market={flow.market} today={flow.today} onPick={setTab} />
+
+          <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2.5">
               <PillTabs options={TABS.map((t) => ({ key: t.key, label: t.label, count: narrowed.filter(t.test).length }))} value={tab} onChange={setTab} />
               <div className="flex flex-wrap items-center gap-2">
@@ -195,7 +301,7 @@ export default function DealsPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search company, city…"
-                  className="w-44 max-w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm leading-tight text-slate-900 placeholder:text-slate-500 shadow-sm focus:border-blue-600 focus:outline-none"
+                  className="w-44 max-w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm leading-tight text-slate-900 placeholder:text-slate-500 shadow-2xs focus:border-blue-600 focus:outline-none"
                 />
                 <DropdownSelect
                   ariaLabel="Sector"
@@ -204,46 +310,69 @@ export default function DealsPage() {
                   options={[{ value: "", label: "All sectors" }, ...MARKET.map((m) => ({ value: m.sector, label: m.sector }))]}
                   align="right"
                 />
-                {!analyst && (
-                  <DropdownSelect
-                    ariaLabel="Person"
-                    value={who}
-                    onChange={setWho}
-                    options={[{ value: "", label: "Everyone" }, ...TEAM.map((m) => ({ value: m.name, label: m.name.split(" ")[0] }))]}
-                    align="right"
-                  />
-                )}
+                <DropdownSelect
+                  ariaLabel="Stage"
+                  value={stage}
+                  onChange={setStage}
+                  options={STAGE_OPTIONS}
+                  align="right"
+                />
+                <DropdownSelect<AskBand>
+                  ariaLabel="Check size"
+                  value={askBand}
+                  onChange={setAskBand}
+                  options={ASK_OPTIONS}
+                  align="right"
+                />
+                <DropdownSelect<SortKey>
+                  ariaLabel="Sort order"
+                  prefix="Sort:"
+                  value={sortBy}
+                  onChange={setSortBy}
+                  options={SORT_OPTIONS}
+                  align="right"
+                />
               </div>
             </div>
-          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Quick filters">
-            <span className={cx(LABEL, "mr-1")}>Filter</span>
-            {CHIPS.map((c) => {
-              const on = chips.includes(c.key);
-              const n = searched.filter((r) => c.test(r) && active.every((a) => a.key === c.key || a.test(r))).length;
-              return (
-                <button
-                  key={c.key}
-                  onClick={() => toggle(c.key)}
-                  aria-pressed={on}
-                  title={c.hint}
-                  className={cx(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                    on ? c.on : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
-                  )}
-                >
-                                    {c.label}
-                  <span className={cx("font-mono tabular-nums", on ? "" : "text-slate-400")}>{n}</span>
-                  {on && <span aria-hidden className="-mr-1 text-[13px] leading-none opacity-60">×</span>}
-                </button>
-              );
-            })}
-            {active.length > 0 && (
-              <button onClick={() => setChips([])} className="text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline">
-                Clear
-              </button>
-            )}
-          </div>
 
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3" role="group" aria-label="Quick filters">
+              <span className={cx(LABEL, "mr-1")}>Filter</span>
+              {CHIPS.map((c) => {
+                const on = chips.includes(c.key);
+                const n = searched.filter((r) => c.test(r) && active.every((a) => a.key === c.key || a.test(r))).length;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => toggle(c.key)}
+                    aria-pressed={on}
+                    title={c.hint}
+                    className={cx(
+                      "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors",
+                      on ? c.on : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+                    )}
+                  >
+                    <span className={cx("h-1.5 w-1.5 rounded-full", c.dot)} aria-hidden />
+                    {c.label}
+                    <span className={cx("font-mono tabular-nums", on ? "" : "text-slate-400")}>{n}</span>
+                    {on && (
+                      <span aria-hidden className="-mr-0.5 text-[13px] leading-none opacity-60">
+                        ×
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+              {hasAnyFilter && (
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="ml-auto cursor-pointer text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline"
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
           </div>
 
           {sector && (
@@ -253,43 +382,18 @@ export default function DealsPage() {
           )}
 
           <DeckList
-            key={`${tab}-${sector}-${q}-${who}-${chips.join(",")}`}
+            key={`${tab}-${sector}-${stage}-${askBand}-${sortBy}-${q}-${chips.join(",")}`}
             rows={sorted}
-            sort={tab === "look" ? "look" : "date"}
-            group={tab !== "read"}
+            sort={tab === "look" && sortBy === "triage" ? "look" : "date"}
+            group={useMonthGroups}
             owners={!analyst}
             pageSize={50}
-            empty="Nothing here."
+            empty="No pitches match these filters."
           />
           <p className="text-xs text-slate-400">{FLOW_NOTE}</p>
         </>
       )}
     </div>
-  );
-}
-
-function PitchLinkButton({ refSlug }: { refSlug?: string }) {
-  const [copied, setCopied] = useState(false);
-  const path = `/pitch${refSlug ? `?ref=${encodeURIComponent(refSlug)}` : ""}`;
-  return (
-    <span className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white text-sm font-medium leading-tight shadow-sm">
-      <button
-        type="button"
-        onClick={() =>
-          navigator.clipboard?.writeText(`${window.location.origin}${path}`).then(
-            () => setCopied(true),
-            () => setCopied(false),
-          )
-        }
-        title={refSlug ? "Your personal pitch link. Pitches sent through it come straight to you." : "The public link on the fund's website"}
-        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-slate-700 transition-colors hover:bg-slate-50"
-      >
-        {copied ? "Copied" : refSlug ? "Copy my pitch link" : "Copy pitch link"}
-      </button>
-      <a href={path} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center border-l border-slate-200 px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-50" title="Open it as a founder">
-        ↗
-      </a>
-    </span>
   );
 }
 
@@ -300,7 +404,6 @@ function Pulse({ rows, filtered, market, today, onPick }: { rows: FlowRow[]; fil
   const fitOpen = rows.filter((r) => OPEN.has(r.label) && r.fits && r.fit === "Strong").length;
   const lookNow = rows.filter((r) => r.look.now).length;
   const movers = [...market].sort((a, b) => Math.abs(b.inboundChange) - Math.abs(a.inboundChange)).slice(0, 4);
-  // Each count is taken from the same rows as the list below (search, sector and person applied), so an empty search shows 0.
   const cells: [string, number, string, string, string][] = [
     ["Inbound, last 5 days", recent, recent === 1 ? "company" : "companies", "bg-slate-900", "all"],
     ["To read", toRead, "open decks", "bg-slate-400", "read"],
@@ -326,9 +429,10 @@ function Pulse({ rows, filtered, market, today, onPick }: { rows: FlowRow[]; fil
         {cells.map(([label, n, unit, bar, tab]) => (
           <button
             key={label}
+            type="button"
             onClick={() => onPick(tab)}
             title="Show these in the list below"
-            className="relative overflow-hidden rounded-lg bg-slate-50 px-3 pt-3.5 pb-2.5 text-left transition-colors hover:bg-slate-100"
+            className="relative cursor-pointer overflow-hidden rounded-lg bg-slate-50 px-3 pt-3.5 pb-2.5 text-left transition-colors hover:bg-slate-100"
           >
             <span className={cx("absolute inset-x-0 top-0 h-0.5", bar)} />
             <p className={LABEL}>{label}</p>
@@ -338,7 +442,7 @@ function Pulse({ rows, filtered, market, today, onPick }: { rows: FlowRow[]; fil
             </p>
           </button>
         ))}
-        <div className="relative col-span-2 md:col-span-4 xl:col-span-2 overflow-hidden rounded-lg bg-slate-50 px-3 pt-3.5 pb-2">
+        <div className="relative col-span-2 overflow-hidden rounded-lg bg-slate-50 px-3 pt-3.5 pb-2 md:col-span-4 xl:col-span-2">
           <span className="absolute inset-x-0 top-0 h-0.5 bg-slate-300" />
           <p className={LABEL}>Sectors moving most · 3 months</p>
           <ul className="mt-1.5 space-y-1">
