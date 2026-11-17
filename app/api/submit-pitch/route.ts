@@ -2,7 +2,17 @@ import { revalidatePath } from "next/cache";
 import { after, NextResponse } from "next/server";
 import { hasKey } from "@/lib/ai";
 import { STATE_KEYS } from "@/lib/db/project";
-import { driver, getState, mergeDeals, patchDeal, putFinancialFile, putPitchDeck, putState } from "@/lib/db/repository";
+import {
+  driver,
+  getFile,
+  getState,
+  mergeDeals,
+  patchDeal,
+  putFinancialFile,
+  putPitchDeck,
+  putState,
+  recordUploadedFile,
+} from "@/lib/db/repository";
 import { logAndNotify } from "@/lib/notify";
 import { processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
@@ -43,25 +53,93 @@ function summarizeChecks(flags: Flag[]): string {
   return parts.length ? parts.join(" · ") : "Checks Clear";
 }
 
+interface DirectFilePayload {
+  storagePath: string;
+  fileName: string;
+  mimeType?: string;
+  size?: number;
+  previewCsv?: string;
+}
+
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const founderName = String(formData.get("founderName") ?? "").trim();
-    const founderEmail = String(formData.get("founderEmail") ?? "").trim();
-    const linkedinUrl = String(formData.get("linkedinUrl") ?? "").trim();
-    const companyName = String(formData.get("companyName") ?? "").trim();
-    const website = String(formData.get("website") ?? "").trim();
-    const sector = String(formData.get("sector") ?? "").trim();
-    const oneLinePitch = String(formData.get("oneLinePitch") ?? "").trim().slice(0, 60);
-    const stage = String(formData.get("stage") ?? "").trim() || "Seed";
-    const location = String(formData.get("location") ?? "").trim();
-    const priorRaw = String(formData.get("priorFunding") ?? "").replace(/[^0-9.]/g, "");
-    const priorFunding = priorRaw ? Number(priorRaw) : null;
-    const ref = String(formData.get("ref") ?? "").trim();
-    const askRaw = String(formData.get("askAmount") ?? "").replace(/[^0-9.]/g, "");
-    const askAmount = askRaw ? Number(askRaw) : NaN;
-    const file = formData.get("deck");
-    const fin = formData.get("financials");
+    const contentType = req.headers.get("content-type") || "";
+
+    let founderName = "";
+    let founderEmail = "";
+    let linkedinUrl = "";
+    let companyName = "";
+    let website = "";
+    let sector = "";
+    let oneLinePitch = "";
+    let stage = "Seed";
+    let location = "";
+    let priorFunding: number | null = null;
+    let ref = "";
+    let askAmount = NaN;
+
+    // Direct uploaded files metadata (lightweight JSON)
+    let directDeck: DirectFilePayload | null = null;
+    let directFin: DirectFilePayload | null = null;
+
+    // Fallback FormData files
+    let formDeckFile: File | null = null;
+    let formFinFile: File | null = null;
+
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      founderName = String(body.founderName ?? "").trim();
+      founderEmail = String(body.founderEmail ?? "").trim();
+      linkedinUrl = String(body.linkedinUrl ?? "").trim();
+      companyName = String(body.companyName ?? "").trim();
+      website = String(body.website ?? "").trim();
+      sector = String(body.sector ?? "").trim();
+      oneLinePitch = String(body.oneLinePitch ?? "").trim().slice(0, 60);
+      stage = String(body.stage ?? "").trim() || "Seed";
+      location = String(body.location ?? "").trim();
+      priorFunding = typeof body.priorFunding === "number" && Number.isFinite(body.priorFunding) ? body.priorFunding : null;
+      ref = String(body.ref ?? "").trim();
+      askAmount = typeof body.askAmount === "number" ? body.askAmount : Number(body.askAmount);
+
+      if (body.deck && typeof body.deck.storagePath === "string") {
+        directDeck = {
+          storagePath: body.deck.storagePath,
+          fileName: String(body.deck.fileName || "deck.pdf"),
+          mimeType: String(body.deck.mimeType || "application/pdf"),
+          size: typeof body.deck.size === "number" ? body.deck.size : undefined,
+        };
+      }
+      if (body.financials && typeof body.financials.storagePath === "string") {
+        directFin = {
+          storagePath: body.financials.storagePath,
+          fileName: String(body.financials.fileName || "financials.csv"),
+          mimeType: String(body.financials.mimeType || "text/csv"),
+          size: typeof body.financials.size === "number" ? body.financials.size : undefined,
+          previewCsv: typeof body.financials.previewCsv === "string" ? body.financials.previewCsv : undefined,
+        };
+      }
+    } else {
+      const formData = await req.formData();
+      founderName = String(formData.get("founderName") ?? "").trim();
+      founderEmail = String(formData.get("founderEmail") ?? "").trim();
+      linkedinUrl = String(formData.get("linkedinUrl") ?? "").trim();
+      companyName = String(formData.get("companyName") ?? "").trim();
+      website = String(formData.get("website") ?? "").trim();
+      sector = String(formData.get("sector") ?? "").trim();
+      oneLinePitch = String(formData.get("oneLinePitch") ?? "").trim().slice(0, 60);
+      stage = String(formData.get("stage") ?? "").trim() || "Seed";
+      location = String(formData.get("location") ?? "").trim();
+      const priorRaw = String(formData.get("priorFunding") ?? "").replace(/[^0-9.]/g, "");
+      priorFunding = priorRaw ? Number(priorRaw) : null;
+      ref = String(formData.get("ref") ?? "").trim();
+      const askRaw = String(formData.get("askAmount") ?? "").replace(/[^0-9.]/g, "");
+      askAmount = askRaw ? Number(askRaw) : NaN;
+
+      const fDeck = formData.get("deck");
+      const fFin = formData.get("financials");
+      if (fDeck instanceof File && fDeck.size > 0) formDeckFile = fDeck;
+      if (fFin instanceof File && fFin.size > 0) formFinFile = fFin;
+    }
 
     if (!founderName || !founderEmail || !companyName || !sector) {
       return NextResponse.json({ error: "Please complete all required founder and company fields." }, { status: 400 });
@@ -72,23 +150,35 @@ export async function POST(req: Request) {
     if (askAmount > MAX_MANDATE_USD) {
       return NextResponse.json({ error: "Our current fund mandate is strictly capped at $4M." }, { status: 400 });
     }
-    if (!(file instanceof File) || file.size === 0) {
+    if (!directDeck && !formDeckFile) {
       return NextResponse.json({ error: "Please attach your pitch deck PDF." }, { status: 400 });
     }
 
     const id = `${slugify(companyName)}-${Date.now().toString(36)}`;
     const receivedAt = new Date().toISOString();
     const drv = driver();
-    const fileUrl = `/api/files/${encodeURIComponent(id)}/deck_pdf`;
-    const hasFin = fin instanceof File && fin.size > 0;
-    const finFileType = hasFin && /\.csv$/i.test(fin.name) ? "monthly_csv" : "financial_sheet";
-    const financialFileUrl = hasFin ? `/api/files/${encodeURIComponent(id)}/${finFileType}` : null;
     const { city, country } = splitLocation(location);
 
+    const deckFileName = directDeck ? directDeck.fileName : formDeckFile?.name || "deck.pdf";
+    const deckFileSize = directDeck?.size ?? formDeckFile?.size ?? 0;
+    const fileUrl = `/api/files/${encodeURIComponent(id)}/deck_pdf`;
+
+    const hasFin = Boolean(directFin || (formFinFile && formFinFile.size > 0));
+    const finFileName = directFin ? directFin.fileName : formFinFile?.name || "financials.csv";
+    const finFileSize = directFin?.size ?? formFinFile?.size ?? 0;
+    const finFileType = /\.csv$/i.test(finFileName) ? "monthly_csv" : "financial_sheet";
+    const financialFileUrl = hasFin ? `/api/files/${encodeURIComponent(id)}/${finFileType}` : null;
+
     let sheet: SheetRow[] | null = null;
-    if (hasFin && /\.csv$/i.test(fin.name)) {
+    if (directFin?.previewCsv) {
       try {
-        sheet = parseSheet(await fin.text());
+        sheet = parseSheet(directFin.previewCsv);
+      } catch {
+        sheet = null;
+      }
+    } else if (formFinFile && /\.csv$/i.test(formFinFile.name)) {
+      try {
+        sheet = parseSheet(await formFinFile.text());
       } catch {
         sheet = null;
       }
@@ -106,9 +196,9 @@ export async function POST(req: Request) {
     };
 
     const files = [
-      { name: file.name, size: file.size, at: receivedAt.slice(0, 10), key: `pitch:${id}`, url: fileUrl },
+      { name: deckFileName, size: deckFileSize, at: receivedAt.slice(0, 10), key: `pitch:${id}`, url: fileUrl },
       ...(hasFin
-        ? [{ name: fin.name, size: fin.size, at: receivedAt.slice(0, 10), key: `fin:${id}`, url: financialFileUrl! }]
+        ? [{ name: finFileName, size: finFileSize, at: receivedAt.slice(0, 10), key: `fin:${id}`, url: financialFileUrl! }]
         : []),
     ];
 
@@ -122,17 +212,8 @@ export async function POST(req: Request) {
       files,
     };
 
-    const pdfBytes = Buffer.from(await file.arrayBuffer());
-
     if (drv !== "none") {
-      // 1. Store assets in Supabase Storage / local storage
-      await putPitchDeck(id, file.name, file.type || "application/pdf", new Uint8Array(pdfBytes));
-      if (hasFin) {
-        const finBytes = new Uint8Array(await fin.arrayBuffer());
-        await putFinancialFile(id, finFileType, fin.name, fin.type || "text/csv", finBytes);
-      }
-
-      // 2. Initial insert with status = "New" and ai_status = "Processing"
+      // 1. Initial insert into deals table (must happen before referencing in deal_files)
       await mergeDeals([
         {
           id,
@@ -168,17 +249,49 @@ export async function POST(req: Request) {
         },
       ]);
 
+      // 2. Link or store assets in Supabase Storage / local files
+      if (directDeck) {
+        await recordUploadedFile(id, "deck_pdf", directDeck.fileName, directDeck.mimeType || "application/pdf", directDeck.storagePath);
+      } else if (formDeckFile) {
+        const pdfBytes = Buffer.from(await formDeckFile.arrayBuffer());
+        await putPitchDeck(id, formDeckFile.name, formDeckFile.type || "application/pdf", new Uint8Array(pdfBytes));
+      }
+
+      if (directFin) {
+        await recordUploadedFile(id, finFileType, directFin.fileName, directFin.mimeType || "text/csv", directFin.storagePath);
+      } else if (formFinFile) {
+        const finBytes = new Uint8Array(await formFinFile.arrayBuffer());
+        await putFinancialFile(id, finFileType, formFinFile.name, formFinFile.type || "text/csv", finBytes);
+      }
+
       // 3. Trigger AI extraction (async via after() when Anthropic key is present to avoid request timeout)
       const runExtraction = async () => {
         try {
-          if (hasKey() && pdfBytes.subarray(0, 5).toString() === "%PDF-") {
+          let pdfBuffer: Buffer | null = null;
+          const fileResult = await getFile(id, "deck_pdf");
+          if (fileResult?.bytes) {
+            pdfBuffer = Buffer.from(fileResult.bytes);
+          }
+
+          if (!sheet && hasFin) {
+            const finResult = await getFile(id, finFileType);
+            if (finResult?.bytes && finFileType === "monthly_csv") {
+              try {
+                sheet = parseSheet(Buffer.from(finResult.bytes).toString("utf8"));
+              } catch {
+                sheet = null;
+              }
+            }
+          }
+
+          if (hasKey() && pdfBuffer && pdfBuffer.subarray(0, 5).toString() === "%PDF-") {
             const deal = await processDeal({
               id,
               source: "upload",
               receivedAt,
               form,
-              pdfBase64: pdfBytes.toString("base64"),
-              fileName: file.name || "deck.pdf",
+              pdfBase64: pdfBuffer.toString("base64"),
+              fileName: deckFileName,
               deckUrl: fileUrl,
               sheet,
             });
@@ -206,8 +319,8 @@ export async function POST(req: Request) {
               city: city ?? "",
               founders: [],
               sheet,
-              sheetFile: hasFin ? fin.name : null,
-              deckFile: file.name,
+              sheetFile: hasFin ? finFileName : null,
+              deckFile: deckFileName,
               by: "System",
             });
             await patchDeal(id, {

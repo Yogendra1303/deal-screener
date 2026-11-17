@@ -4,6 +4,7 @@ import { signOut as nextAuthSignOut } from "next-auth/react";
 import { useMemo, useState } from "react";
 import { useLinks } from "@/components/links-store";
 import { DropdownSelect, cx } from "@/components/ui";
+import { uploadFileDirect } from "@/lib/direct-upload";
 import type { FounderPitchSummary } from "@/lib/db/repository";
 import { SECTORS } from "@/lib/types";
 
@@ -66,7 +67,9 @@ export function FounderDashboard({
   const [deck, setDeck] = useState<File | null>(null);
   const [financials, setFinancials] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submitPhase, setSubmitPhase] = useState<"Uploading files..." | "Running AI Math Gap analysis..." | "Pitch submitted successfully." | null>(null);
+  const [submitPhase, setSubmitPhase] = useState<
+    "Uploading secure documents to vault..." | "Analyzing financials..." | "Complete." | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -111,27 +114,59 @@ export function FounderDashboard({
     if (!deck) return setError("Please attach your pitch deck PDF.");
 
     setSubmitting(true);
-    setSubmitPhase("Uploading files...");
-    const phaseTimer = window.setTimeout(() => {
-      setSubmitPhase((cur) => (cur === "Uploading files..." ? "Running AI Math Gap analysis..." : cur));
-    }, 900);
+    setSubmitPhase("Uploading secure documents to vault...");
     try {
-      const fd = new FormData();
-      fd.append("founderName", founderName.trim());
-      fd.append("founderEmail", founderEmail.trim());
-      fd.append("linkedinUrl", linkedinUrl.trim());
-      fd.append("companyName", companyName.trim());
-      fd.append("website", website.trim());
-      fd.append("sector", sector);
-      fd.append("oneLinePitch", oneLinePitch.trim().slice(0, 60));
-      fd.append("stage", stage);
-      fd.append("location", location.trim());
-      if (parsedPriorFunding !== null) fd.append("priorFunding", String(parsedPriorFunding));
-      fd.append("askAmount", String(parsedAsk));
-      fd.append("deck", deck);
-      if (financials) fd.append("financials", financials);
+      // 1. Direct-to-Supabase upload for pitch deck (bypasses 4.5MB Vercel limit)
+      const deckUpload = await uploadFileDirect(deck, "deck_pdf", companyName.trim());
+      
+      // 2. Direct-to-Supabase upload for financials (if attached)
+      const finFileType = financials && /\.csv$/i.test(financials.name) ? "monthly_csv" : "financial_sheet";
+      const finUpload = financials ? await uploadFileDirect(financials, finFileType, companyName.trim()) : null;
 
-      const res = await fetch("/api/submit-pitch", { method: "POST", body: fd });
+      setSubmitPhase("Analyzing financials...");
+
+      let res: Response;
+      if (deckUpload.direct && deckUpload.meta) {
+        // Direct upload succeeded: send lightweight JSON payload
+        res = await fetch("/api/submit-pitch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            founderName: founderName.trim(),
+            founderEmail: founderEmail.trim(),
+            linkedinUrl: linkedinUrl.trim(),
+            companyName: companyName.trim(),
+            website: website.trim(),
+            sector,
+            oneLinePitch: oneLinePitch.trim().slice(0, 60),
+            stage,
+            location: location.trim(),
+            priorFunding: parsedPriorFunding,
+            askAmount: parsedAsk,
+            deck: deckUpload.meta,
+            financials: finUpload?.meta,
+          }),
+        });
+      } else {
+        // Fallback to standard FormData (e.g. offline dev without Supabase)
+        const fd = new FormData();
+        fd.append("founderName", founderName.trim());
+        fd.append("founderEmail", founderEmail.trim());
+        fd.append("linkedinUrl", linkedinUrl.trim());
+        fd.append("companyName", companyName.trim());
+        fd.append("website", website.trim());
+        fd.append("sector", sector);
+        fd.append("oneLinePitch", oneLinePitch.trim().slice(0, 60));
+        fd.append("stage", stage);
+        fd.append("location", location.trim());
+        if (parsedPriorFunding !== null) fd.append("priorFunding", String(parsedPriorFunding));
+        fd.append("askAmount", String(parsedAsk));
+        fd.append("deck", deck);
+        if (financials) fd.append("financials", financials);
+
+        res = await fetch("/api/submit-pitch", { method: "POST", body: fd });
+      }
+
       const data = (await res.json().catch(() => null)) as { ok?: boolean; id?: string; receivedAt?: string; error?: string } | null;
       if (!res.ok || !data?.ok) {
         setSubmitPhase(null);
@@ -139,7 +174,6 @@ export function FounderDashboard({
         return;
       }
 
-      setSubmitPhase("Running AI Math Gap analysis...");
       const receivedAt = data.receivedAt || new Date().toISOString();
       const locParts = location.split(",").map((s) => s.trim()).filter(Boolean);
       const parsedCountry = locParts.length >= 2 ? locParts[locParts.length - 1] : "India";
@@ -174,8 +208,8 @@ export function FounderDashboard({
         ...prev,
       ]);
 
-      setSubmitPhase("Pitch submitted successfully.");
-      await new Promise((r) => setTimeout(r, 700));
+      setSubmitPhase("Complete.");
+      await new Promise((r) => setTimeout(r, 600));
       setSuccessMsg(`Pitch submitted for ${companyName.trim()}.`);
       setCompanyName("");
       setWebsite("");
@@ -192,7 +226,6 @@ export function FounderDashboard({
     } catch {
       setError("Network error while submitting your pitch. Please try again.");
     } finally {
-      window.clearTimeout(phaseTimer);
       setSubmitting(false);
       setSubmitPhase(null);
     }
@@ -271,7 +304,7 @@ export function FounderDashboard({
         {showForm && submitting && submitPhase && (
           <div className="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
-              {submitPhase === "Pitch submitted successfully." ? (
+              {submitPhase === "Complete." ? (
                 <svg viewBox="0 0 24 24" className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>

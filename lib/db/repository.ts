@@ -319,6 +319,43 @@ export async function putFinancialFile(dealId: string, fileType: string, fileNam
   return putFile(dealId, fileType, fileName, mime, bytes, "pitch_decks");
 }
 
+export async function recordUploadedFile(
+  dealId: string,
+  fileType: string,
+  fileName: string,
+  mime: string,
+  storagePath: string
+): Promise<FileRow> {
+  need();
+  const row: FileRow = {
+    id: uuid(),
+    deal_id: dealId,
+    file_type: fileType,
+    file_name: fileName,
+    mime_type: mime || "application/octet-stream",
+    storage_path: storagePath,
+    raw_content: null,
+    created_at: now(),
+  };
+  if (driver() === "supabase") {
+    await sb(`/rest/v1/deal_files?deal_id=eq.${encodeURIComponent(dealId)}&file_type=eq.${encodeURIComponent(fileType)}`, {
+      method: "DELETE",
+      prefer: "return=minimal",
+    });
+    await sb(`/rest/v1/deal_files`, {
+      method: "POST",
+      ...json([row]),
+      prefer: "return=minimal",
+    });
+    return row;
+  }
+  await withDb((db) => {
+    db.files = db.files.filter((f) => !(f.deal_id === dealId && f.file_type === fileType));
+    db.files.push(row);
+  });
+  return row;
+}
+
 export async function listFiles(dealId?: string): Promise<FileRow[]> {
   need();
   if (driver() === "supabase") return sbSelect<FileRow>("deal_files", dealId ? `deal_id=eq.${encodeURIComponent(dealId)}&select=*` : "select=*");

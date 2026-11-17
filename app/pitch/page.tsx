@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLinks } from "@/components/links-store";
 import { DropdownSelect, cx } from "@/components/ui";
+import { uploadFileDirect } from "@/lib/direct-upload";
 import { FUND_NAME } from "@/lib/links";
 import { SECTORS } from "@/lib/types";
 
@@ -43,7 +44,9 @@ function PitchForm() {
   const [dragOver, setDragOver] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
-  const [submitPhase, setSubmitPhase] = useState<"Uploading files..." | "Running AI Math Gap analysis..." | "Pitch submitted successfully." | null>(null);
+  const [submitPhase, setSubmitPhase] = useState<
+    "Uploading secure documents to vault..." | "Analyzing financials..." | "Complete." | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<{ id: string; companyName: string; receivedAt: string } | null>(null);
 
@@ -63,23 +66,43 @@ function PitchForm() {
     if (!deck) return setError("Please upload your pitch deck as a PDF.");
 
     setSubmitting(true);
-    setSubmitPhase("Uploading files...");
-    const phaseTimer = window.setTimeout(() => {
-      setSubmitPhase((cur) => (cur === "Uploading files..." ? "Running AI Math Gap analysis..." : cur));
-    }, 900);
+    setSubmitPhase("Uploading secure documents to vault...");
     try {
-      const fd = new FormData();
-      fd.append("founderName", founderName.trim());
-      fd.append("founderEmail", founderEmail.trim());
-      fd.append("linkedinUrl", linkedinUrl.trim());
-      fd.append("companyName", companyName.trim());
-      fd.append("website", website.trim());
-      fd.append("sector", sector);
-      fd.append("askAmount", String(parsedAsk));
-      if (ref) fd.append("ref", ref);
-      fd.append("deck", deck);
+      const deckUpload = await uploadFileDirect(deck, "deck_pdf", companyName.trim());
+      setSubmitPhase("Analyzing financials...");
 
-      const res = await fetch("/api/submit-pitch", { method: "POST", body: fd });
+      let res: Response;
+      if (deckUpload.direct && deckUpload.meta) {
+        res = await fetch("/api/submit-pitch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            founderName: founderName.trim(),
+            founderEmail: founderEmail.trim(),
+            linkedinUrl: linkedinUrl.trim(),
+            companyName: companyName.trim(),
+            website: website.trim(),
+            sector,
+            askAmount: parsedAsk,
+            ref,
+            deck: deckUpload.meta,
+          }),
+        });
+      } else {
+        const fd = new FormData();
+        fd.append("founderName", founderName.trim());
+        fd.append("founderEmail", founderEmail.trim());
+        fd.append("linkedinUrl", linkedinUrl.trim());
+        fd.append("companyName", companyName.trim());
+        fd.append("website", website.trim());
+        fd.append("sector", sector);
+        fd.append("askAmount", String(parsedAsk));
+        if (ref) fd.append("ref", ref);
+        fd.append("deck", deck);
+
+        res = await fetch("/api/submit-pitch", { method: "POST", body: fd });
+      }
+
       const data = (await res.json().catch(() => null)) as { ok?: boolean; id?: string; receivedAt?: string; error?: string } | null;
       if (!res.ok || !data?.ok) {
         setSubmitPhase(null);
@@ -87,7 +110,6 @@ function PitchForm() {
         return;
       }
 
-      setSubmitPhase("Running AI Math Gap analysis...");
       const receivedAt = data.receivedAt || new Date().toISOString();
       await links.addInbound(
         {
@@ -109,13 +131,12 @@ function PitchForm() {
         [deck],
       );
 
-      setSubmitPhase("Pitch submitted successfully.");
-      await new Promise((r) => setTimeout(r, 650));
+      setSubmitPhase("Complete.");
+      await new Promise((r) => setTimeout(r, 600));
       setSubmitted({ id: data.id || "submitted", companyName: companyName.trim(), receivedAt });
     } catch {
       setError("Network error while submitting your pitch. Please try again.");
     } finally {
-      window.clearTimeout(phaseTimer);
       setSubmitting(false);
       setSubmitPhase(null);
     }
@@ -126,7 +147,7 @@ function PitchForm() {
       <div className="min-h-screen bg-slate-50 px-4 py-12 sm:px-6">
         <div className="mx-auto max-w-2xl rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
-            {submitPhase === "Pitch submitted successfully." ? (
+            {submitPhase === "Complete." ? (
               <svg viewBox="0 0 24 24" className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 6 9 17l-5-5" />
               </svg>
@@ -330,7 +351,7 @@ function PitchForm() {
                 </svg>
                 <span className="mt-2 text-sm font-medium text-slate-700">{deck ? deck.name : "Upload pitch deck PDF"}</span>
                 <span className="mt-0.5 text-xs text-slate-500">
-                  {deck ? `${(deck.size / 1024).toFixed(0)} KB · Click to replace` : "Drag & drop or click to browse (.pdf, up to 4.4 MB)"}
+                  {deck ? `${(deck.size / 1024).toFixed(0)} KB · Click to replace` : "Drag & drop or click to browse (.pdf, up to 100 MB)"}
                 </span>
                 <input
                   type="file"
