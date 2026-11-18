@@ -335,7 +335,7 @@ export function LandingPage() {
         {/* ===================================================================
             PRODUCT WORKFLOW: Restrained Sticky Scroll on Desktop, Stacked on Mobile
            =================================================================== */}
-        <section id="workflow" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
+        <section id="workflow" className="scroll-mt-20 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
@@ -356,7 +356,7 @@ export function LandingPage() {
         {/* ===================================================================
             CONFIRMED PRODUCT CAPABILITIES (Tabbed Below-the-Fold Previews)
            =================================================================== */}
-        <section id="capabilities" className="scroll-mt-16 border-b border-slate-200/80 bg-white py-16 sm:py-24">
+        <section id="capabilities" className="scroll-mt-20 border-b border-slate-200/80 bg-white py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <CapabilitiesInteractiveTabs />
           </div>
@@ -366,7 +366,7 @@ export function LandingPage() {
             AUTHENTIC TRUST SIGNALS: DATA HANDLING, ARCHITECTURE & PRIVACY
             Strictly factual implementation details: zero fake logos or fake badges
            =================================================================== */}
-        <section id="privacy" className="scroll-mt-16 border-b border-slate-200/80 bg-slate-950 py-16 text-white sm:py-24">
+        <section id="privacy" className="scroll-mt-20 border-b border-slate-200/80 bg-slate-950 py-16 text-white sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
@@ -473,7 +473,7 @@ export function LandingPage() {
             EMBEDDED CONVERSION FORM + FOUNDER CTA
             Connected directly to POST /api/access-request
            =================================================================== */}
-        <section id="request-workspace" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
+        <section id="request-workspace" className="scroll-mt-20 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
               {/* Left Column: Context & Founder Routing */}

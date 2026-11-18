@@ -563,9 +563,9 @@ export function CapabilitiesInteractiveTabs() {
                 type="button"
                 onClick={() =>
                   setLightbox({
-                    src: "/images/aarka/market-Intelligence.png",
-                    width: 1003,
-                    height: 851,
+                    src: "/images/aarka/market-momentum-map.png",
+                    width: 992,
+                    height: 658,
                     alt: "Market sector intelligence view comparing inbound deck activity across sectors.",
                     caption: "Market Overview (/sectors): Sector momentum calculated from your fund's own inbound decks and logged signals.",
                   })
@@ -575,10 +575,10 @@ export function CapabilitiesInteractiveTabs() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/images/aarka/market-Intelligence.png"
+                  src="/images/aarka/market-momentum-map.png"
                   alt="Market sector intelligence view"
-                  width={1003}
-                  height={851}
+                  width={992}
+                  height={658}
                   loading="lazy"
                   decoding="async"
                   className="block h-auto w-full object-contain"
@@ -614,9 +614,9 @@ export function CapabilitiesInteractiveTabs() {
                 type="button"
                 onClick={() =>
                   setLightbox({
-                    src: "/images/aarka/portfolio-command.png",
-                    width: 1007,
-                    height: 851,
+                    src: "/images/aarka/portfolio-overview.png",
+                    width: 1024,
+                    height: 555,
                     alt: "Portfolio view showing backed companies, cash runway months, and MIS reporting status.",
                     caption: "Portfolio Oversight (/portfolio): Runway watch, MIS report cadence, and open founder asks.",
                   })
@@ -626,10 +626,10 @@ export function CapabilitiesInteractiveTabs() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/images/aarka/portfolio-command.png"
+                  src="/images/aarka/portfolio-overview.png"
                   alt="Portfolio view showing backed companies and MIS reporting status"
-                  width={1007}
-                  height={851}
+                  width={1024}
+                  height={555}
                   loading="lazy"
                   decoding="async"
                   className="block h-auto w-full object-contain"
