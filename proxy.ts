@@ -45,7 +45,8 @@ function isPublicApi(pathname: string, method: string, hasPitchToken: boolean): 
     (pathname === "/api/founder/dataroom" ||
       pathname === "/api/founder/file" ||
       pathname === "/api/founder/upload" ||
-      pathname === "/api/founder/metrics")
+      pathname === "/api/founder/metrics" ||
+      pathname === "/api/founder/support")
   ) {
     return true;
   }

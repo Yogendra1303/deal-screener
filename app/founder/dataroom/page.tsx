@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { DropdownSelect, cx } from "@/components/ui";
+import { FounderSupportThread } from "@/components/founder-support-thread";
 
 interface FounderPitch {
   id: string;
@@ -661,6 +662,14 @@ function FounderDataRoomContent() {
             </div>
           </div>
         </div>
+
+        {/* Two-Way Founder Support Desk & Partner Threads */}
+        <FounderSupportThread
+          dealId={selected.id}
+          companyName={selected.companyName}
+          token={token}
+          founderName={selected.founderName}
+        />
       </div>
     </div>
   );

@@ -49,8 +49,21 @@ export interface DocRequest {
   reminders?: string[];
 }
 
-export type AskTopic = "Intro to a customer" | "Intro to an investor" | "Advice" | "Template or playbook";
-export const ASK_TOPICS: AskTopic[] = ["Intro to a customer", "Intro to an investor", "Advice", "Template or playbook"];
+export type AskTopic =
+  | "Intro to a customer"
+  | "Intro to an investor"
+  | "Hiring & Talent"
+  | "Advice"
+  | "Template or playbook"
+  | "Office hours";
+export const ASK_TOPICS: AskTopic[] = [
+  "Intro to a customer",
+  "Intro to an investor",
+  "Hiring & Talent",
+  "Advice",
+  "Template or playbook",
+  "Office hours",
+];
 
 /** A founder asking the fund for help. */
 export interface FounderAsk {

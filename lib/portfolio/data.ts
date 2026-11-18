@@ -386,8 +386,8 @@ export const RESOURCES: Resource[] = [
   { id: "pricing-multi", kind: "Playbook", title: "Pricing for customers with many locations", format: "Document", description: "Per-site vs per-seat vs platform fee, with worked examples." },
   { id: "series-a-room", kind: "Playbook", title: "Getting ready for a Series A", format: "Checklist", description: "What goes in the data room and which numbers investors will check first." },
   { id: "cash-plan", kind: "Playbook", title: "When runway drops under 12 months", format: "Spreadsheet", description: "A cash plan with three scenarios and the decisions each one triggers." },
-  { id: "perk-cloud", kind: "Partner perk", title: "Cloud hosting credits (sample)", format: "Perk", description: "Sample entry. A real fund would list its actual partner offers here." },
-  { id: "perk-legal", kind: "Partner perk", title: "Discounted legal review of term sheets (sample)", format: "Perk", description: "Sample entry. A real fund would list its actual partner offers here." },
+  { id: "perk-cloud", kind: "Partner perk", title: "Cloud infrastructure credits (AWS / GCP / Vercel)", format: "Up to $100K credits", description: "Request startup infrastructure credits for portfolio and shortlisted founders directly through the platform desk." },
+  { id: "perk-legal", kind: "Partner perk", title: "Term sheet & cap table legal review", format: "Preferred counsel rates", description: "Fixed-fee SAFE, SHA, and ESOP documentation review through Aarka's vetted legal partner network." },
   { id: "hours-partner", kind: "Office hours", title: "Partner office hours", format: "Every other Thursday, 30 minutes", description: "Book time with a partner on pricing, fundraising or a hard customer conversation." },
   { id: "hours-peer", kind: "Office hours", title: "Founder peer session: selling into the Gulf", format: "Quarterly, online", description: "Founders in the portfolio share what worked. The fund hosts; founders lead." },
 ];
