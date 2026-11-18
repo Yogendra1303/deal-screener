@@ -18,12 +18,14 @@ import {
   fmtShort,
   fundHealth,
   missingItems,
+  nextReportMonth,
   portfolioFlags,
   reportStatus,
   runwayMonths,
   stripMonths,
   type PortfolioFlag,
 } from "@/lib/portfolio/health";
+import { parseSheet } from "@/lib/sheet";
 import { portfolioFacts } from "@/lib/provenance";
 import { usd } from "@/lib/rules";
 import { portfolioContacts } from "@/lib/team";
@@ -360,13 +362,13 @@ function Metrics({ c, flags, facts }: { c: PortfolioCompany; flags: PortfolioFla
                               {bad && <span className="block text-[11px] text-amber-800">MIS shows {fmtValue(c, m.key, n.inFile!)}</span>}
                             </span>
                           ) : (
-                            <span className="text-slate-400">{r.receivedAt ? "not sent" : "—"}</span>
+                            <span className="text-slate-400">{r.receivedAt ? "not sent" : "-"}</span>
                           )}
                         </td>
                       );
                     })}
                     <td className={cx("px-4 py-2 text-right tabular-nums", runway != null && runway < 6 && "font-medium text-red-700")}>
-                      {runway != null ? `${runway.toFixed(1)} mo` : "—"}
+                      {runway != null ? `${runway.toFixed(1)} mo` : "-"}
                     </td>
                     <td className="px-4 py-2 text-xs text-slate-600">{CELL_LABEL[status]}</td>
                   </tr>
@@ -387,13 +389,13 @@ function Metrics({ c, flags, facts }: { c: PortfolioCompany; flags: PortfolioFla
                           <span className="ml-1 text-[11px] text-slate-400">p.{claim.page}</span>
                         </>
                       ) : (
-                        "—"
+                        "-"
                       )}
                     </td>
                   );
                 })}
                 <td className="px-4 py-2 text-right tabular-nums text-slate-700">
-                  {c.pitch.claims.cash && c.pitch.claims.burn ? `${(c.pitch.claims.cash.value / c.pitch.claims.burn.value).toFixed(1)} mo` : "—"}
+                  {c.pitch.claims.cash && c.pitch.claims.burn ? `${(c.pitch.claims.cash.value / c.pitch.claims.burn.value).toFixed(1)} mo` : "-"}
                 </td>
                 <td className="px-4 py-2 text-xs text-slate-500">Pitch deck</td>
               </tr>
@@ -475,11 +477,199 @@ function Documents({ c }: { c: PortfolioCompany }) {
   );
 }
 
+function PartnerMisIngestion({ c }: { c: PortfolioCompany }) {
+  const p = usePortfolio();
+  const nextMonth = nextReportMonth(c, p.today);
+  const [selectedMonth, setSelectedMonth] = useState(nextMonth);
+  const [fileName, setFileName] = useState("");
+  const [values, setValues] = useState<Partial<Record<MetricKey, string>>>({});
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  const availableMonths = useMemo(() => {
+    const months = stripMonths(p.today, 12);
+    return [...months].reverse();
+  }, [p.today]);
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    setParseError(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target?.result as string;
+        if (!text) return;
+        const parsed = parseSheet(text);
+        if (parsed.length > 0) {
+          const matched = parsed.find((r) => r.month === selectedMonth) || parsed.at(-1);
+          if (matched) {
+            if (matched.month) setSelectedMonth(matched.month);
+            setValues({
+              revenue: matched.revenue != null ? String(matched.revenue) : "",
+              burn: matched.netBurn != null ? String(matched.netBurn) : "",
+              cash: matched.cash != null ? String(matched.cash) : "",
+              customers: matched.customers != null ? String(matched.customers) : "",
+            });
+            setStatusNotice(`Loaded CSV row for ${fmtMonth(matched.month)}: prefilled verified metrics.`);
+          }
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Could not parse CSV. You can enter metrics manually.";
+        setParseError(msg);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function handleRecord(e: React.FormEvent) {
+    e.preventDefault();
+    const parsedNums: Partial<Record<MetricKey, number>> = {};
+    for (const [k, raw] of Object.entries(values) as [MetricKey, string][]) {
+      const clean = (raw || "").replace(/[,\s]/g, "");
+      if (/^-?\d+(\.\d+)?$/.test(clean)) {
+        parsedNums[k] = Number(clean);
+      }
+    }
+
+    if (Object.keys(parsedNums).length === 0 && !fileName) {
+      setParseError("Please enter at least one metric or select a monthly CSV file.");
+      return;
+    }
+
+    p.submitReport(c.id, selectedMonth, parsedNums, fileName || `MIS-${selectedMonth}.csv`);
+    p.acknowledge(c.id, selectedMonth);
+    setStatusNotice(`Recorded ${fmtMonth(selectedMonth)} MIS successfully. Runway, charts, and reporting health are now updated.`);
+    setParseError(null);
+  }
+
+  return (
+    <Card className="overflow-hidden border-indigo-100 bg-white shadow-2xs">
+      <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50/70 to-slate-50 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Direct Monthly MIS Ingestion</h2>
+            <p className="text-xs text-slate-600">
+              Upload a monthly financial CSV received from {c.name} or enter verified figures to refresh portfolio metrics, runway, and health in real time.
+            </p>
+          </div>
+          <span className="rounded bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-800">
+            Self-Serve MIS Intake
+          </span>
+        </div>
+      </div>
+
+      <form onSubmit={handleRecord} className="p-5 space-y-4">
+        {statusNotice && (
+          <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-medium text-emerald-800">
+            <span>{statusNotice}</span>
+            <button type="button" onClick={() => setStatusNotice(null)} className="cursor-pointer font-semibold text-emerald-700 underline">
+              Dismiss
+            </button>
+          </div>
+        )}
+        {parseError && (
+          <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-medium text-rose-800">
+            <span>{parseError}</span>
+            <button type="button" onClick={() => setParseError(null)} className="cursor-pointer font-semibold text-rose-700 underline">
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700">Reporting Month</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xs"
+            >
+              {availableMonths.map((m) => (
+                <option key={m} value={m}>
+                  {fmtMonth(m)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-slate-700">CSV Sheet Upload (Optional auto-fill)</label>
+            <input
+              type="file"
+              accept=".csv,.tsv,.txt"
+              onChange={handleFileUpload}
+              className="mt-1 block w-full text-xs text-slate-500 file:mr-2 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <label className="block text-[11px] font-medium text-slate-600">Revenue ({c.currency})</label>
+            <input
+              type="text"
+              placeholder="e.g. 85000"
+              value={values.revenue ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, revenue: e.target.value }))}
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs tabular-nums text-slate-800"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-slate-600">Net Burn ({c.currency})</label>
+            <input
+              type="text"
+              placeholder="e.g. 42000"
+              value={values.burn ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, burn: e.target.value }))}
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs tabular-nums text-slate-800"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-slate-600">Cash in Bank ({c.currency})</label>
+            <input
+              type="text"
+              placeholder="e.g. 650000"
+              value={values.cash ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, cash: e.target.value }))}
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs tabular-nums text-slate-800"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-slate-600">Active Customers</label>
+            <input
+              type="text"
+              placeholder="e.g. 14"
+              value={values.customers ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, customers: e.target.value }))}
+              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs tabular-nums text-slate-800"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[11px] text-slate-500">
+            {fileName ? `File attached: ${fileName}` : "No file attached (manual entry)"}
+          </span>
+          <button
+            type="submit"
+            className="cursor-pointer rounded-md bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-slate-800"
+          >
+            Record MIS &amp; Update Health
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
 function Requests({ c }: { c: PortfolioCompany }) {
   const p = usePortfolio();
   const reports = [...c.reports].reverse();
   return (
     <div className="space-y-6">
+      <PartnerMisIngestion c={c} />
       <Card className="overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-3">
           <h2 className="text-sm font-semibold text-slate-900">Monthly report</h2>
@@ -522,10 +712,10 @@ function Requests({ c }: { c: PortfolioCompany }) {
                           Mark as read
                         </Button>
                       ) : (
-                        "—"
+                        "-"
                       )}
                     </td>
-                    <td className="px-4 py-2 text-xs text-slate-500">{(r.reminders ?? []).map(fmtShort).join(", ") || "—"}</td>
+                    <td className="px-4 py-2 text-xs text-slate-500">{(r.reminders ?? []).map(fmtShort).join(", ") || "-"}</td>
                     <td className="px-4 py-2 text-right">
                       {owes && <ReminderButton itemKey={`${c.id}:${r.month}`} sentToday={(r.reminders ?? []).includes(p.today)} />}
                     </td>

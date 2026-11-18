@@ -45,6 +45,7 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
   const [focusedLane, setFocusedLane] = useState<DealStatus | null>(null);
   const [expanded, setExpanded] = useState<Partial<Record<DealStatus, boolean>>>({});
   const [collapsed, setCollapsed] = useState<Partial<Record<DealStatus, boolean>>>({ Passed: true });
+  const [pendingPass, setPendingPass] = useState<{ id: string; name: string; target: "Passed" | "On hold" } | null>(null);
   const justDraggedRef = useRef(false);
 
   // Restore expanded/collapsed/focused board lanes across Back navigation
@@ -70,20 +71,42 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
     }
   }, [focusedLane, expanded, collapsed]);
 
-  async function moveDeal(id: string, target: DealStatus) {
+  async function moveDeal(id: string, target: DealStatus, reason?: string) {
     setSavingId(id);
     store.setStatus(id, target);
+    if ((target === "Passed" || target === "On hold") && reason) {
+      store.setDecision(id, {
+        status: target,
+        reason: reason as any,
+        note: `Moved to ${target} from Pipeline Kanban. Reason: ${reason}`,
+        trigger: "Quarterly re-engagement check",
+        checkOn: null,
+        by: "Partner",
+        at: new Date().toISOString().slice(0, 10),
+      });
+    }
     setCollapsed((prev) => ({ ...prev, [target]: false }));
     try {
       await fetch(`/api/deals/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: target }),
+        body: JSON.stringify({
+          status: target,
+          ...(reason ? { decision_json: { status: target, reason, at: new Date().toISOString() } } : {}),
+        }),
       });
     } catch {
       // store already persisted optimistically
     } finally {
       setSavingId(null);
+    }
+  }
+
+  function handleStageChange(id: string, name: string, target: DealStatus) {
+    if (target === "Passed" || target === "On hold") {
+      setPendingPass({ id, name, target });
+    } else {
+      void moveDeal(id, target);
     }
   }
 
@@ -144,7 +167,7 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                   setDraggingId(null);
                   if (dealId) {
                     const found = rows.find((r) => r.id === dealId);
-                    if (found && found.status !== lane.status) void moveDeal(dealId, lane.status);
+                    if (found && found.status !== lane.status) handleStageChange(dealId, found.name, lane.status);
                   }
                 }}
                 className={cx(
@@ -202,7 +225,7 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
               setDraggingId(null);
               if (dealId) {
                 const found = rows.find((r) => r.id === dealId);
-                if (found && found.status !== lane.status) void moveDeal(dealId, lane.status);
+                if (found && found.status !== lane.status) handleStageChange(dealId, found.name, lane.status);
               }
             }}
             className={cx(
@@ -378,7 +401,7 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                                 size="xs"
                                 align="right"
                                 value={r.status}
-                                onChange={(s) => void moveDeal(r.id, s)}
+                                onChange={(s) => handleStageChange(r.id, r.name, s)}
                                 options={LANES.map((opt) => opt.status)}
                               />
                             </div>
@@ -406,6 +429,73 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
           </section>
         );
       })}
+
+      {pendingPass && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
+        >
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                  {pendingPass.target === "Passed" ? "Pass Archive" : "On Hold Archive"}
+                </span>
+                <h3 className="mt-1.5 text-base font-semibold text-slate-900">
+                  Record Reason for {pendingPass.name}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Select the primary rationale so the team can track pass patterns and schedule re-engagement triggers.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {[
+                "Unit economics",
+                "TAM / Market size",
+                "Valuation / Terms",
+                "Outside mandate",
+                "Competitive moats",
+                "Traction / Timing",
+              ].map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => {
+                    void moveDeal(pendingPass.id, pendingPass.target, reason);
+                    setPendingPass(null);
+                  }}
+                  className="cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-900 hover:bg-slate-900 hover:text-white"
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void moveDeal(pendingPass.id, pendingPass.target);
+                  setPendingPass(null);
+                }}
+                className="cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-800"
+              >
+                Skip reason &amp; move
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingPass(null)}
+                className="cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

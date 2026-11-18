@@ -3,7 +3,7 @@
  * Guarantees finite numbers (never NaN or Infinity) for any valid user input.
  */
 
-export type RoundInstrument = "priced" | "post_safe";
+export type RoundInstrument = "priced" | "post_safe" | "pre_safe";
 
 export interface CapTableInput {
   instrument: RoundInstrument;
@@ -66,8 +66,15 @@ export function calculateCapTable(input: CapTableInput): CapTableOutput {
     totalNewInvestorPct = clamp((roundSize / postMoneyUsd) * 100, 0, 80);
     fundOwnershipPct = clamp((fundCheck / postMoneyUsd) * 100, 0, totalNewInvestorPct);
     optionPoolPct = optionPoolTarget;
+  } else if (input.instrument === "pre_safe") {
+    // Classic Pre-Money SAFE: Pre-money cap + Round Size = Implied Post-Money Valuation
+    const effectivePreCap = valuation * (1 - discount / 100);
+    postMoneyUsd = effectivePreCap + roundSize;
+    totalNewInvestorPct = postMoneyUsd > 0 ? clamp((roundSize / postMoneyUsd) * 100, 0, 80) : 0;
+    fundOwnershipPct = postMoneyUsd > 0 ? clamp((fundCheck / postMoneyUsd) * 100, 0, totalNewInvestorPct) : 0;
+    optionPoolPct = optionPoolTarget;
   } else {
-    // Priced equity round: Post-money = Pre-money + Round size; option pool carved from pre-money (founder shuffle)
+    // Priced equity round: Post-money = Pre-money + Round size
     postMoneyUsd = valuation + roundSize;
     totalNewInvestorPct = postMoneyUsd > 0 ? clamp((roundSize / postMoneyUsd) * 100, 0, 80) : 0;
     fundOwnershipPct = postMoneyUsd > 0 ? clamp((fundCheck / postMoneyUsd) * 100, 0, totalNewInvestorPct) : 0;

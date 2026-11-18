@@ -391,13 +391,13 @@ export function CompanyCard({ c, today }: { c: PortfolioCompany; today: string }
         <div>
           <dt className="text-slate-500">Cash lasts</dt>
           <dd className={cx("mt-0.5 font-semibold tabular-nums", !rw ? "text-slate-400" : rw.months < 6 ? "text-red-700" : rw.months < WATCH_RUNWAY_MONTHS ? "text-amber-800" : "text-slate-900")}>
-            {rw ? `${rw.months.toFixed(1)} mo` : "—"}
+            {rw ? `${rw.months.toFixed(1)} mo` : "-"}
           </dd>
         </div>
         <div className="min-w-0">
           <dt className="text-slate-500">Revenue</dt>
           <dd className="mt-0.5 truncate font-semibold tabular-nums text-slate-900" title={last ? fmtMonth(last.month) : undefined}>
-            {last ? fmtMoney(last.numbers.revenue!.value, c.currency) : "—"}
+            {last ? fmtMoney(last.numbers.revenue!.value, c.currency) : "-"}
           </dd>
         </div>
         <div>
@@ -405,8 +405,13 @@ export function CompanyCard({ c, today }: { c: PortfolioCompany; today: string }
           <dd className={cx("mt-0.5 font-semibold", missing.length ? "text-red-700" : "text-emerald-700")}>{missing.length ? `${missing.length} owed` : "Up to date"}</dd>
         </div>
       </dl>
-      {(reportMissing > 0 || conflicts > 0) && (
+      {(reportMissing > 0 || conflicts > 0 || (rw && rw.months < WATCH_RUNWAY_MONTHS)) && (
         <div className="mt-3 flex flex-wrap gap-1.5">
+          {rw && rw.months < WATCH_RUNWAY_MONTHS && (
+            <Flag tone={rw.months < 6 ? "urgent" : "watch"}>
+              {`Runway Radar: ${rw.months.toFixed(1)} mo left`}
+            </Flag>
+          )}
           {reportMissing > 0 && <Flag tone="urgent">{reportMissing === 1 ? "MIS report missing" : `${reportMissing} MIS reports missing`}</Flag>}
           {conflicts > 0 && <Flag tone="watch">{conflicts === 1 ? "A number doesn't match" : `${conflicts} numbers don't match`}</Flag>}
         </div>

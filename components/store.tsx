@@ -216,6 +216,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
     deleteDeck(id);
+    void fetch(`/api/deals/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
   }, []);
 
   const setRules = useCallback((r: FundRules) => {

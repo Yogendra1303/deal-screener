@@ -149,4 +149,150 @@ export function openPrintableReport(title: string, subtitle: string, bodyHtml: s
   return true;
 }
 
+import type { DealResult } from "./types";
+
+export interface ICMemoArgs {
+  deal: DealResult;
+  status?: string;
+  leadPartner?: string;
+}
+
+export function exportICMemoPdf({ deal, status = "Under Review", leadPartner = "Investment Team" }: ICMemoArgs): boolean {
+  const f = deal.form;
+  const askStr = f.amountUsd ? `$${(f.amountUsd / 1_000_000).toFixed(2)}M` : "Not stated";
+  const founderNames = f.founders?.map((x) => x.name).join(", ") || "Founders on file";
+  const conflictCount = deal.flags.filter((x) => x.kind === "conflict").length;
+
+  const scoreRows = deal.scores
+    .map((s) => {
+      const badgeClass =
+        s.level === "Strong"
+          ? "badge badge-green"
+          : s.level === "Mixed"
+            ? "badge badge-amber"
+            : "badge badge-red";
+      return `<tr>
+        <td style="font-weight:600;">${escapeHtml(s.label)}</td>
+        <td><span class="${badgeClass}">${escapeHtml(s.level)}</span></td>
+        <td style="color:#475569;">${escapeHtml(s.reason)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const flagRows = deal.flags
+    .map((fl) => {
+      const isConflict = fl.kind === "conflict";
+      const sourceDetails = fl.sources
+        .map((s) => `${escapeHtml(s.label)}: <strong>${escapeHtml(s.value)}</strong>${s.page ? ` (Slide p.${s.page})` : ""}`)
+        .join(" vs. ");
+      return `<tr>
+        <td><span class="badge ${isConflict ? "badge-red" : "badge-amber"}">${escapeHtml(isConflict ? "Conflict" : "Missing")}</span></td>
+        <td style="font-weight:600;">${escapeHtml(fl.title)}</td>
+        <td style="color:#475569;">${escapeHtml(fl.detail)}<div style="margin-top:3px;font-size:11px;color:#64748b;">${sourceDetails}</div></td>
+      </tr>`;
+    })
+    .join("");
+
+  const bodyHtml = `
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#2563eb;">Investment Committee Diligence Pack</div>
+          <h2 style="margin:4px 0 0;font-size:20px;border:none;padding:0;color:#0f172a;text-transform:none;letter-spacing:normal;">${escapeHtml(f.companyName)}</h2>
+          <div style="font-size:12px;color:#475569;margin-top:2px;">
+            ${escapeHtml(f.sector || "B2B Software")} &middot; ${escapeHtml(f.country || "Global")} &middot; Founders: ${escapeHtml(founderNames)}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <span class="badge ${deal.band === "Priority" ? "badge-green" : deal.band === "Review" ? "badge-amber" : "badge-red"}" style="font-size:12px;padding:4px 10px;">
+            Band: ${escapeHtml(deal.band)}
+          </span>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">Workflow Status: <strong>${escapeHtml(status)}</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <h2>1. Executive Summary &amp; Investment Thesis</h2>
+    <p style="font-size:13px;line-height:1.6;color:#334155;">
+      ${escapeHtml(deal.ai.summary || `${f.companyName} is a ${f.sector} startup raising ${askStr} in Seed financing.`)}
+    </p>
+
+    <div class="grid">
+      <div class="kpi">
+        <div class="kpi-label">Round Target</div>
+        <div class="kpi-val">${escapeHtml(askStr)}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Screener Recommendation</div>
+        <div class="kpi-val" style="color:${deal.band === "Priority" ? "#047857" : deal.band === "Review" ? "#b45309" : "#b91c1c"};">${escapeHtml(deal.band)}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Math Gap Flags</div>
+        <div class="kpi-val" style="color:${conflictCount > 0 ? "#b91c1c" : "#047857"};">${conflictCount} Detected</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Lead Partner</div>
+        <div class="kpi-val" style="font-size:14px;padding-top:2px;">${escapeHtml(leadPartner)}</div>
+      </div>
+    </div>
+
+    <h2>2. Deterministic Financial Cross-Check &amp; Math Gap Audit</h2>
+    <p style="font-size:12px;color:#64748b;margin:0 0 8px;">
+      Cross-checks compare founder pitch deck slide statements against raw monthly CSV rows. Discrepancies exceeding 10% are flagged deterministically.
+    </p>
+    ${deal.flags.length > 0 ? `<table>
+      <thead>
+        <tr>
+          <th style="width:90px;">Type</th>
+          <th style="width:180px;">Metric</th>
+          <th>Diligence Detail &amp; Provenance</th>
+        </tr>
+      </thead>
+      <tbody>${flagRows}</tbody>
+    </table>` : `<p style="font-size:13px;color:#047857;">All stated slide claims corroborate with the provided monthly numbers sheet without math discrepancies.</p>`}
+
+    <h2>3. Institutional Scorecard &amp; Rubric Assessment</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:140px;">Dimension</th>
+          <th style="width:110px;">Rating</th>
+          <th>Evidence &amp; Analysis</th>
+        </tr>
+      </thead>
+      <tbody>${scoreRows}</tbody>
+    </table>
+
+    <h2>4. Investment Committee Sign-off &amp; Decision Record</h2>
+    <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#ffffff;margin-top:8px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;">
+        <div>
+          <div style="color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;">IC Decision</div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a;margin-top:2px;">${escapeHtml(status)}</div>
+        </div>
+        <div>
+          <div style="color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;">Review Date</div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a;margin-top:2px;">${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
+        </div>
+      </div>
+      <div style="margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;border-top:1px dashed #cbd5e1;padding-top:16px;">
+        <div>
+          <div style="border-bottom:1px solid #0f172a;width:180px;height:24px;"></div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">Lead Partner Signature</div>
+        </div>
+        <div>
+          <div style="border-bottom:1px solid #0f172a;width:180px;height:24px;"></div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">Managing Partner Sign-off</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return openPrintableReport(
+    `IC Diligence Memo: ${f.companyName}`,
+    `${f.sector || "Startup"} Seed Round Review &middot; Aarka Fund I`,
+    bodyHtml,
+  );
+}
+
 export { escapeHtml };

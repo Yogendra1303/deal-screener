@@ -19,7 +19,7 @@ import { FounderOutreachModal } from "@/components/founder-outreach-modal";
 import { ICVotingPanel } from "@/components/ic-voting-panel";
 import { PdfSlideViewer } from "@/components/pdf-slide-viewer";
 import { VCMetricsPanel } from "@/components/vc-metrics-panel";
-import { escapeHtml, openPrintableReport } from "@/lib/export";
+import { escapeHtml, exportICMemoPdf, openPrintableReport } from "@/lib/export";
 import { useStore } from "@/components/store";
 import { useWorkspace } from "@/components/workspace";
 import {
@@ -61,6 +61,12 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
   const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "overview");
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [pdfViewerPage, setPdfViewerPage] = useState(1);
+
+  const openSlide = (page: number) => {
+    setPdfViewerPage(Math.max(1, page));
+    setPdfViewerOpen(true);
+  };
 
   useEffect(() => {
     if (initial && TABS.includes(initial)) {
@@ -159,47 +165,25 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
           </button>
           <button
             type="button"
-            onClick={() => {
-              const flagRows = deal.flags
-                .map(
-                  (fl) =>
-                    `<tr><td><span class="badge ${fl.kind === "conflict" ? "badge-red" : "badge-amber"}">${escapeHtml(fl.kind)}</span></td><td><strong>${escapeHtml(fl.title)}</strong><br/>${escapeHtml(fl.detail)}</td></tr>`,
-                )
-                .join("");
-              const scoreRows = deal.scores
-                .map(
-                  (sc) =>
-                    `<tr><td><strong>${escapeHtml(sc.label)}</strong></td><td><span class="badge">${escapeHtml(sc.level)}</span></td><td>${escapeHtml(sc.reason)}</td></tr>`,
-                )
-                .join("");
-              const body = `
-                <div class="grid">
-                  <div class="kpi"><div class="kpi-label">Stage</div><div class="kpi-val">${escapeHtml(f.stage)}</div></div>
-                  <div class="kpi"><div class="kpi-label">Round Ask</div><div class="kpi-val">${escapeHtml(f.amountUsd ? usd(f.amountUsd) : "—")}</div></div>
-                  <div class="kpi"><div class="kpi-label">Sector</div><div class="kpi-val">${escapeHtml(f.sector)}</div></div>
-                  <div class="kpi"><div class="kpi-label">Band / Status</div><div class="kpi-val">${escapeHtml(band)} · ${escapeHtml(store.statusOf(deal.id))}</div></div>
-                </div>
-                <h2>Executive Summary</h2>
-                <p>${escapeHtml(deal.ai?.summary || deal.record.oneLiner)}</p>
-                <h2>Investment Scorecard</h2>
-                <table><thead><tr><th>Dimension</th><th>Rating</th><th>Evidence</th></tr></thead><tbody>${scoreRows}</tbody></table>
-                <h2>Automated Math &amp; Verification Checks (${deal.flags.length})</h2>
-                ${deal.flags.length ? `<table><thead><tr><th>Type</th><th>Finding</th></tr></thead><tbody>${flagRows}</tbody></table>` : `<p>All automated checks passed with zero discrepancies above 10%.</p>`}
-              `;
-              openPrintableReport(`IC Diligence Memo: ${f.companyName}`, `${f.sector} · ${f.stage} · ${f.country}`, body);
-            }}
-            className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            onClick={() =>
+              exportICMemoPdf({
+                deal,
+                status: store.statusOf(deal.id),
+                leadPartner: links.ownerOf(deal.id) || w.me || "Partner",
+              })
+            }
+            className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 shadow-2xs"
           >
-            Export Memo
+            Export IC Memo PDF
           </button>
           {deckUrl && (
             <>
               <button
                 type="button"
-                onClick={() => setPdfViewerOpen(true)}
-                className="cursor-pointer rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-800 transition-colors hover:bg-indigo-100"
+                onClick={() => openSlide(1)}
+                className="cursor-pointer rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-800 transition-colors hover:bg-indigo-100 shadow-2xs"
               >
-                Side-by-Side PDF
+                Review Slides
               </button>
               <a href={deckUrl} target="_blank" rel="noreferrer" className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
                 Open deck
@@ -267,6 +251,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
           deal={deal}
           deckUrl={deckUrl}
           facts={facts}
+          initialPage={pdfViewerPage}
         />
       )}
       {tab === "numbers" && (
@@ -279,9 +264,9 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
             defaultValuationUsd={deal.record.round.valuation.amount}
           />
           <FactsTable facts={facts} company={company} />
-          {deal.flags.length > 0 && <Flags flags={deal.flags} deckUrl={deckUrl} />}
+          {deal.flags.length > 0 && <Flags flags={deal.flags} deckUrl={deckUrl} onOpenSlide={openSlide} />}
           {deal.sheet ? <Sheet deal={deal} /> : <Card className="p-5 text-sm text-slate-600">The founder didn&apos;t send a monthly numbers sheet.</Card>}
-          <Record deal={deal} deckUrl={deckUrl} groups={["Traction", "Round", "Company"]} title="Everything the deck says" />
+          <Record deal={deal} deckUrl={deckUrl} groups={["Traction", "Round", "Company"]} title="Everything the deck says" onOpenSlide={openSlide} />
         </div>
       )}
       {tab === "diligence" && <DiligenceChecklist deal={deal} />}
@@ -399,7 +384,7 @@ function Summary({ deal }: { deal: DealResult }) {
   );
 }
 
-function Flags({ flags, deckUrl }: { flags: Flag[]; deckUrl: string | null }) {
+function Flags({ flags, deckUrl, onOpenSlide }: { flags: Flag[]; deckUrl: string | null; onOpenSlide?: (page: number) => void }) {
   return (
     <Card className="p-5">
       <SectionTitle>Issues to check</SectionTitle>
@@ -431,7 +416,7 @@ function Flags({ flags, deckUrl }: { flags: Flag[]; deckUrl: string | null }) {
                     <div key={j} className="rounded-md bg-white p-2.5 text-sm ring-1 ring-slate-200">
                       <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
                         <span>{s.label}</span>
-                        {s.page ? <PageLink url={deckUrl} page={s.page} quote={s.quote} /> : null}
+                        {s.page ? <PageLink url={deckUrl} page={s.page} quote={s.quote} onOpenSlide={onOpenSlide} /> : null}
                       </div>
                       <div className="mt-0.5 font-medium text-slate-900">{s.value}</div>
                       {s.quote && <div className="mt-1 text-xs italic text-slate-500">“{s.quote}”</div>}
@@ -534,7 +519,19 @@ const money = (label: string, f: MoneyFactT): Row => ({
   quote: f.quote,
 });
 
-function Record({ deal, deckUrl, groups: only, title = "From the deck" }: { deal: DealResult; deckUrl: string | null; groups: string[]; title?: string }) {
+function Record({
+  deal,
+  deckUrl,
+  groups: only,
+  title = "From the deck",
+  onOpenSlide,
+}: {
+  deal: DealResult;
+  deckUrl: string | null;
+  groups: string[];
+  title?: string;
+  onOpenSlide?: (page: number) => void;
+}) {
   const r = deal.record;
   const groups: { name: string; rows: Row[] }[] = [
     {
@@ -608,7 +605,7 @@ function Record({ deal, deckUrl, groups: only, title = "From the deck" }: { deal
                       {row.value ?? <span className="italic text-slate-400">Not stated</span>}
                     </td>
                     <td className="w-14 py-1.5 text-right">
-                      <PageLink url={deckUrl} page={row.page} quote={row.quote} />
+                      <PageLink url={deckUrl} page={row.page} quote={row.quote} onOpenSlide={onOpenSlide} />
                     </td>
                   </tr>
                 ))}

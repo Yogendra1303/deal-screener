@@ -201,9 +201,33 @@ export function SectionTitle({ children, right }: { children: React.ReactNode; r
   );
 }
 
-export function PageLink({ url, page, quote }: { url: string | null; page?: number | null; quote?: string | null }) {
-  if (!page) return <span className="text-slate-400">—</span>;
+export function PageLink({
+  url,
+  page,
+  quote,
+  onOpenSlide,
+}: {
+  url: string | null;
+  page?: number | null;
+  quote?: string | null;
+  onOpenSlide?: (page: number) => void;
+}) {
+  if (!page) return <span className="text-slate-400">-</span>;
   const label = `p. ${page}`;
+
+  if (onOpenSlide) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpenSlide(page)}
+        title={quote ? `“${quote}” · Click to view in side-by-side deck reader` : `Jump to slide page ${page}`}
+        className="cursor-pointer font-medium text-blue-600 underline decoration-blue-200 underline-offset-2 hover:text-blue-800 hover:decoration-blue-500"
+      >
+        {label}
+      </button>
+    );
+  }
+
   if (!url)
     return (
       <span className="text-slate-500" title={quote ?? undefined}>

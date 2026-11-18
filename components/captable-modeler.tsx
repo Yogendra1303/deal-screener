@@ -42,6 +42,7 @@ export function CapTableModeler({ dealId, companyName, defaultAskUsd, defaultVal
   const baseline = useMemo(() => defaultInput(defaultAskUsd, defaultValuationUsd), [defaultAskUsd, defaultValuationUsd]);
   const [input, setInput] = useState<CapTableInput>(baseline);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [copiedNotice, setCopiedNotice] = useState(false);
 
   useEffect(() => {
     let localAll: Record<string, CapTableInput> | null = null;
@@ -85,6 +86,25 @@ export function CapTableModeler({ dealId, companyName, defaultAskUsd, defaultVal
     }
   }
 
+  function copySchedule() {
+    const summary = [
+      `Aarka Cap Table & Dilution Schedule · ${companyName}`,
+      `Instrument: ${input.instrument === "post_safe" ? "YC Post-Money SAFE" : input.instrument === "pre_safe" ? "Pre-Money SAFE" : "Priced Equity"}`,
+      `Implied Post-Money Valuation: ${fmtCompactUsd(out.postMoneyUsd)}`,
+      `Round Raise: ${fmtCompactUsd(input.roundSizeUsd)} | Aarka Check: ${fmtCompactUsd(input.fundCheckUsd)}`,
+      `Aarka Effective Ownership: ${out.fundOwnershipPct}%`,
+      `Co-Investors Ownership: ${coInvestorPct}%`,
+      `Founders Retention: ${out.foundersPostRoundPct}%`,
+      `Unallocated Option Pool: ${out.optionPoolPct}%`,
+      `Series A Pro-Rata Reserve Required: ${fmtCompactUsd(out.proRataCheckRequiredUsd)} (Maintains ${out.ownershipWithProRataPct}%)`,
+    ].join("\n");
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(summary);
+      setCopiedNotice(true);
+      setTimeout(() => setCopiedNotice(false), 2200);
+    }
+  }
+
   const coInvestorPct = Math.max(0, Math.round((out.totalNewInvestorPct - out.fundOwnershipPct) * 100) / 100);
   const slices = [
     { label: "Founders", pct: out.foundersPostRoundPct, color: "bg-slate-800" },
@@ -99,6 +119,13 @@ export function CapTableModeler({ dealId, companyName, defaultAskUsd, defaultVal
       <SectionTitle
         right={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={copySchedule}
+              className="cursor-pointer rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 shadow-2xs"
+            >
+              {copiedNotice ? "Copied Schedule!" : "Copy Schedule"}
+            </button>
             <button
               type="button"
               onClick={() => setInput(baseline)}
@@ -127,6 +154,7 @@ export function CapTableModeler({ dealId, companyName, defaultAskUsd, defaultVal
         {(
           [
             ["post_safe", "YC Post-Money SAFE"],
+            ["pre_safe", "Pre-Money SAFE"],
             ["priced", "Priced Equity Round"],
           ] as [RoundInstrument, string][]
         ).map(([val, label]) => (

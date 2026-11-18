@@ -132,7 +132,7 @@ export default function PortfolioPage() {
                   c.sector,
                   c.country,
                   c.owner,
-                  runway ? runway.months.toFixed(1) : "—",
+                  runway ? runway.months.toFixed(1) : "-",
                   needs ? "Yes" : "No",
                   items[0]?.text ?? "On track",
                 ]),
@@ -151,7 +151,7 @@ export default function PortfolioPage() {
                     `<tr>
                       <td><strong>${escapeHtml(c.name)}</strong><br/><span style="color:#64748b">${escapeHtml(c.sector)} · ${escapeHtml(c.country)}</span></td>
                       <td>${escapeHtml(c.owner)}</td>
-                      <td>${runway ? `${runway.months.toFixed(1)} mo` : "—"}</td>
+                      <td>${runway ? `${runway.months.toFixed(1)} mo` : "-"}</td>
                       <td><span class="badge ${needs ? "badge-amber" : "badge-green"}">${needs ? "Needs Attention" : "On Track"}</span></td>
                       <td>${escapeHtml(items[0]?.text ?? "Reporting & runway healthy")}</td>
                     </tr>`,
