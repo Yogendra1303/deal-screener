@@ -15,27 +15,25 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "A structured workspace for startup pitches and investor review. Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial cross-checks, and portfolio monitoring.",
+    "A structured workspace for startup pitches and investor review. Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
   featureList: [
     "Startup pitch deck and monthly CSV financial sheet intake",
     "Source-cited slide claim extraction with verbatim page provenance",
-    "Deterministic financial cross-checks against monthly CSVs (ARR vs. MRR x 12, runway, compounded growth)",
-    "Cap table, SAFE, and priced round dilution modeling with explicit assumptions",
+    "Deterministic arithmetic verification (ARR vs. MRR x 12, runway, compounded growth)",
+    "Cap table, SAFE, and priced round dilution modeling",
     "Portfolio MIS reporting health and fund analytics",
   ],
 };
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#FAF9F6] font-sans text-[#0F172A] selection:bg-[#0F172A] selection:text-white">
+    <div className="min-h-screen overflow-x-clip bg-[#FAF9F6] text-slate-900 selection:bg-slate-900 selection:text-white">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_APPLICATION_JSON_LD) }}
       />
       {/* =====================================================================
-          COMPACT NAVIGATION
-          Platform (dropdown) · For Founders · For Funds · Data & Privacy
-          Actions: Partner Sign In · Request Fund Workspace
+          MINIMALIST STICKY NAVIGATION
          ===================================================================== */}
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-xs">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -48,66 +46,46 @@ export function LandingPage() {
               height={28}
               className="h-7 w-7 shrink-0 rounded-md object-contain ring-1 ring-slate-900/10"
             />
-            <span className="text-[15px] font-semibold tracking-[-0.02em] text-[#0F172A]">Aarka</span>
+            <span className="text-[15px] font-semibold tracking-[-0.02em] text-slate-950">Aarka</span>
           </Link>
 
-          <nav aria-label="Primary" className="hidden items-center gap-7 lg:flex">
-            {/* Discoverability Dropdown for Platform */}
-            <details className="group relative">
-              <summary className="flex cursor-pointer list-none items-center gap-1 text-[13px] font-medium text-slate-600 transition-colors hover:text-[#0F172A]">
-                <span>Platform</span>
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </summary>
-              <div className="absolute left-0 mt-2.5 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-900/5">
-                <a
-                  href="#workflow"
-                  className="block rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-50"
-                >
-                  <div className="text-xs font-semibold text-[#0F172A]">Five-Stage Workflow</div>
-                  <div className="mt-0.5 text-[11px] text-slate-500">Collect, Structure, Verify, Review, Monitor</div>
-                </a>
-                <a
-                  href="#capabilities"
-                  className="block rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-50"
-                >
-                  <div className="text-xs font-semibold text-[#0F172A]">Platform Capabilities</div>
-                  <div className="mt-0.5 text-[11px] text-slate-500">Diligence, Pipeline, Review &amp; Portfolio</div>
-                </a>
-              </div>
-            </details>
-
+          <nav aria-label="Primary" className="hidden items-center gap-7 md:flex">
             <a
-              href="#for-founders"
-              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-[#0F172A]"
+              href="#workflow"
+              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-950"
             >
-              For Founders
+              Workflow
             </a>
             <a
-              href="#request-workspace"
-              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-[#0F172A]"
+              href="#capabilities"
+              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-950"
             >
-              For Funds
+              Capabilities
             </a>
             <a
               href="#privacy"
-              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-[#0F172A]"
+              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-950"
             >
               Data &amp; Privacy
             </a>
-          </nav>
-
-          <div className="hidden items-center gap-2.5 lg:flex">
-            <PartnerSignInButton
-              className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-[#0F172A] disabled:opacity-60"
-            />
             <a
               href="#request-workspace"
-              className="inline-flex h-9 items-center justify-center rounded-md bg-[#0F172A] px-3.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
+              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-950"
             >
-              Request Fund Workspace
+              Request Workspace
             </a>
+          </nav>
+
+          <div className="hidden items-center gap-2.5 md:flex">
+            <Link
+              href="/pitch"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+            >
+              Submit a Pitch
+            </Link>
+            <PartnerSignInButton
+              className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md bg-slate-900 px-3.5 text-xs font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+            />
           </div>
 
           <MobileHeaderMenu />
@@ -117,7 +95,7 @@ export function LandingPage() {
       <main>
         {/* ===================================================================
             STATIC ABOVE-THE-FOLD HERO SECTION
-            Institutional Newsreader Serif H1 + Inter Body + JetBrains Mono Data Tags
+            Pure Server Component HTML/CSS: Zero client hydration delay on LCP
            =================================================================== */}
         <section className="relative border-b border-slate-200/80 pt-12 pb-16 sm:pt-16 sm:pb-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -125,23 +103,27 @@ export function LandingPage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 shadow-2xs">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden="true" />
                 <span className="font-mono text-[11px] font-medium tracking-wide text-slate-700">
-                  SOURCE-CITED DILIGENCE · DETERMINISTIC FINANCIAL CHECKS
+                  SOURCE-CITED DILIGENCE · DETERMINISTIC MATH VERIFICATION
                 </span>
               </div>
 
-              <h1 className="mx-auto mt-5 max-w-[18ch] font-serif text-[clamp(2.25rem,4.2vw+0.9rem,3.65rem)] font-normal leading-[1.08] tracking-[-0.025em] text-balance text-[#0F172A]">
-                From startup pitch to investment review.
+              <h1 className="mt-5 font-serif text-[clamp(2rem,4vw+0.85rem,3.35rem)] font-normal leading-[1.08] tracking-[-0.025em] text-slate-950">
+                A Structured Workspace for Startup Pitches and Investor Review.
               </h1>
 
-              <p className="mx-auto mt-4 max-w-[56ch] font-sans text-[clamp(1rem,0.35vw+0.92rem,1.125rem)] font-normal leading-[1.6] text-pretty text-slate-600">
-                Turn startup pitches into evidence-backed investment reviews. Aarka structures founder submissions, extracts source-cited slide claims, cross-checks financial figures against monthly CSV records, and supports partner review and portfolio monitoring in one workspace.
+              <p className="mx-auto mt-4 max-w-[60ch] text-[clamp(1rem,0.45vw+0.9rem,1.125rem)] font-medium leading-[1.55] text-slate-800">
+                Bring startup submissions and investment opportunities into a structured review process.
               </p>
 
-              {/* Strictly Two Primary CTAs */}
+              <p className="mx-auto mt-3 max-w-[62ch] text-[clamp(0.875rem,0.25vw+0.82rem,0.975rem)] leading-[1.65] text-slate-600">
+                Extract slide claims with verbatim page citations, verify stated ARR and runway against monthly CSV rows in plain code, model SAFE or priced round dilution, and monitor portfolio MIS cadence in one workspace.
+              </p>
+
+              {/* Dual-Track Primary CTAs */}
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <a
                   href="#request-workspace"
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#0F172A] px-5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-slate-800"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-900 px-5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-slate-800"
                 >
                   <span>Request Fund Workspace</span>
                   <span aria-hidden="true">→</span>
@@ -149,17 +131,35 @@ export function LandingPage() {
 
                 <Link
                   href="/pitch"
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 text-xs font-semibold text-[#0F172A] shadow-2xs transition-colors hover:border-slate-400 hover:bg-slate-50"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 text-xs font-semibold text-slate-900 shadow-2xs transition-colors hover:border-slate-400 hover:bg-slate-50"
                 >
                   <span>Submit a Pitch</span>
                 </Link>
               </div>
+
+              {/* Concrete Architecture Pill Strip */}
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] text-slate-600">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+                  <span>PDF deck + monthly CSV corroboration</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden="true" />
+                  <span>10.0% deterministic variance threshold</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" aria-hidden="true" />
+                  <span>Invite-only partner &amp; analyst access</span>
+                </span>
+              </div>
             </div>
 
             {/* ===============================================================
-                HERO PRODUCT VISUAL: VELORA SYSTEMS DISCREPANCY SPOTLIGHT
+                HERO PRODUCT VISUAL
+                Lightweight, Static Browser-Style HTML/CSS Product Mockup
+                Reserved layout space (zero CLS), synthetic demonstration data
                =============================================================== */}
-            <div className="mx-auto mt-10 max-w-4xl sm:mt-12">
+            <div className="mx-auto mt-10 max-w-5xl sm:mt-12">
               <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-lg shadow-slate-900/5">
                 {/* Browser Window Chrome Header */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5">
@@ -174,137 +174,178 @@ export function LandingPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-700">
-                      Velora Systems · Seed · $1.50M Ask
-                    </span>
                     <span className="rounded bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-blue-700">
                       Synthetic Demo Record
+                    </span>
+                    <span className="hidden rounded bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-emerald-800 sm:inline-block">
+                      Priority · Fits Mandate
                     </span>
                   </div>
                 </div>
 
-                {/* Primary Focal Point: Side-by-Side Growth Discrepancy Spotlight */}
-                <div className="p-5 sm:p-7">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-600">
-                        Automated Financial Cross-Check · Monthly Revenue Growth
+                {/* Product Workspace Mockup Body */}
+                <div className="grid divide-y divide-slate-200 lg:grid-cols-12 lg:divide-x lg:divide-y-0">
+                  {/* Left Pane: Company Record & Verbatim Citations (7 cols) */}
+                  <div className="p-4 sm:p-6 lg:col-span-7">
+                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-semibold text-slate-950">Velora Systems</span>
+                          <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-700">
+                            Seed · B2B Software
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Automated cold-chain telemetry and invoice reconciliation for regional distributors.
+                        </p>
+                      </div>
+                      <div className="text-right font-mono">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">Round Ask</div>
+                        <div className="text-sm font-semibold text-slate-950">$1.50M on $6.0M Post</div>
+                      </div>
+                    </div>
+
+                    {/* Extracted Claims Table with Slide Page Citations */}
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        <span>Extracted Claim &amp; Provenance</span>
+                        <span>Corroboration Status</span>
+                      </div>
+
+                      <div className="mt-2 divide-y divide-slate-100 text-xs">
+                        <div className="flex items-center justify-between gap-2 py-2.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900">Annualized Run-Rate (ARR)</span>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                                Deck p. 4
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
+                              &ldquo;Reached $1.44M ARR in Sep with $120K monthly recurring revenue.&rdquo;
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="font-mono font-semibold text-slate-950">$1.44M</div>
+                            <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-emerald-800">
+                              Checked · CSV Match
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 py-2.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900">Monthly Revenue Growth</span>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                                Deck p. 6
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
+                              &ldquo;Growing 14.0% month-over-month across enterprise accounts.&rdquo;
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="font-mono font-semibold text-rose-700">14.0% vs. 9.1%</div>
+                            <span className="inline-block rounded bg-rose-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-rose-800">
+                              Conflict · +53.8% Gap
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 py-2.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900">Cash Runway &amp; Net Burn</span>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                                Deck p. 11 · CSV
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
+                              Cash $1.16M divided by $80K monthly net burn = 14.5 months.
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="font-mono font-semibold text-slate-950">14.5 months</div>
+                            <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-emerald-800">
+                              Checked · Formula
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Pane: Deterministic Code Checks & Dilution Summary (5 cols) */}
+                  <div className="bg-slate-50/60 p-4 sm:p-6 lg:col-span-5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-700">
+                        Deterministic Code Checks
                       </span>
-                      <h2 className="mt-1 font-serif text-lg font-normal tracking-[-0.015em] text-[#0F172A] sm:text-xl">
-                        Deck claim cross-checked against submitted monthly CSV rows
-                      </h2>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-rose-600 px-3 py-1 font-mono text-xs font-semibold uppercase tracking-wide text-white shadow-2xs">
-                      <span>53.8% discrepancy flagged</span>
-                    </span>
-                  </div>
-
-                  {/* Side-by-Side Comparison Cards */}
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    {/* Left: What the founder claims */}
-                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-slate-700">What the founder claims</span>
-                        <span className="rounded bg-white px-2 py-0.5 font-mono text-[10px] font-medium text-slate-600 ring-1 ring-slate-200">
-                          Pitch Deck · Slide p. 6
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-baseline gap-2">
-                        <span className="font-mono text-3xl font-semibold tracking-tight text-[#0F172A] sm:text-4xl">
-                          14.0%
-                        </span>
-                        <span className="text-xs font-medium text-slate-600">
-                          Monthly revenue growth, pitch deck
-                        </span>
-                      </div>
-                      <p className="mt-2.5 font-mono text-[11px] text-slate-600">
-                        &ldquo;Growing 14.0% month-over-month across enterprise accounts.&rdquo;
-                      </p>
+                      <span className="font-mono text-[11px] text-slate-600">Tolerance: 10.0%</span>
                     </div>
 
-                    {/* Right: What the financial records show */}
-                    <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-4 sm:p-5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-rose-950">What the financial records show</span>
-                        <span className="rounded bg-white px-2 py-0.5 font-mono text-[10px] font-medium text-rose-800 ring-1 ring-rose-200">
-                          Submitted CSV · Apr to Sep
-                        </span>
+                    <div className="mt-3 space-y-2.5 text-xs">
+                      <div className="rounded-lg border border-slate-200 bg-white p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-900">ARR vs. MRR x 12</span>
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-emerald-800">
+                            Checked · 0.0% Gap
+                          </span>
+                        </div>
+                        <p className="mt-1 font-mono text-[11px] text-slate-600">
+                          Deck ARR ($1.44M) = Latest CSV MRR ($120K) x 12.
+                        </p>
                       </div>
-                      <div className="mt-3 flex items-baseline gap-2">
-                        <span className="font-mono text-3xl font-semibold tracking-tight text-rose-700 sm:text-4xl">
-                          9.1%
-                        </span>
-                        <span className="text-xs font-medium text-rose-900">
-                          Compounded monthly growth, submitted CSV
-                        </span>
-                      </div>
-                      <p className="mt-2.5 font-mono text-[11px] text-rose-900/80">
-                        Variance: (14.0% - 9.1%) / 9.1% = +53.8% (exceeds 10.0% default review threshold).
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Secondary Corroborated Checks & Transparent SAFE Assumptions Strip */}
-                  <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-xs sm:grid-cols-3">
-                    <div className="rounded-lg border border-slate-200/80 bg-white px-3.5 py-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-slate-700">ARR vs. CSV MRR x 12</span>
-                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-800">
-                          Source Corroborated
-                        </span>
+                      <div className="rounded-lg border border-rose-200 bg-rose-50/50 p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-900">Deck Growth vs. Monthly CSV Compounded</span>
+                          <span className="rounded bg-rose-600 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-white">
+                            Conflict · 53.8% Gap
+                          </span>
+                        </div>
+                        <p className="mt-1 font-mono text-[11px] text-slate-700">
+                          Deck p. 6 claims 14.0% MoM; CSV rows (Apr to Sep) compound at 9.1% MoM.
+                        </p>
                       </div>
-                      <p className="mt-1 font-mono text-[11px] text-slate-600">
-                        $1.44M (Slide p. 4) = $120K MRR x 12 (0.0% gap).
-                      </p>
-                    </div>
 
-                    <div className="rounded-lg border border-slate-200/80 bg-white px-3.5 py-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-slate-700">Cash Runway Math</span>
-                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-800">
-                          Arithmetic Checked
-                        </span>
+                      <div className="rounded-lg border border-slate-200 bg-white p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-900">Cap Table &amp; SAFE Dilution Preview</span>
+                          <span className="font-mono text-[11px] font-semibold text-blue-700">
+                            10.0% Post-Round
+                          </span>
+                        </div>
+                        <p className="mt-1 font-mono text-[11px] text-slate-600">
+                          $600K check on $6.0M Post-Money SAFE · $300K Series A pro-rata reserve.
+                        </p>
                       </div>
-                      <p className="mt-1 font-mono text-[11px] text-slate-600">
-                        $1.16M cash / $80K net burn = 14.5 months.
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200/80 bg-white px-3.5 py-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-slate-700">SAFE Ownership ($600K)</span>
-                        <span className="font-mono text-[11px] font-semibold text-blue-700">
-                          10.0% Post-Round
-                        </span>
-                      </div>
-                      <p className="mt-1 font-mono text-[11px] text-slate-600">
-                        Post-Money SAFE · $6.0M Cap · 0% Disc · 10.0% Option Pool.
-                      </p>
                     </div>
                   </div>
                 </div>
               </div>
               <p className="mt-2.5 text-center text-[11px] text-slate-600">
-                Synthetic demonstration data illustrating Aarka&apos;s source-cited extraction and deterministic financial cross-checks (10.0% default review threshold, configurable per fund rule).
+                Synthetic demonstration data illustrating Aarka&apos;s source-cited extraction and deterministic verification engine.
               </p>
             </div>
           </div>
         </section>
 
         {/* ===================================================================
-            PRODUCT WORKFLOW: 5-Stage Narrative (Collect, Structure, Verify, Review, Monitor)
+            PRODUCT WORKFLOW: Restrained Sticky Scroll on Desktop, Stacked on Mobile
            =================================================================== */}
         <section id="workflow" className="scroll-mt-20 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-                Product Workflow
+            <div className="max-w-2xl">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Structured Review Pipeline
               </p>
-              <h2 className="mt-2 max-w-[26ch] font-serif text-[clamp(1.75rem,2.6vw+0.85rem,2.65rem)] font-normal leading-[1.12] tracking-[-0.02em] text-balance text-[#0F172A]">
-                A Structured Workspace for Startup Pitches and Investor Review.
+              <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.35rem)] font-normal leading-[1.15] tracking-[-0.02em] text-slate-950">
+                From founder pitch submission to verified partner review.
               </h2>
-              <p className="mt-3 max-w-[56ch] font-sans text-[clamp(1rem,0.25vw+0.92rem,1.075rem)] font-normal leading-[1.6] text-slate-600">
-                Bring startup submissions and investment opportunities into a structured review process across five connected stages.
+              <p className="mt-3 max-w-[62ch] text-[clamp(0.875rem,0.25vw+0.82rem,0.975rem)] leading-[1.65] text-slate-600">
+                Each submission moves through five concrete stages. Original founder files stay intact while code verifies arithmetic consistency and structures the record for investment review.
               </p>
             </div>
 
@@ -313,7 +354,7 @@ export function LandingPage() {
         </section>
 
         {/* ===================================================================
-            PLATFORM CAPABILITIES: Four Browser-Framed Dashboard Screenshot Modules
+            CONFIRMED PRODUCT CAPABILITIES (Tabbed Below-the-Fold Previews)
            =================================================================== */}
         <section id="capabilities" className="scroll-mt-20 border-b border-slate-200/80 bg-white py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -322,199 +363,156 @@ export function LandingPage() {
         </section>
 
         {/* ===================================================================
-            DATA & PRIVACY: 3-Pillar Architecture + Native Progressive Disclosure
+            AUTHENTIC TRUST SIGNALS: DATA HANDLING, ARCHITECTURE & PRIVACY
+            Strictly factual implementation details: zero fake logos or fake badges
            =================================================================== */}
-        <section id="privacy" className="scroll-mt-20 border-b border-slate-200/80 bg-[#F3F1EC] py-16 sm:py-24">
+        <section id="privacy" className="scroll-mt-20 border-b border-slate-200/80 bg-slate-950 py-16 text-white sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
-                Data Handling &amp; Privacy
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+                Data Handling &amp; Privacy Architecture
               </p>
-              <h2 className="mt-2 max-w-[24ch] font-serif text-[clamp(1.75rem,2.6vw+0.85rem,2.65rem)] font-normal leading-[1.12] tracking-[-0.02em] text-balance text-[#0F172A]">
-                AI reads and cites. Code checks the math. Partners decide.
+              <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.35rem)] font-normal leading-[1.15] tracking-[-0.02em] text-white">
+                Clear separation between AI extraction, deterministic code, and partner access.
               </h2>
-              <p className="mt-3 max-w-[56ch] font-sans text-[clamp(1rem,0.25vw+0.92rem,1.075rem)] font-normal leading-[1.6] text-slate-600">
-                Aarka preserves original founder documents while separating information extraction, deterministic financial calculations, and partner investment decisions.
+              <p className="mt-3 max-w-[62ch] text-xs leading-relaxed text-slate-300 sm:text-sm">
+                Aarka is engineered around strict data boundaries. Uploaded founder decks are never rewritten by language models, arithmetic checks run in deterministic TypeScript, and every workspace route is protected by default-deny authentication.
               </p>
             </div>
 
-            {/* 3 Partner-Facing Pillars */}
-            <div className="mt-10 grid gap-5 md:grid-cols-3">
-              <div className="rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xs">
+            {/* 3-Layer Responsibility Matrix */}
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-semibold text-blue-700">01 · AI Extraction</span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-700">
-                    Read &amp; Cite
-                  </span>
+                  <span className="font-mono text-xs font-semibold text-blue-400">01 · AI Extraction Layer</span>
+                  <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Read &amp; Cite</span>
                 </div>
-                <h3 className="mt-3 font-serif text-xl font-normal leading-[1.2] tracking-[-0.015em] text-[#0F172A]">
-                  Original files remain intact
-                </h3>
-                <p className="mt-2 font-sans text-sm font-normal leading-[1.6] text-slate-600">
-                  Uploaded founder PDFs and monthly CSV sheets are preserved without alteration. AI extracts slide claims with exact page citations and never computes financial ratios.
+                <h3 className="mt-3 text-sm font-semibold text-white">Structured reading with verbatim quotes</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Models read uploaded PDF slides to populate a typed schema with slide page numbers and direct quotes. Models are never trusted to compute financial ratios, ARR multiples, or runway arithmetic.
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xs">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-semibold text-emerald-700">02 · Deterministic Code</span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-700">
-                    Check &amp; Flag
-                  </span>
+                  <span className="font-mono text-xs font-semibold text-emerald-400">02 · Deterministic Code Layer</span>
+                  <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Verify &amp; Score</span>
                 </div>
-                <h3 className="mt-3 font-serif text-xl font-normal leading-[1.2] tracking-[-0.015em] text-[#0F172A]">
-                  Auditable calculations
-                </h3>
-                <p className="mt-2 font-sans text-sm font-normal leading-[1.6] text-slate-600">
-                  Financial checks (ARR vs. MRR x 12, runway, compounded CSV growth) and SAFE dilution models run in deterministic TypeScript code rather than LLM-generated arithmetic.
+                <h3 className="mt-3 text-sm font-semibold text-white">Auditable math and mandate checks</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Plain TypeScript routines compute MRR x 12, compounded monthly CSV growth, cash divided by net burn, and SAFE or priced round dilution. Any gap greater than 10.0% is flagged automatically.
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xs">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-semibold text-amber-800">03 · Human Decisions</span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-700">
-                    Override &amp; Vote
-                  </span>
+                  <span className="font-mono text-xs font-semibold text-amber-300">03 · Human Decision Layer</span>
+                  <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Override &amp; Vote</span>
                 </div>
-                <h3 className="mt-3 font-serif text-xl font-normal leading-[1.2] tracking-[-0.015em] text-[#0F172A]">
-                  Controlled workspace access
-                </h3>
-                <p className="mt-2 font-sans text-sm font-normal leading-[1.6] text-slate-600">
-                  Partner and analyst access is restricted through invite-only, role-based authorization. Partners can override any score or record IC votes with a written rationale.
+                <h3 className="mt-3 text-sm font-semibold text-white">Partner overrides with written trail</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Partners and analysts can override any score, mark facts as verified, record IC votes, and set pass or hold reasons. Every manual change preserves the original code baseline alongside the written rationale.
                 </p>
               </div>
             </div>
 
-            {/* Native HTML Progressive Disclosure for Deep Technical Controls */}
-            <details className="group mt-8 overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xs">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-xs font-semibold tracking-wide text-[#0F172A] transition-colors hover:bg-slate-50 sm:text-sm">
-                <span className="flex items-center gap-2.5">
-                  <span className="h-2 w-2 rounded-full bg-blue-600" aria-hidden="true" />
-                  <span>View Technical Security Architecture</span>
-                </span>
-                <span className="font-mono text-xs text-slate-500 transition-transform group-open:rotate-180" aria-hidden="true">
-                  ↓
-                </span>
-              </summary>
-              <div className="grid gap-4 border-t border-slate-200/80 bg-[#FAF9F6] p-5 sm:grid-cols-2">
-                <div className="rounded-lg border border-slate-200/80 bg-white p-4">
-                  <h4 className="font-mono text-xs font-semibold uppercase tracking-wider text-[#0F172A]">
+            {/* 4 Concrete Security & Data Handling Cards */}
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-800/90 bg-slate-900/40 p-5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
                     Row-Level Founder Isolation (HMAC-SHA256)
-                  </h4>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-                    Each pitch submission receives a per-deal HMAC-SHA256 token bound to that specific deal ID. A token for one pitch cannot read, list, or enumerate any other founder&apos;s pitch deck or data room files.
-                  </p>
+                  </h3>
                 </div>
-
-                <div className="rounded-lg border border-slate-200/80 bg-white p-4">
-                  <h4 className="font-mono text-xs font-semibold uppercase tracking-wider text-[#0F172A]">
-                    Default-Deny Route Proxy &amp; Invite-Only OAuth
-                  </h4>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-                    Internal workspace routes (/deals, /portfolio, /fund, /dataroom, /team) and APIs are gated by a default-deny middleware proxy. Only partner-whitelisted Google OAuth accounts receive workspace sessions.
-                  </p>
-                </div>
-
-                <div className="rounded-lg border border-slate-200/80 bg-white p-4">
-                  <h4 className="font-mono text-xs font-semibold uppercase tracking-wider text-[#0F172A]">
-                    Binary File Validation &amp; Non-Public Storage
-                  </h4>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-                    Uploaded pitch decks are checked against %PDF- magic bytes (up to 32 MB) and financial sheets against UTF-8 CSV/TSV or ZIP/XLSX headers (up to 10 MB) before storage in isolated, non-public buckets.
-                  </p>
-                </div>
-
-                <div className="rounded-lg border border-slate-200/80 bg-white p-4">
-                  <h4 className="font-mono text-xs font-semibold uppercase tracking-wider text-[#0F172A]">
-                    Scoped Anthropic API or Manual Account-Bridge
-                  </h4>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-                    Teams can run slide extraction via a server-side Anthropic API key or use the manual account-bridge workflow to process prompts in their own subscription and paste schema-validated JSON back into the workspace.
-                  </p>
-                </div>
-              </div>
-            </details>
-          </div>
-        </section>
-
-        {/* ===================================================================
-            AUDIENCE SEGMENTATION TRACK 1: FOR FOUNDERS (/pitch)
-            Dedicated founder conversion experience separated from fund onboarding
-           =================================================================== */}
-        <section id="for-founders" className="scroll-mt-20 border-b border-slate-200/80 bg-white py-14 sm:py-16">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col justify-between gap-6 rounded-2xl border border-slate-200 bg-[#FAF9F6] p-6 sm:p-8 lg:flex-row lg:items-center">
-              <div className="max-w-2xl space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
-                    For Founders
-                  </span>
-                  <span className="rounded bg-white px-2 py-0.5 font-mono text-[10px] font-medium text-slate-700 ring-1 ring-slate-200">
-                    Early-Stage Mandate · Up to $4M
-                  </span>
-                </div>
-                <h2 className="max-w-[24ch] font-serif text-[clamp(1.65rem,2.2vw+0.8rem,2.35rem)] font-normal leading-[1.12] tracking-[-0.02em] text-balance text-[#0F172A]">
-                  Raising a Pre-Seed, Seed, or Series A round?
-                </h2>
-                <p className="max-w-[56ch] font-sans text-[clamp(0.95rem,0.15vw+0.9rem,1.025rem)] font-normal leading-[1.6] text-slate-600">
-                  Submit your PDF pitch deck and optional monthly CSV financial sheet directly into our review queue. No account is required, and every submission issues a private data room link to track review status.
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  When a founder submits a pitch, Aarka issues a per-deal HMAC-SHA256 tracking token bound to that specific deal ID. A token for one pitch cannot read, list, or enumerate any other founder&apos;s pitch deck or data room files.
                 </p>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-3">
-                <Link
-                  href="/pitch"
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#0F172A] px-5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-slate-800"
-                >
-                  <span>Submit a Pitch</span>
-                  <span aria-hidden="true">→</span>
-                </Link>
+
+              <div className="rounded-xl border border-slate-800/90 bg-slate-900/40 p-5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-400" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+                    Default-Deny Route Proxy &amp; Invite-Only OAuth
+                  </h3>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Internal workspace routes (/deals, /portfolio, /fund, /dataroom, /team) and APIs are locked behind a default-deny middleware proxy. Only partner-whitelisted Google OAuth accounts are granted workspace sessions.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800/90 bg-slate-900/40 p-5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-400" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+                    Binary File Validation &amp; Direct Signed Uploads
+                  </h3>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Uploaded pitch decks are verified against %PDF- magic bytes (up to 32 MB) and financial sheets against UTF-8 CSV/TSV or ZIP/XLSX signatures (up to 10 MB) before storage in isolated, non-public buckets.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800/90 bg-slate-900/40 p-5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+                    Scoped LLM Processing &amp; Account-Bridge Option
+                  </h3>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Teams can run deck extraction via a server-side Anthropic API key or use the manual account-bridge workflow to process prompts in their own subscription and paste validated JSON back into the workspace.
+                </p>
               </div>
             </div>
           </div>
         </section>
 
         {/* ===================================================================
-            AUDIENCE SEGMENTATION TRACK 2: FOR FUNDS (#request-workspace)
-            Dedicated investor workspace onboarding connected to POST /api/access-request
+            EMBEDDED CONVERSION FORM + FOUNDER CTA
+            Connected directly to POST /api/access-request
            =================================================================== */}
         <section id="request-workspace" className="scroll-mt-20 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
-              {/* Left Column: Fund Workspace Context & Partner Sign-In */}
+              {/* Left Column: Context & Founder Routing */}
               <div className="space-y-6 lg:col-span-5">
                 <div>
                   <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
-                    For Funds &amp; Investment Teams
+                    Workspace Onboarding
                   </p>
-                  <h2 className="mt-2 max-w-[20ch] font-serif text-[clamp(1.75rem,2.6vw+0.85rem,2.65rem)] font-normal leading-[1.12] tracking-[-0.02em] text-balance text-[#0F172A]">
-                    Request a Fund Workspace.
+                  <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.25rem)] font-normal leading-[1.15] tracking-[-0.02em] text-slate-950">
+                    Request a Fund Workspace or submit a startup pitch.
                   </h2>
-                  <p className="mt-3 max-w-[48ch] font-sans text-[clamp(0.95rem,0.15vw+0.9rem,1.025rem)] font-normal leading-[1.6] text-slate-600">
-                    Aarka workspaces are invite-only. Submit your fund details to evaluate Aarka for your investment team&apos;s deal screening, financial cross-checks, and portfolio monitoring.
+                  <p className="mt-3 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                    Aarka workspaces are invite-only. Submit your fund details to request partner access, or use the direct founder intake if you are raising capital.
                   </p>
                 </div>
 
-                <div className="space-y-2.5 rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-600">
-                  <div className="font-semibold text-[#0F172A]">What is included in a fund workspace</div>
-                  <ul className="space-y-2 pt-1 text-slate-600">
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
-                      <span>Dedicated founder pitch intake URL and inbound email webhook.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
-                      <span>Configurable mandate rules and variance review thresholds (10.0% default).</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
-                      <span>Partner and analyst role views with IC voting and portfolio MIS tracking.</span>
-                    </li>
-                  </ul>
+                <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-950">Founders Raising Capital</h3>
+                    <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-700">
+                      Up to $4M Mandate
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    No account is required to submit a pitch deck. Upload your PDF deck and optional monthly CSV sheet to receive a private status tracking link.
+                  </p>
+                  <div className="pt-1">
+                    <Link
+                      href="/pitch"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-slate-900 px-4 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
+                    >
+                      <span>Go to Submit a Pitch</span>
+                      <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-600">
-                  <div className="font-semibold text-[#0F172A]">Already an approved partner or analyst?</div>
+                  <div className="font-semibold text-slate-900">Already an approved partner or analyst?</div>
                   <p className="leading-relaxed">
                     Sign in with your whitelisted Google account to open the active workspace.
                   </p>
@@ -522,13 +520,13 @@ export function LandingPage() {
                     <PartnerSignInButton
                       label="Partner Sign In with Google"
                       loadingLabel="Redirecting to Google…"
-                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0F172A] transition-colors hover:bg-slate-50 disabled:opacity-60"
+                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-50 disabled:opacity-60"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Live Investor Conversion Form connected to POST /api/access-request */}
+              {/* Right Column: Live Conversion Form connected to POST /api/access-request */}
               <div className="lg:col-span-7">
                 <WorkspaceRequestFormClient />
               </div>
@@ -538,117 +536,47 @@ export function LandingPage() {
       </main>
 
       {/* =====================================================================
-          4-COLUMN FOOTER (Platform, Founders, Funds, Company & Legal)
+          FOOTER
          ===================================================================== */}
-      <footer className="bg-white py-12 text-xs text-slate-600">
+      <footer className="bg-white py-10 text-xs text-slate-600">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 border-b border-slate-200/80 pb-10 sm:grid-cols-2 lg:grid-cols-6">
-            {/* Brand Column (2 cols on lg) */}
-            <div className="space-y-3 lg:col-span-2">
-              <div className="flex items-center gap-2.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/aarka-logo.png"
-                  alt="Aarka"
-                  width={24}
-                  height={24}
-                  className="h-6 w-6 shrink-0 rounded-md object-contain"
-                />
-                <span className="text-sm font-semibold text-[#0F172A]">Aarka</span>
-              </div>
-              <p className="max-w-xs text-xs leading-relaxed text-slate-600">
+          <div className="flex flex-col justify-between gap-6 border-b border-slate-200/80 pb-8 sm:flex-row sm:items-center">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/aarka-logo.png"
+                alt="Aarka"
+                width={22}
+                height={22}
+                className="h-[22px] w-[22px] shrink-0 rounded-md object-contain"
+              />
+              <span className="text-sm font-semibold text-slate-950">Aarka</span>
+              <span className="text-slate-300" aria-hidden="true">·</span>
+              <span className="text-xs text-slate-600">
                 A Structured Workspace for Startup Pitches and Investor Review.
-              </p>
+              </span>
             </div>
 
-            {/* Column 1: Platform */}
-            <div className="space-y-2.5">
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#0F172A]">
-                Platform
-              </div>
-              <ul className="space-y-2 text-xs text-slate-600">
-                <li>
-                  <a href="#workflow" className="hover:text-[#0F172A]">
-                    Workflow
-                  </a>
-                </li>
-                <li>
-                  <a href="#capabilities" className="hover:text-[#0F172A]">
-                    Capabilities
-                  </a>
-                </li>
-                <li>
-                  <a href="#privacy" className="hover:text-[#0F172A]">
-                    Data &amp; Privacy
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Column 2: Founders */}
-            <div className="space-y-2.5">
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#0F172A]">
-                Founders
-              </div>
-              <ul className="space-y-2 text-xs text-slate-600">
-                <li>
-                  <Link href="/pitch" className="hover:text-[#0F172A]">
-                    Submit a Pitch
-                  </Link>
-                </li>
-                <li>
-                  <a href="#for-founders" className="hover:text-[#0F172A]">
-                    Founder Intake
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Column 3: Funds */}
-            <div className="space-y-2.5">
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#0F172A]">
-                Funds
-              </div>
-              <ul className="space-y-2 text-xs text-slate-600">
-                <li>
-                  <a href="#request-workspace" className="hover:text-[#0F172A]">
-                    Request Workspace
-                  </a>
-                </li>
-                <li>
-                  <Link href="/login" className="hover:text-[#0F172A]">
-                    Partner Sign In
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Column 4: Company & Legal */}
-            <div className="space-y-2.5">
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#0F172A]">
-                Company &amp; Legal
-              </div>
-              <ul className="space-y-2 text-xs text-slate-600">
-                <li>
-                  <Link href="/privacy" className="hover:text-[#0F172A]">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-[#0F172A]">
-                    Terms of Use
-                  </Link>
-                </li>
-                <li>
-                  <a href="mailto:pitches@aarkavc.xyz" className="hover:text-[#0F172A]">
-                    pitches@aarkavc.xyz
-                  </a>
-                </li>
-              </ul>
-            </div>
+            <nav aria-label="Footer" className="flex flex-wrap items-center gap-6 text-xs font-medium text-slate-600">
+              <a href="#workflow" className="hover:text-slate-950">
+                Workflow
+              </a>
+              <a href="#capabilities" className="hover:text-slate-950">
+                Capabilities
+              </a>
+              <a href="#privacy" className="hover:text-slate-950">
+                Data &amp; Privacy
+              </a>
+              <Link href="/pitch" className="hover:text-slate-950">
+                Submit a Pitch
+              </Link>
+              <PartnerSignInButton
+                className="cursor-pointer font-semibold text-slate-900 hover:text-slate-700"
+              />
+            </nav>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-600">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-600">
             <p>© {new Date().getFullYear()} Aarka. All rights reserved.</p>
             <p>Public previews display synthetic demonstration data for illustration.</p>
           </div>

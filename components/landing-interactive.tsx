@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DropdownSelect } from "@/components/dropdown-select";
 
@@ -17,115 +17,91 @@ export interface WorkflowStep {
   stage: string;
   title: string;
   summary: string;
+  inputs: string;
+  verification: string;
+  output: string;
   routeLabel: string;
-  visualTitle: string;
-  visualSubtitle: string;
-  imageSrc: string;
-  imageWidth: number;
-  imageHeight: number;
-  imageAlt: string;
-  imageCaption: string;
   metrics: { label: string; value: string; status: "checked" | "flagged" | "claimed" }[];
 }
 
 export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
   {
     num: "01",
-    stage: "Collect",
-    title: "Capture startup decks and monthly financial records.",
+    stage: "Pitch Submission & Intake",
+    title: "Capture founder decks and financial sheets through one structured intake.",
     summary:
-      "Founders upload a PDF pitch deck and optional monthly CSV or XLSX sheet via /pitch or inbound email, receiving a scoped status tracking link.",
+      "Founders submit a PDF pitch deck (up to 32 MB) and an optional monthly CSV sheet through the public pitch form or inbound email webhook. Each submission receives a private, cryptographically signed tracking link.",
+    inputs: "PDF pitch deck, optional monthly CSV sheet, stage, sector, and funding ask.",
+    verification: "Binary magic-byte file validation and mandate ceiling check (up to $4M).",
+    output: "Isolated company record and private founder data room.",
     routeLabel: "/pitch -> /founder/dataroom/[id]",
-    visualTitle: "Stage 01 · Founder Pitch & CSV Intake",
-    visualSubtitle: "Direct PDF upload (up to 32 MB) + optional monthly CSV/XLSX sheet (up to 10 MB)",
-    imageSrc: "/images/aarka/founder-pitch-portal.png",
-    imageWidth: 605,
-    imageHeight: 657,
-    imageAlt: "Founder pitch portal intake form",
-    imageCaption: "Founder Pitch Intake (/pitch): Direct PDF deck and financial sheet submission.",
     metrics: [
-      { label: "Pitch Deck File", value: "%PDF-1.7 Validated (4.2 MB)", status: "checked" },
-      { label: "Financial Sheet", value: "12-Month CSV Attached", status: "checked" },
-      { label: "Private Status Link", value: "Per-Deal Token Issued", status: "checked" },
+      { label: "Deck Binary Check", value: "%PDF-1.7 Validated (4.2 MB)", status: "checked" },
+      { label: "Monthly Financials", value: "12-Month CSV Attached", status: "checked" },
+      { label: "Founder Tracking Token", value: "HMAC-SHA256 Issued", status: "checked" },
     ],
   },
   {
     num: "02",
-    stage: "Structure",
-    title: "Extract slide claims with verbatim page citations.",
+    stage: "Source-Cited Structuring",
+    title: "Extract deck claims into a standard schema with page and quote provenance.",
     summary:
-      "Slide claims and tables are mapped into a standard 8-fact diligence schema while retaining the exact slide page number and direct quote.",
-    routeLabel: "/deals/[id] -> Summary",
-    visualTitle: "Stage 02 · Source-Cited Claim Record",
-    visualSubtitle: "Every extracted claim links to its source file, slide page number, and quote",
-    imageSrc: "/images/aarka/data-transparency-lineage.png",
-    imageWidth: 998,
-    imageHeight: 655,
-    imageAlt: "Source-cited data lineage view",
-    imageCaption: "Data Lineage (/sources): End-to-end provenance from uploaded files to verified team views.",
+      "Unstructured slide text, tables, and charts are mapped into a typed company record covering traction, round terms, team background, and market sizing. Every extracted fact retains its source file, slide page number, and verbatim quote.",
+    inputs: "Uploaded PDF slides and founder application form fields.",
+    verification: "Schema validation across 8 core diligence facts (revenue, growth, customers, team, round, founding year, burn, past roles).",
+    output: "Page-cited company record with missing-fact indicators.",
+    routeLabel: "/deals/[id] -> Summary & Numbers",
     metrics: [
-      { label: "Stated ARR (Slide p. 4)", value: "$1.44M (Verbatim quote attached)", status: "claimed" },
-      { label: "Stated MoM Growth (Slide p. 6)", value: "14.0% monthly claim", status: "claimed" },
-      { label: "Core Fact Coverage", value: "7 of 8 facts extracted", status: "checked" },
+      { label: "Stated ARR (Slide p. 4)", value: "$1.44M (Quote attached)", status: "claimed" },
+      { label: "Stated MoM Growth (Slide p. 6)", value: "14.0% monthly", status: "claimed" },
+      { label: "Core Fact Coverage", value: "7 of 8 facts present", status: "checked" },
     ],
   },
   {
     num: "03",
-    stage: "Verify",
-    title: "Cross-check stated figures against monthly CSV rows.",
+    stage: "Deterministic Math Verification",
+    title: "Cross-check stated deck numbers against monthly CSV rows in plain code.",
     summary:
-      "Deterministic code compares stated ARR against CSV MRR x 12, runway against cash divided by burn, and slide growth against compounded CSV rows.",
+      "Deterministic TypeScript routines compare stated ARR against MRR multiplied by 12, cash runway against cash divided by net burn, and slide growth claims against compounded monthly CSV rows. Variances above 10% are flagged without altering the founder's original numbers.",
+    inputs: "Structured deck claims + founder monthly CSV rows + intake form.",
+    verification: "Exact arithmetic variance check with a 10.0% tolerance threshold.",
+    output: "Provenance labels: Checked, Reported, Claimed, Conflict, or Missing.",
     routeLabel: "/deals/[id]?tab=numbers",
-    visualTitle: "Stage 03 · Deterministic Financial Cross-Checks",
-    visualSubtitle: "10.0% default variance review threshold (configurable per fund rule)",
-    imageSrc: "/images/aarka/financial-diligence-rahatrail.png",
-    imageWidth: 992,
-    imageHeight: 675,
-    imageAlt: "Financial diligence checks view",
-    imageCaption: "Financial Diligence (/deals/[id]): 5 of 6 checks corroborated, 1 growth discrepancy (>10%) flagged.",
     metrics: [
-      { label: "ARR vs. CSV MRR x 12", value: "$1.44M vs. $120K x 12 (0.0% gap)", status: "checked" },
-      { label: "Deck vs. CSV Growth", value: "14.0% vs. 9.1% CSV (53.8% discrepancy flagged)", status: "flagged" },
+      { label: "ARR vs. MRR x 12", value: "$1.44M vs. $120K x 12 (0.0% gap)", status: "checked" },
+      { label: "Deck vs. CSV Growth", value: "14.0% vs. 9.1% CSV (+53.8% gap)", status: "flagged" },
       { label: "Cash Runway Math", value: "$1.16M / $80K burn = 14.5 mo", status: "checked" },
     ],
   },
   {
     num: "04",
-    stage: "Review",
-    title: "Evaluate mandate fit, model dilution, and record IC votes.",
+    stage: "Structured Review & Dilution Modeling",
+    title: "Evaluate mandate fit, model SAFE or priced dilution, and record partner votes.",
     summary:
-      "Apply configurable fund rules, simulate post-money SAFE or priced-round ownership with explicit assumptions, and record partner IC votes.",
+      "Code applies your fund's written rules (stage, sector, geography, check size) alongside an interactive Cap Table and Series A pro-rata dilution modeler, side-by-side PDF slide viewer, and partner investment committee voting.",
+    inputs: "Verified deal record + configurable fund rules + round terms.",
+    verification: "Automated mandate fit check + post-money ownership and pro-rata math.",
+    output: "Triage band (Priority, Review, Outside focus) + printable IC diligence memo.",
     routeLabel: "/deals -> /deals/[id]",
-    visualTitle: "Stage 04 · Mandate Fit, SAFE Dilution & IC Review",
-    visualSubtitle: "Assumptions: Post-Money SAFE · $6.0M Cap · 0% Discount · 10.0% Option Pool",
-    imageSrc: "/images/aarka/dealflow-pulse.png",
-    imageWidth: 1012,
-    imageHeight: 660,
-    imageAlt: "Deal pipeline and investment review workspace",
-    imageCaption: "Deal Pipeline (/deals): Triage incoming pitches with rule-fit filters and discrepancy alerts.",
     metrics: [
-      { label: "Fund Mandate Fit", value: "Seed · B2B Software · $1.50M Ask", status: "checked" },
-      { label: "SAFE Ownership ($600K Check)", value: "10.0% Post-Round ($6.0M Cap · 10% Pool)", status: "checked" },
+      { label: "Fund Mandate Fit", value: "Seed · B2B Software · $1.5M Ask", status: "checked" },
+      { label: "Post-Round Ownership", value: "10.0% on $6.0M Post-Money SAFE", status: "checked" },
       { label: "Partner IC Consensus", value: "2 Yes · 1 Diligence Follow-up", status: "claimed" },
     ],
   },
   {
     num: "05",
-    stage: "Monitor",
-    title: "Track portfolio MIS health and look-again triggers.",
+    stage: "Portfolio MIS & Re-Engagement",
+    title: "Monitor backed companies and track look-again triggers on passed deals.",
     summary:
-      "Monitor monthly MIS reporting cadence, cash runway below 9 months, LP quarterly report exports, and re-engagement triggers on passed deals.",
+      "Track monthly MIS reporting deadlines, cash runway under 9 months, and revenue variance against the pitch deck forecast. For passed or held deals, log concrete re-engagement triggers so opportunities resurface when milestones are met.",
+    inputs: "Monthly portfolio MIS reports + logged market and company signals.",
+    verification: "Automated runway threshold (<9 months) and overdue report day counter.",
+    output: "Portfolio health bands, weekly digest alerts, and quarterly LP report exports.",
     routeLabel: "/portfolio & /fund",
-    visualTitle: "Stage 05 · Portfolio MIS & Re-Engagement Tracking",
-    visualSubtitle: "Two-way reporting health bands, <9.0 mo runway watch, and LP quarterly packs",
-    imageSrc: "/images/aarka/portfolio-overview.png",
-    imageWidth: 1024,
-    imageHeight: 555,
-    imageAlt: "Portfolio MIS reporting health and runway overview",
-    imageCaption: "Portfolio Monitoring (/portfolio): Runway watch, MIS report cadence, and open founder asks.",
     metrics: [
       { label: "MIS Reporting Cadence", value: "6 of 6 reports on time", status: "checked" },
-      { label: "Runway Watch Rule", value: "Flagged when < 9.0 months cash", status: "flagged" },
+      { label: "Runway Watch Threshold", value: "Alert when < 9.0 months cash", status: "flagged" },
       { label: "LP Quarterly Pack", value: "CSV & Printable PDF Ready", status: "checked" },
     ],
   },
@@ -142,67 +118,12 @@ const BACKGROUND_OPTIONS = [
 
 const INTENT_OPTIONS = [
   "Evaluating for our fund's dealflow screening",
-  "Testing automated financial checks & ARR corroboration",
+  "Testing automated financial checks & ARR verification",
   "Looking to syndicate or co-invest with Aarka",
   "Evaluating internal tools for fund operations",
   "Exploring early-stage benchmarks & thesis extraction",
   "Other",
 ];
-
-function ScreenshotLightbox({
-  lightbox,
-  onClose,
-}: {
-  lightbox: LightboxAsset | null;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    if (!lightbox) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [lightbox, onClose]);
-
-  if (!lightbox) return null;
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={lightbox.alt}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs sm:p-6"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-white/15 bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-          <span className="text-xs font-medium text-slate-700">{lightbox.caption}</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Close (Esc)
-          </button>
-        </div>
-        <div className="overflow-auto bg-slate-100/80 p-3 sm:p-5">
-          <Image
-            src={lightbox.src}
-            alt={lightbox.alt}
-            width={lightbox.width}
-            height={lightbox.height}
-            sizes="95vw"
-            className="mx-auto block h-auto max-w-full rounded-lg border border-slate-200 bg-white object-contain shadow-xs"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function PartnerSignInButton({
   label = "Partner Sign In",
@@ -243,7 +164,7 @@ export function MobileHeaderMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={open}
-        className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 lg:hidden"
+        className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 md:hidden"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
           {open ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -251,35 +172,21 @@ export function MobileHeaderMenu() {
       </button>
 
       {open && (
-        <div className="absolute top-16 right-0 left-0 border-b border-slate-200 bg-white px-4 py-4 shadow-md lg:hidden">
-          <nav aria-label="Mobile" className="flex flex-col gap-1.5">
+        <div className="absolute top-16 right-0 left-0 border-b border-slate-200 bg-white px-4 py-4 shadow-md md:hidden">
+          <nav aria-label="Mobile" className="flex flex-col gap-2">
             <a
               href="#workflow"
               onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Platform · Workflow
+              Workflow
             </a>
             <a
               href="#capabilities"
               onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Platform · Capabilities
-            </a>
-            <a
-              href="#for-founders"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              For Founders
-            </a>
-            <a
-              href="#request-workspace"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              For Funds
+              Capabilities
             </a>
             <a
               href="#privacy"
@@ -288,17 +195,23 @@ export function MobileHeaderMenu() {
             >
               Data &amp; Privacy
             </a>
+            <a
+              href="#request-workspace"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Request Workspace
+            </a>
             <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
-              <PartnerSignInButton
-                className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800"
-              />
-              <a
-                href="#request-workspace"
-                onClick={() => setOpen(false)}
-                className="inline-flex h-10 items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-semibold text-white"
+              <Link
+                href="/pitch"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800"
               >
-                Request Workspace
-              </a>
+                Submit a Pitch
+              </Link>
+              <PartnerSignInButton
+                className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-semibold text-white"
+              />
             </div>
           </nav>
         </div>
@@ -309,7 +222,6 @@ export function MobileHeaderMenu() {
 
 export function WorkflowInteractiveGrid() {
   const [activeStep, setActiveStep] = useState(0);
-  const [lightbox, setLightbox] = useState<LightboxAsset | null>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -345,196 +257,97 @@ export function WorkflowInteractiveGrid() {
   const currentStep = WORKFLOW_STEPS[activeStep] ?? WORKFLOW_STEPS[0];
 
   return (
-    <div className="mt-10 space-y-6">
-      {/* Connected Horizontal 5-Stage Progress Flow Bar */}
-      <div className="rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-2xs">
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
-          {WORKFLOW_STEPS.map((step, idx) => {
-            const isActive = activeStep === idx;
-            const isCompleted = idx < activeStep;
-            return (
-              <button
-                key={step.num}
-                type="button"
-                onClick={() => setActiveStep(idx)}
-                className={`group flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
-                  isActive
-                    ? "bg-[#0F172A] text-white shadow-xs"
-                    : isCompleted
-                      ? "bg-slate-50 text-slate-800 hover:bg-slate-100"
-                      : "bg-transparent text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`font-mono text-[11px] font-semibold ${
-                      isActive ? "text-blue-300" : isCompleted ? "text-blue-700" : "text-slate-500"
-                    }`}
-                  >
-                    {step.num}
-                  </span>
-                  <span className="text-xs font-medium">{step.stage}</span>
-                </div>
-                <span
-                  className={`hidden text-xs transition-transform group-hover:translate-x-0.5 sm:inline ${
-                    isActive ? "text-slate-300" : "text-slate-400"
-                  }`}
-                  aria-hidden="true"
+    <div className="mt-10 grid gap-8 lg:grid-cols-12 lg:items-start">
+      {/* Left Column: Vertically Stacked Workflow Steps */}
+      <div className="space-y-4 lg:col-span-6">
+        {WORKFLOW_STEPS.map((step, idx) => {
+          const isActive = activeStep === idx;
+          return (
+            <div
+              key={step.num}
+              ref={(el) => {
+                stepRefs.current[idx] = el;
+              }}
+              data-step-index={idx}
+              onClick={() => setActiveStep(idx)}
+              className={`cursor-pointer rounded-xl border p-5 transition-colors ${
+                isActive
+                  ? "border-blue-600 bg-white shadow-sm"
+                  : "border-slate-200/90 bg-white/80 hover:border-slate-300 hover:bg-white"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(idx)}
+                  className="cursor-pointer text-left font-mono text-xs font-semibold text-blue-700 focus:outline-none focus-visible:underline"
                 >
-                  →
+                  {step.num} · {step.stage}
+                </button>
+                <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-slate-600">
+                  {step.routeLabel}
                 </span>
-              </button>
-            );
-          })}
-        </div>
+              </div>
+              <h3 className="mt-2 text-[clamp(1.02rem,0.9vw+0.75rem,1.18rem)] font-semibold leading-[1.3] text-slate-950">
+                {step.title}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">{step.summary}</p>
+
+              {/* Mobile inline step verification details */}
+              <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 lg:hidden">
+                {step.metrics.map((m) => (
+                  <div key={m.label} className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-slate-600">{m.label}</span>
+                    <span className="font-mono font-semibold text-slate-900">{m.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
-        {/* Left Column: Clean 5-Stage Narrative */}
-        <div className="space-y-3 lg:col-span-5">
-          {WORKFLOW_STEPS.map((step, idx) => {
-            const isActive = activeStep === idx;
-            return (
-              <div
-                key={step.num}
-                ref={(el) => {
-                  stepRefs.current[idx] = el;
-                }}
-                data-step-index={idx}
-                onClick={() => setActiveStep(idx)}
-                className={`cursor-pointer rounded-xl border p-4 transition-colors sm:p-5 ${
-                  isActive
-                    ? "border-blue-600 bg-white shadow-sm"
-                    : "border-slate-200/90 bg-white/80 hover:border-slate-300 hover:bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveStep(idx)}
-                    className="cursor-pointer text-left font-mono text-xs font-semibold text-blue-700 focus:outline-none focus-visible:underline"
-                  >
-                    {step.num} · {step.stage}
-                  </button>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-slate-600">
-                    {step.routeLabel}
-                  </span>
-                </div>
-                <h3 className="mt-1.5 font-sans text-base font-semibold leading-[1.3] tracking-[-0.015em] text-balance text-[#0F172A]">
-                  {step.title}
-                </h3>
-                <p className="mt-1.5 font-sans text-sm font-normal leading-[1.6] text-slate-600">
-                  {step.summary}
-                </p>
+      {/* Right Column: Sticky Live Inspection Card on Desktop */}
+      <div className="hidden lg:sticky lg:top-24 lg:col-span-6 lg:block">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-3">
+            <div>
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-blue-700">
+                Stage {currentStep.num} Inspection
+              </span>
+              <h3 className="text-sm font-semibold text-slate-950">{currentStep.stage}</h3>
+            </div>
+            <span className="rounded border border-slate-200 bg-white px-2.5 py-1 font-mono text-[11px] text-slate-700">
+              {currentStep.routeLabel}
+            </span>
+          </div>
 
-                {/* Mobile inline stage metrics */}
-                <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 lg:hidden">
-                  {step.metrics.map((m) => (
-                    <div key={m.label} className="flex items-center justify-between gap-2 text-[11px]">
-                      <span className="text-slate-600">{m.label}</span>
-                      <span className="font-mono font-medium text-[#0F172A]">{m.value}</span>
-                    </div>
-                  ))}
+          <div className="space-y-4 p-5 text-xs">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                  Inputs Captured
                 </div>
+                <p className="mt-1 leading-relaxed text-slate-700">{currentStep.inputs}</p>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Right Column: Sticky Browser-Framed Dashboard Screenshot & Check Summary on Desktop */}
-        <div className="hidden lg:sticky lg:top-24 lg:col-span-7 lg:block">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md shadow-slate-900/5">
-            {/* Browser Chrome Header */}
-            <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5" aria-hidden="true">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+              <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                  Deterministic Check
                 </div>
-                <span className="ml-2 rounded border border-slate-200 bg-white px-2.5 py-0.5 font-mono text-[11px] text-slate-600">
-                  {currentStep.routeLabel}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setActiveStep((prev) => (prev > 0 ? prev - 1 : WORKFLOW_STEPS.length - 1))}
-                  aria-label="Previous workflow stage"
-                  className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-100"
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveStep((prev) => (prev + 1) % WORKFLOW_STEPS.length)}
-                  aria-label="Next workflow stage"
-                  className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  <span>Next Stage</span>
-                  <span aria-hidden="true">→</span>
-                </button>
+                <p className="mt-1 leading-relaxed text-slate-700">{currentStep.verification}</p>
               </div>
             </div>
 
-            <div className="p-4 sm:p-5">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-sans text-sm font-semibold text-[#0F172A]">{currentStep.visualTitle}</h3>
-                  <p className="mt-0.5 text-xs text-slate-600">{currentStep.visualSubtitle}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLightbox({
-                      src: currentStep.imageSrc,
-                      width: currentStep.imageWidth,
-                      height: currentStep.imageHeight,
-                      alt: currentStep.imageAlt,
-                      caption: currentStep.imageCaption,
-                    })
-                  }
-                  className="shrink-0 cursor-pointer text-[11px] font-medium text-slate-600 hover:text-[#0F172A]"
-                >
-                  Enlarge ↗
-                </button>
+            <div className="rounded-lg border border-slate-200 bg-white p-3.5">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                Verification Output Sample
               </div>
-
-              {/* Authentic Product Dashboard Screenshot */}
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLightbox({
-                      src: currentStep.imageSrc,
-                      width: currentStep.imageWidth,
-                      height: currentStep.imageHeight,
-                      alt: currentStep.imageAlt,
-                      caption: currentStep.imageCaption,
-                    })
-                  }
-                  aria-label={`Enlarge ${currentStep.visualTitle} screenshot`}
-                  className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
-                >
-                  <Image
-                    src={currentStep.imageSrc}
-                    alt={currentStep.imageAlt}
-                    width={currentStep.imageWidth}
-                    height={currentStep.imageHeight}
-                    sizes="(min-width: 1024px) 58vw, 100vw"
-                    loading="lazy"
-                    className="block max-h-[320px] w-full object-cover object-top"
-                  />
-                </button>
-              </div>
-
-              {/* Stage Check Output Strip */}
-              <div className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white px-3.5 py-1 text-xs">
+              <div className="divide-y divide-slate-100">
                 {currentStep.metrics.map((m) => (
                   <div key={m.label} className="flex items-center justify-between gap-3 py-2">
                     <span className="font-medium text-slate-700">{m.label}</span>
                     <span
-                      className={`rounded px-2 py-0.5 font-mono text-[11px] font-medium ${
+                      className={`rounded px-2 py-0.5 font-mono text-[11px] font-semibold ${
                         m.status === "checked"
                           ? "bg-emerald-50 text-emerald-800"
                           : m.status === "flagged"
@@ -548,237 +361,320 @@ export function WorkflowInteractiveGrid() {
                 ))}
               </div>
             </div>
+
+            <div className="flex items-center justify-between rounded-lg bg-slate-900 px-4 py-3 text-white">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-300">Resulting Artifact</div>
+                <div className="mt-0.5 text-xs font-medium">{currentStep.output}</div>
+              </div>
+              <Link
+                href="/pitch"
+                className="shrink-0 rounded bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-900 hover:bg-slate-100"
+              >
+                Try Pitch Intake →
+              </Link>
+            </div>
           </div>
         </div>
       </div>
-
-      <ScreenshotLightbox lightbox={lightbox} onClose={() => setLightbox(null)} />
     </div>
   );
 }
 
-interface CapabilityModule {
-  key: "diligence" | "pipeline" | "review" | "portfolio";
-  tabLabel: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  bullets: { heading: string; text: string }[];
-  routeLabel: string;
-  screenshot: LightboxAsset;
-}
-
-const CAPABILITY_MODULES: readonly CapabilityModule[] = [
-  {
-    key: "diligence",
-    tabLabel: "Financial Diligence",
-    eyebrow: "01 · Financial Diligence",
-    title: "Spot arithmetic gaps between slide claims and monthly CSV rows before the first call.",
-    description:
-      "Compare stated ARR, monthly growth, and runway against submitted CSV rows. Variances above the 10.0% default threshold (configurable per fund rule) are flagged with exact formulas.",
-    bullets: [
-      {
-        heading: "Verbatim slide provenance:",
-        text: "Click any extracted metric to open the PDF deck at the cited slide page.",
-      },
-      {
-        heading: "Explicit SAFE & equity assumptions:",
-        text: "Model dilution with visible terms (Post-Money SAFE, $6.0M cap, 0% discount, 10.0% option pool).",
-      },
-    ],
-    routeLabel: "aarkavc.xyz/deals/rahatrail",
-    screenshot: {
-      src: "/images/aarka/financial-diligence-rahatrail.png",
-      width: 992,
-      height: 675,
-      alt: "Company diligence view showing corroborated checks, a flagged 14% vs 9.0% monthly growth discrepancy, and missing customer count.",
-      caption:
-        "Financial Diligence (/deals/[id]): 5 of 6 checks corroborated, 1 growth discrepancy (>10% default threshold) flagged.",
-    },
-  },
-  {
-    key: "pipeline",
-    tabLabel: "Deal Pipeline",
-    eyebrow: "02 · Deal Pipeline",
-    title: "Triage every inbound deck across list and horizontal stage boards.",
-    description:
-      "Organize submissions across New Inbound, Reviewing, Meeting Set, On Hold, and Passed stages with live intake sync and one-click CSV exports.",
-    bullets: [
-      {
-        heading: "Mandate & discrepancy filters:",
-        text: "Filter by Fits Mandate, Strong Founder Fit, Discrepancy >10% (default rule), or Missing Facts.",
-      },
-      {
-        heading: "Look-again triggers:",
-        text: "Record pass reasons and check dates so companies resurface when milestones are met.",
-      },
-    ],
-    routeLabel: "aarkavc.xyz/deals",
-    screenshot: {
-      src: "/images/aarka/dealflow-pulse.png",
-      width: 1012,
-      height: 660,
-      alt: "Deal Flow Pulse pipeline view showing To read, Look again, Meetings, and Passed tabs.",
-      caption:
-        "Deal Pipeline (/deals): Triage incoming pitches with rule-fit filters and discrepancy alerts.",
-    },
-  },
-  {
-    key: "review",
-    tabLabel: "Investment Review",
-    eyebrow: "03 · Investment Review",
-    title: "Benchmark sector cohorts and document partner IC decisions with an audit trail.",
-    description:
-      "Compare incoming opportunities against 3-month, 6-month, and 12-month sector cohorts, record partner votes, and preserve written rationales when overriding code scores.",
-    bullets: [
-      {
-        heading: "Traceable cohort counts:",
-        text: "Every sector trend displays the underlying deck count and median round ask.",
-      },
-      {
-        heading: "Partner IC voting & memos:",
-        text: "Capture Yes, No, or Discuss votes and export printable diligence memos.",
-      },
-    ],
-    routeLabel: "aarkavc.xyz/sectors",
-    screenshot: {
-      src: "/images/aarka/market-momentum-map.png",
-      width: 992,
-      height: 658,
-      alt: "Market sector intelligence view comparing inbound deck activity across sectors.",
-      caption:
-        "Investment Review & Sector Cohorts (/sectors & /compare): Benchmark deal flow across your fund's own submissions.",
-    },
-  },
-  {
-    key: "portfolio",
-    tabLabel: "Portfolio Monitoring",
-    eyebrow: "04 · Portfolio Monitoring",
-    title: "Track monthly MIS reporting health, cash runway alerts, and LP quarterly packs.",
-    description:
-      "Monitor monthly MIS submissions across backed companies, flag cash runway below 9 months or revenue off plan by more than 25%, and track fund responsiveness on founder asks.",
-    bullets: [
-      {
-        heading: "Plain-rule health bands:",
-        text: "Classified as On track, Slipping, or Gone quiet from report dates and completeness.",
-      },
-      {
-        heading: "Fund analytics (/fund):",
-        text: "Track TVPI, DPI, RVPI, deployment pacing, and export LP quarterly CSV or printable PDF reports.",
-      },
-    ],
-    routeLabel: "aarkavc.xyz/portfolio",
-    screenshot: {
-      src: "/images/aarka/portfolio-overview.png",
-      width: 1024,
-      height: 555,
-      alt: "Portfolio view showing backed companies, cash runway months, and MIS reporting status.",
-      caption:
-        "Portfolio Monitoring (/portfolio): Runway watch, MIS report cadence, and open founder asks.",
-    },
-  },
-] as const;
-
 export function CapabilitiesInteractiveTabs() {
-  const [capabilityTab, setCapabilityTab] = useState<"diligence" | "pipeline" | "review" | "portfolio">("diligence");
+  const [capabilityTab, setCapabilityTab] = useState<"diligence" | "market" | "pipeline" | "portfolio">("diligence");
   const [lightbox, setLightbox] = useState<LightboxAsset | null>(null);
 
-  const activeModule = CAPABILITY_MODULES.find((m) => m.key === capabilityTab) ?? CAPABILITY_MODULES[0];
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightbox]);
 
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-3xl">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-            Platform Capabilities
+        <div className="max-w-2xl">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+            Workspace Modules
           </p>
-          <h2 className="mt-2 max-w-[24ch] font-serif text-[clamp(1.75rem,2.6vw+0.85rem,2.65rem)] font-normal leading-[1.12] tracking-[-0.02em] text-balance text-[#0F172A]">
-            Four modules built for structured investment review.
+          <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.35rem)] font-normal leading-[1.15] tracking-[-0.02em] text-slate-950">
+            Built for screening, verification, and portfolio oversight.
           </h2>
         </div>
 
-        <div className="inline-flex flex-wrap rounded-lg border border-slate-200 bg-slate-100/80 p-1" role="tablist" aria-label="Platform capabilities">
-          {CAPABILITY_MODULES.map((mod) => (
+        <div className="inline-flex flex-wrap rounded-lg border border-slate-200 bg-slate-100/80 p-1" role="tablist" aria-label="Workspace modules">
+          {(
+            [
+              ["diligence", "01 · Financial Diligence"],
+              ["pipeline", "02 · Deal Pipeline"],
+              ["market", "03 · Sector Momentum"],
+              ["portfolio", "04 · Portfolio Health"],
+            ] as const
+          ).map(([key, label]) => (
             <button
-              key={mod.key}
+              key={key}
               type="button"
               role="tab"
-              aria-selected={capabilityTab === mod.key}
-              onClick={() => setCapabilityTab(mod.key)}
+              aria-selected={capabilityTab === key}
+              onClick={() => setCapabilityTab(key)}
               className={`cursor-pointer rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                capabilityTab === mod.key
-                  ? "bg-white text-[#0F172A] shadow-2xs"
-                  : "text-slate-600 hover:text-[#0F172A]"
+                capabilityTab === key
+                  ? "bg-white text-slate-950 shadow-2xs"
+                  : "text-slate-600 hover:text-slate-950"
               }`}
             >
-              {mod.tabLabel}
+              {label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
-        <div className="space-y-3.5 lg:col-span-5">
-          <span className="font-mono text-xs font-semibold text-blue-700">{activeModule.eyebrow}</span>
-          <h3 className="font-serif text-[clamp(1.45rem,1.2vw+0.95rem,1.85rem)] font-normal leading-[1.18] tracking-[-0.015em] text-balance text-[#0F172A]">
-            {activeModule.title}
-          </h3>
-          <p className="max-w-[54ch] font-sans text-[clamp(0.95rem,0.2vw+0.9rem,1.025rem)] font-normal leading-[1.6] text-slate-600">
-            {activeModule.description}
-          </p>
-          <ul className="space-y-2.5 border-t border-slate-200 pt-4 text-xs leading-relaxed text-slate-700">
-            {activeModule.bullets.map((b) => (
-              <li key={b.heading}>
-                <strong className="font-semibold text-[#0F172A]">{b.heading}</strong> {b.text}
+      {capabilityTab === "diligence" && (
+        <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
+          <div className="space-y-4 lg:col-span-5">
+            <span className="font-mono text-xs font-semibold text-blue-700">01 · Financial Due Diligence</span>
+            <h3 className="font-serif text-2xl font-normal text-slate-950">
+              Audit deck claims against monthly financial sheets before the first call.
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 sm:text-sm">
+              Every company record includes a dedicated Numbers &amp; Checks tab that compares stated slide claims against the founder&apos;s raw monthly CSV rows. Variances greater than 10% are flagged with exact formulas.
+            </p>
+            <ul className="space-y-2.5 border-t border-slate-200 pt-4 text-xs text-slate-700">
+              <li>
+                <strong className="font-semibold text-slate-900">Verbatim provenance:</strong> Every claim carries its slide page number and direct quote.
               </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="lg:col-span-7">
-          <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md shadow-slate-900/5">
-            {/* Clean Browser-Style Frame Header */}
-            <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5" aria-hidden="true">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                </div>
-                <span className="ml-2 rounded border border-slate-200/90 bg-white px-2.5 py-0.5 font-mono text-[11px] text-slate-600">
-                  {activeModule.routeLabel}
-                </span>
-              </div>
+              <li>
+                <strong className="font-semibold text-slate-900">Side-by-side PDF citation jump:</strong> Click any extracted metric or conflict flag to open the pitch deck at the exact cited slide page.
+              </li>
+              <li>
+                <strong className="font-semibold text-slate-900">Cap table &amp; SAFE modeler:</strong> Simulate post-money SAFE or priced equity dilution, option pool carve-outs, and Series A pro-rata checks.
+              </li>
+            </ul>
+          </div>
+          <div className="lg:col-span-7">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <button
                 type="button"
-                onClick={() => setLightbox(activeModule.screenshot)}
-                className="cursor-pointer text-[11px] font-medium text-slate-600 hover:text-[#0F172A]"
+                onClick={() =>
+                  setLightbox({
+                    src: "/images/aarka/financial-diligence-rahatrail.png",
+                    width: 992,
+                    height: 675,
+                    alt: "Company diligence view showing matched checks, a flagged 14% vs 9.0% monthly growth discrepancy, and missing customer count.",
+                    caption: "Company Diligence Record: 5 of 6 checks matched, 1 growth discrepancy (>10%) flagged, and 1 core fact missing.",
+                  })
+                }
+                aria-label="Enlarge Financial Diligence screenshot"
+                className="block w-full cursor-zoom-in text-left"
               >
-                Click to enlarge ↗
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/aarka/financial-diligence-rahatrail.png"
+                  alt="Company diligence view showing matched checks and flagged growth discrepancy"
+                  width={992}
+                  height={675}
+                  loading="lazy"
+                  decoding="async"
+                  className="block h-auto w-full object-contain"
+                />
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setLightbox(activeModule.screenshot)}
-              aria-label={`Enlarge ${activeModule.tabLabel} screenshot`}
-              className="block w-full cursor-zoom-in bg-white text-left focus:outline-none"
-            >
-              <Image
-                src={activeModule.screenshot.src}
-                alt={activeModule.screenshot.alt}
-                width={activeModule.screenshot.width}
-                height={activeModule.screenshot.height}
-                sizes="(min-width: 1024px) 58vw, 100vw"
-                loading="lazy"
-                className="block h-auto w-full object-contain"
-              />
-            </button>
           </div>
         </div>
-      </div>
+      )}
 
-      <ScreenshotLightbox lightbox={lightbox} onClose={() => setLightbox(null)} />
+      {capabilityTab === "pipeline" && (
+        <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
+          <div className="space-y-4 lg:col-span-5">
+            <span className="font-mono text-xs font-semibold text-blue-700">02 · Deal-Flow Management</span>
+            <h3 className="font-serif text-2xl font-normal text-slate-950">
+              List and horizontal board views with live intake sync.
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 sm:text-sm">
+              Organize incoming pitches across New Inbound, Reviewing, Meeting Set, On Hold, and Passed stages. Switch seamlessly between a high-density table and a horizontal stage board.
+            </p>
+            <ul className="space-y-2.5 border-t border-slate-200 pt-4 text-xs text-slate-700">
+              <li>
+                <strong className="font-semibold text-slate-900">Signal filters:</strong> Filter by Fits Mandate, Strong Founder Fit, Repeat Founder, Math Gap &gt;10%, or Missing Facts.
+              </li>
+              <li>
+                <strong className="font-semibold text-slate-900">Look-again triggers:</strong> Record pass reasons and scheduled check dates so companies resurface when new signals arrive.
+              </li>
+            </ul>
+          </div>
+          <div className="lg:col-span-7">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <button
+                type="button"
+                onClick={() =>
+                  setLightbox({
+                    src: "/images/aarka/dealflow-pulse.png",
+                    width: 1012,
+                    height: 660,
+                    alt: "Deal Flow Pulse pipeline view showing To read, Look again, Meetings, and Passed tabs.",
+                    caption: "Deal Flow Pulse (/deals): Triage incoming pitches with rule-fit filters and math-gap alerts.",
+                  })
+                }
+                aria-label="Enlarge Deal Pipeline screenshot"
+                className="block w-full cursor-zoom-in text-left"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/aarka/dealflow-pulse.png"
+                  alt="Deal Flow Pulse pipeline view"
+                  width={1012}
+                  height={660}
+                  loading="lazy"
+                  decoding="async"
+                  className="block h-auto w-full object-contain"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {capabilityTab === "market" && (
+        <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
+          <div className="space-y-4 lg:col-span-5">
+            <span className="font-mono text-xs font-semibold text-blue-700">03 · Sector Momentum</span>
+            <h3 className="font-serif text-2xl font-normal text-slate-950">
+              Track inbound volume and median ask across your fund&apos;s own deal flow.
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 sm:text-sm">
+              Compare 3-month vs. prior 3-month pitch activity across sectors, inspect median round sizes and monthly growth rates, and log dated external market signals with verifiable links.
+            </p>
+            <ul className="space-y-2.5 border-t border-slate-200 pt-4 text-xs text-slate-700">
+              <li>
+                <strong className="font-semibold text-slate-900">Cohort windowing:</strong> Toggle between 3-month, 6-month, and 12-month windows.
+              </li>
+              <li>
+                <strong className="font-semibold text-slate-900">Traceable counts:</strong> Every percentage move shows the underlying deck count so low-sample sectors are never misread.
+              </li>
+            </ul>
+          </div>
+          <div className="lg:col-span-7">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <button
+                type="button"
+                onClick={() =>
+                  setLightbox({
+                    src: "/images/aarka/market-momentum-map.png",
+                    width: 992,
+                    height: 658,
+                    alt: "Market sector intelligence view comparing inbound deck activity across sectors.",
+                    caption: "Market Overview (/sectors): Sector momentum calculated from your fund's own inbound decks and logged signals.",
+                  })
+                }
+                aria-label="Enlarge Sector Momentum screenshot"
+                className="block w-full cursor-zoom-in text-left"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/aarka/market-momentum-map.png"
+                  alt="Market sector intelligence view"
+                  width={992}
+                  height={658}
+                  loading="lazy"
+                  decoding="async"
+                  className="block h-auto w-full object-contain"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {capabilityTab === "portfolio" && (
+        <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
+          <div className="space-y-4 lg:col-span-5">
+            <span className="font-mono text-xs font-semibold text-blue-700">04 · Portfolio &amp; Fund Analytics</span>
+            <h3 className="font-serif text-2xl font-normal text-slate-950">
+              Two-way reporting health, runway alerts, and LP quarterly packs.
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 sm:text-sm">
+              Monitor monthly MIS submissions across backed companies, flag cash runway below 9 months or revenue off plan by more than 25%, and track fund responsiveness on founder requests.
+            </p>
+            <ul className="space-y-2.5 border-t border-slate-200 pt-4 text-xs text-slate-700">
+              <li>
+                <strong className="font-semibold text-slate-900">Plain-rule health bands:</strong> Classified as On track, Slipping, or Gone quiet from report dates and completeness.
+              </li>
+              <li>
+                <strong className="font-semibold text-slate-900">Fund analytics (/fund):</strong> Track TVPI, DPI, RVPI, capital deployment pacing, and export LP quarterly CSV or printable PDF reports.
+              </li>
+            </ul>
+          </div>
+          <div className="lg:col-span-7">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <button
+                type="button"
+                onClick={() =>
+                  setLightbox({
+                    src: "/images/aarka/portfolio-overview.png",
+                    width: 1024,
+                    height: 555,
+                    alt: "Portfolio view showing backed companies, cash runway months, and MIS reporting status.",
+                    caption: "Portfolio Oversight (/portfolio): Runway watch, MIS report cadence, and open founder asks.",
+                  })
+                }
+                aria-label="Enlarge Portfolio Health screenshot"
+                className="block w-full cursor-zoom-in text-left"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/aarka/portfolio-overview.png"
+                  alt="Portfolio view showing backed companies and MIS reporting status"
+                  width={1024}
+                  height={555}
+                  loading="lazy"
+                  decoding="async"
+                  className="block h-auto w-full object-contain"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lightbox && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.alt}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs sm:p-6"
+          onClick={() => setLightbox(null)}
+        >
+          <div
+            className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-white/15 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+              <span className="text-xs font-medium text-slate-700">{lightbox.caption}</span>
+              <button
+                type="button"
+                onClick={() => setLightbox(null)}
+                className="inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Close (Esc)
+              </button>
+            </div>
+            <div className="overflow-auto bg-slate-100/80 p-3 sm:p-5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightbox.src}
+                alt={lightbox.alt}
+                width={lightbox.width}
+                height={lightbox.height}
+                className="mx-auto block h-auto max-w-full rounded-lg border border-slate-200 bg-white object-contain shadow-xs"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -840,15 +736,15 @@ export function WorkspaceRequestFormClient() {
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
       {!reqSuccess ? (
         <form onSubmit={handleWorkspaceRequest} className="space-y-4" noValidate>
-          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
             <div>
-              <h3 className="font-sans text-base font-semibold text-[#0F172A]">Request Fund Workspace Access</h3>
-              <p className="mt-1 text-xs text-slate-600">
-                For partners, principals, and investment teams at VC funds, family offices, or angel syndicates.
+              <h3 className="text-base font-semibold text-slate-950">Request Fund Workspace Access</h3>
+              <p className="mt-0.5 text-xs text-slate-600">
+                Requests are saved with PENDING status and reviewed manually by an Aarka partner.
               </p>
             </div>
             <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-blue-800">
-              Manual Partner Review
+              Invite-Only Waitlist
             </span>
           </div>
 
@@ -882,7 +778,7 @@ export function WorkspaceRequestFormClient() {
                 value={reqName}
                 onChange={(e) => setReqName(e.target.value)}
                 placeholder="e.g. Kabir Shah"
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-[#0F172A] placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
               />
             </div>
 
@@ -897,7 +793,7 @@ export function WorkspaceRequestFormClient() {
                 value={reqEmail}
                 onChange={(e) => setReqEmail(e.target.value)}
                 placeholder="name@fund.com"
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-[#0F172A] placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
               />
             </div>
 
@@ -911,7 +807,7 @@ export function WorkspaceRequestFormClient() {
                 value={reqFirm}
                 onChange={(e) => setReqFirm(e.target.value)}
                 placeholder="e.g. Horizon Seed Fund"
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-[#0F172A] placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
               />
             </div>
 
@@ -955,19 +851,19 @@ export function WorkspaceRequestFormClient() {
                 value={reqNotes}
                 onChange={(e) => setReqNotes(e.target.value)}
                 placeholder="Share your fund stage focus, monthly deck volume, or specific workflow questions."
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-[#0F172A] placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
               />
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="max-w-sm text-[11px] leading-relaxed text-slate-600">
-              Privacy note: Your work email and fund details are used solely for manual workspace access review and are never shared with third parties.
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <p className="text-[11px] text-slate-600">
+              Submitting records a pending request. Access is granted after partner whitelist approval.
             </p>
             <button
               type="submit"
               disabled={reqLoading}
-              className="inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span>{reqLoading ? "Submitting Request…" : "Request Fund Workspace"}</span>
               {!reqLoading && <span aria-hidden="true">→</span>}
@@ -980,12 +876,9 @@ export function WorkspaceRequestFormClient() {
             ✓
           </div>
           <div>
-            <span className="inline-block rounded border border-amber-200 bg-amber-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-900">
-              Status: Pending Manual Review
-            </span>
-            <h3 className="mt-2 font-sans text-base font-semibold text-[#0F172A]">Workspace Access Request Received</h3>
-            <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-slate-600">
-              Thank you, <strong className="font-semibold text-[#0F172A]">{reqName || reqEmail}</strong>. Your request is now <span className="font-mono font-semibold text-[#0F172A]">PENDING</span> manual review by an Aarka partner. Once your work email is approved and whitelisted, you can sign in via Google OAuth.
+            <h3 className="text-base font-semibold text-slate-950">Workspace Access Request Logged</h3>
+            <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-600">
+              Thank you, <strong className="font-semibold text-slate-900">{reqName || reqEmail}</strong>. Your request has been recorded with <span className="font-mono font-semibold">PENDING</span> status and sent for partner review. Once your email is whitelisted, you will be able to sign in via Google OAuth.
             </p>
           </div>
           <div className="pt-2">
