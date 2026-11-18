@@ -36,46 +36,46 @@ export default function TermsOfUsePage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-2xs sm:p-10">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xs sm:p-10">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-blue-700">
             Legal &amp; Workspace Terms
           </p>
-          <h1 className="mt-2 font-sans text-3xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 font-sans text-3xl font-normal tracking-[-0.02em] text-slate-800 sm:text-4xl">
             Terms of Use
           </h1>
           <p className="mt-2 text-xs text-slate-500">Last updated: November 18, 2026</p>
 
-          <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
+          <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-600">
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">1. Acceptance of Terms</h2>
+              <h2 className="text-base font-medium text-slate-800">1. Acceptance of Terms</h2>
               <p>
-                By accessing Aarka (<span className="font-mono text-xs">aarkavc.xyz</span>), submitting a startup pitch deck, or requesting access to an invite-only fund workspace, you agree to these Terms of Use.
+                By accessing Aarka (aarkavc.xyz), submitting a startup pitch deck, or requesting access to an invite-only fund workspace, you agree to these Terms of Use.
               </p>
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">2. No Investment Commitment or Advisory Relationship</h2>
+              <h2 className="text-base font-medium text-slate-800">2. No Investment Commitment or Advisory Relationship</h2>
               <p>
-                Submitting a pitch deck or financial sheet through <span className="font-mono text-xs">/pitch</span> places your materials into an internal review queue and issues a private status tracking link. Submission of materials, automated claim extraction, or deterministic arithmetic cross-checking does not constitute an offer to invest, investment advice, or a fiduciary relationship.
+                Submitting a pitch deck or financial sheet through /pitch places your materials into an internal review queue and issues a private status tracking link. Submission of materials, automated claim extraction, or deterministic arithmetic cross-checking does not constitute an offer to invest, investment advice, or a fiduciary relationship.
               </p>
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">3. Founder Representations on Submitted Materials</h2>
+              <h2 className="text-base font-medium text-slate-800">3. Founder Representations on Submitted Materials</h2>
               <p>
                 Founders submitting pitch decks (PDF) and financial records (CSV or XLSX) represent that they are authorized to share those documents for investment evaluation and that uploaded files do not contain malicious code or unlawful content.
               </p>
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">4. Invite-Only Workspace Access</h2>
+              <h2 className="text-base font-medium text-slate-800">4. Invite-Only Workspace Access</h2>
               <p>
-                Internal workspace routes (<span className="font-mono text-xs">/deals</span>, <span className="font-mono text-xs">/portfolio</span>, <span className="font-mono text-xs">/fund</span>, <span className="font-mono text-xs">/dataroom</span>, <span className="font-mono text-xs">/team</span>) are restricted to partner-approved users authenticating via whitelisted Google OAuth accounts. Attempting to bypass route access controls, forge founder tracking tokens, or probe protected API endpoints is strictly prohibited.
+                Internal workspace routes (/deals, /portfolio, /fund, /dataroom, /team) are restricted to partner-approved users authenticating via whitelisted Google OAuth accounts. Attempting to bypass route access controls, forge founder tracking tokens, or probe protected API endpoints is strictly prohibited.
               </p>
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">5. Decision Support &amp; Human Review</h2>
+              <h2 className="text-base font-medium text-slate-800">5. Decision Support &amp; Human Review</h2>
               <p>
                 Aarka structures pitch claims with page citations and runs configurable code-based arithmetic checks (such as a 10.0% default variance review threshold and post-money SAFE dilution simulations). All outputs are decision-support tools designed to assist human partners and analysts, who retain sole responsibility for investment decisions.
               </p>

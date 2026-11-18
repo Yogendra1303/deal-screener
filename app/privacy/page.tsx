@@ -36,27 +36,27 @@ export default function PrivacyPolicyPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-2xs sm:p-10">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-2xs sm:p-10">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-blue-700">
             Legal &amp; Data Governance
           </p>
-          <h1 className="mt-2 font-sans text-3xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 font-sans text-3xl font-normal tracking-[-0.02em] text-slate-800 sm:text-4xl">
             Privacy Policy
           </h1>
           <p className="mt-2 text-xs text-slate-500">Last updated: November 18, 2026</p>
 
-          <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
+          <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-600">
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">1. Scope and Purpose</h2>
+              <h2 className="text-base font-medium text-slate-800">1. Scope and Purpose</h2>
               <p>
                 Aarka provides a structured workspace for startup pitch submissions, source-cited diligence extraction, deterministic financial checks, and portfolio MIS monitoring. This policy explains what data is collected across public and authenticated routes and how it is stored and processed.
               </p>
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">2. Founder Pitch Submissions and Data Rooms</h2>
+              <h2 className="text-base font-medium text-slate-800">2. Founder Pitch Submissions and Data Rooms</h2>
               <p>
-                When a founder submits a pitch via <span className="font-mono text-xs">/pitch</span>, Aarka collects founder contact details (name, email, optional LinkedIn profile), company metadata (company name, website, stage, sector, location, funding ask), the uploaded PDF pitch deck (up to 32 MB), and any optional monthly financial sheet (CSV or XLSX, up to 10 MB).
+                When a founder submits a pitch via /pitch, Aarka collects founder contact details (name, email, optional LinkedIn profile), company metadata (company name, website, stage, sector, location, funding ask), the uploaded PDF pitch deck (up to 32 MB), and any optional monthly financial sheet (CSV or XLSX, up to 10 MB).
               </p>
               <p>
                 Uploaded files are validated against binary magic bytes and stored in private, non-public storage buckets (Supabase Storage or local workspace storage). Each submission is assigned a per-deal HMAC-SHA256 tracking token scoped strictly to that deal ID so one founder cannot view or enumerate another founder&apos;s documents.
@@ -64,9 +64,9 @@ export default function PrivacyPolicyPage() {
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">3. Workspace Access Requests and Partner Authentication</h2>
+              <h2 className="text-base font-medium text-slate-800">3. Workspace Access Requests and Partner Authentication</h2>
               <p>
-                When an investor or evaluator submits the workspace access request form (<span className="font-mono text-xs">POST /api/access-request</span>), Aarka stores the submitted name, work email, organization, role, evaluation focus, and optional notes with a <span className="font-mono text-xs">PENDING</span> status for manual partner review.
+                When an investor or evaluator submits the workspace access request form (POST /api/access-request), Aarka stores the submitted name, work email, organization, role, evaluation focus, and optional notes with a PENDING status for manual partner review.
               </p>
               <p>
                 Authenticated workspace access uses Google OAuth via NextAuth. Only email addresses explicitly whitelisted by an Aarka partner are granted active workspace sessions.
@@ -74,7 +74,7 @@ export default function PrivacyPolicyPage() {
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">4. AI Extraction and Deterministic Code Processing</h2>
+              <h2 className="text-base font-medium text-slate-800">4. AI Extraction and Deterministic Code Processing</h2>
               <p>
                 Original founder PDFs and CSV sheets are preserved intact. When an authorized workspace member initiates automated reading, slide text and tables are processed either via a configured server-side Anthropic API key or through the manual account-bridge workflow to extract structured claims with slide page citations.
               </p>
@@ -84,14 +84,14 @@ export default function PrivacyPolicyPage() {
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">5. First-Party Telemetry</h2>
+              <h2 className="text-base font-medium text-slate-800">5. First-Party Telemetry</h2>
               <p>
-                Public pages record basic first-party visit metadata (page path, referrer, UTM parameters, viewport category, and active visit duration) via <span className="font-mono text-xs">POST /api/track</span> to help partners monitor inbound pitch traffic and operational reliability.
+                Public pages record basic first-party visit metadata (page path, referrer, UTM parameters, viewport category, and active visit duration) via POST /api/track to help partners monitor inbound pitch traffic and operational reliability.
               </p>
             </section>
 
             <section className="space-y-2">
-              <h2 className="text-base font-semibold text-slate-950">6. Data Retention and Contact</h2>
+              <h2 className="text-base font-medium text-slate-800">6. Data Retention and Contact</h2>
               <p>
                 Founders or prospective workspace users may request updates or removal of their submitted pitch materials or access request records by contacting the Aarka workspace administrators through their private data room link or fund contact channel.
               </p>
