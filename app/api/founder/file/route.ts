@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFile } from "@/lib/db/repository";
+import { getFile, getFileSignedUrl } from "@/lib/db/repository";
 import { authorizeFounderDealAccess } from "@/lib/founder-token";
 
 /** Strictly row-isolated file download: requires valid HMAC token for dealId OR verified owner/VC session. */
@@ -15,6 +15,15 @@ export async function GET(req: NextRequest) {
   const gate = await authorizeFounderDealAccess(dealId, token);
   if (!gate.ok) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
+  // Direct CDN signed URL redirect for Supabase Storage (zero lambda memory usage)
+  const direct = req.nextUrl.searchParams.get("direct") !== "false";
+  if (direct) {
+    const signed = await getFileSignedUrl(dealId, fileType, 300);
+    if (signed?.url) {
+      return NextResponse.redirect(signed.url, 307);
+    }
   }
 
   const hit = await getFile(dealId, fileType);

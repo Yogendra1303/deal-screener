@@ -22,25 +22,77 @@ export function extractDealOwnerEmail(deal: DealRow | null | undefined): string 
     .toLowerCase();
 }
 
+export const DEFAULT_FOUNDER_TOKEN_TTL_MS = 60 * 24 * 60 * 60 * 1000; // 60 days standard window
+
 /**
- * Generates an unforgeable, deal-scoped HMAC-SHA256 tracking token bound to
- * BOTH the exact dealId AND the submitting founder's email address.
- * Changing dealId in the URL (/founder/dataroom/123 -> /founder/dataroom/124)
- * immediately invalidates the token.
+ * Generates an unforgeable, time-bound, deal-scoped HMAC-SHA256 tracking token.
+ * Format: v2.<issuedEpochMs>.<signature>
+ * Bound to exact dealId, founderEmail, and issuedAt timestamp.
  */
-export function createPitchToken(dealId: string, founderEmail: string): string {
-  const payload = `aarka:pitch:v1:${dealId.trim()}:${founderEmail.trim().toLowerCase()}`;
-  return crypto.createHmac("sha256", getSigningSecret()).update(payload).digest("base64url").slice(0, 43);
+export function createPitchToken(
+  dealId: string,
+  founderEmail: string,
+  issuedAt: number = Date.now(),
+): string {
+  const cleanId = dealId.trim();
+  const cleanEmail = founderEmail.trim().toLowerCase();
+  const payload = `aarka:pitch:v2:${cleanId}:${cleanEmail}:${issuedAt}`;
+  const sig = crypto
+    .createHmac("sha256", getSigningSecret())
+    .update(payload)
+    .digest("base64url")
+    .slice(0, 43);
+  return `v2.${issuedAt}.${sig}`;
 }
 
-/** Constant-time HMAC verification to prevent timing attacks and URL parameter tampering. */
-export function verifyPitchToken(dealId: string, founderEmail: string, token: string | null | undefined): boolean {
+/**
+ * Constant-time HMAC verification with expiration checking.
+ * Supports time-bound v2 tokens and backward-compatible v1 legacy tokens.
+ */
+export function verifyPitchToken(
+  dealId: string,
+  founderEmail: string,
+  token: string | null | undefined,
+  maxAgeMs: number = DEFAULT_FOUNDER_TOKEN_TTL_MS,
+): boolean {
   if (!dealId || !founderEmail || !token) return false;
-  const expected = createPitchToken(dealId, founderEmail);
-  const a = Buffer.from(expected, "utf8");
-  const b = Buffer.from(token.trim(), "utf8");
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  const trimmed = token.trim();
+
+  // 1. Time-bound v2 token: v2.<issuedEpochMs>.<signature>
+  if (trimmed.startsWith("v2.")) {
+    const parts = trimmed.split(".");
+    if (parts.length !== 3) return false;
+    const issuedAt = parseInt(parts[1], 10);
+    if (!Number.isFinite(issuedAt) || issuedAt <= 0) return false;
+
+    // Check expiration window
+    const now = Date.now();
+    if (now - issuedAt > maxAgeMs) {
+      return false; // Token expired
+    }
+    // Disallow future timestamps beyond 5 minutes clock skew
+    if (issuedAt - now > 5 * 60 * 1000) {
+      return false;
+    }
+
+    const expected = createPitchToken(dealId, founderEmail, issuedAt);
+    const a = Buffer.from(expected, "utf8");
+    const b = Buffer.from(trimmed, "utf8");
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  }
+
+  // 2. Backward compatibility fallback for legacy v1 tokens
+  const legacyPayload = `aarka:pitch:v1:${dealId.trim()}:${founderEmail.trim().toLowerCase()}`;
+  const expectedLegacy = crypto
+    .createHmac("sha256", getSigningSecret())
+    .update(legacyPayload)
+    .digest("base64url")
+    .slice(0, 43);
+  const aLegacy = Buffer.from(expectedLegacy, "utf8");
+  const bLegacy = Buffer.from(trimmed, "utf8");
+  if (aLegacy.length !== bLegacy.length) return false;
+  return crypto.timingSafeEqual(aLegacy, bLegacy);
 }
 
 export type DealAccessResult =
@@ -72,8 +124,17 @@ export async function authorizeFounderDealAccess(
 
   // 1. Check deal-scoped cryptographic token first
   if (token && token.trim()) {
-    if (ownerEmail && verifyPitchToken(deal.id, ownerEmail, token)) {
-      return { ok: true, deal, mode: "token", email: ownerEmail };
+    if (ownerEmail) {
+      if (verifyPitchToken(deal.id, ownerEmail, token)) {
+        return { ok: true, deal, mode: "token", email: ownerEmail };
+      }
+      if (token.trim().startsWith("v2.")) {
+        const parts = token.trim().split(".");
+        const issued = parseInt(parts[1], 10);
+        if (Number.isFinite(issued) && Date.now() - issued > DEFAULT_FOUNDER_TOKEN_TTL_MS) {
+          return { ok: false, status: 403, error: "This pitch access link has expired. Please request a new tracking link." };
+        }
+      }
     }
     return { ok: false, status: 403, error: "Invalid or tampered pitch access link." };
   }

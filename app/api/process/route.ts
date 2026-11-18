@@ -1,10 +1,11 @@
 import { revalidatePath } from "next/cache";
+import { after, NextResponse } from "next/server";
 import { processDeal } from "@/lib/pipeline";
 import { parseSheet } from "@/lib/sheet";
 import { MissingKeyError, hasKey } from "@/lib/ai";
 import { sampleById } from "@/lib/data";
 import { STATE_KEYS } from "@/lib/db/project";
-import { driver, getState, insertAuditLog, mergeDeals, putFinancialFile, putPitchDeck, putState } from "@/lib/db/repository";
+import { driver, getState, insertAuditLog, mergeDeals, patchDeal, putFinancialFile, putPitchDeck, putState } from "@/lib/db/repository";
 import { auth, requireRole } from "@/lib/nextauth";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 import type { DealResult, Flag, FormInput, SheetRow } from "@/lib/types";
@@ -81,87 +82,142 @@ export async function POST(request: Request) {
   const deckUrl = sample ? `/samples/${sample.deckFile}` : `/api/files/${encodeURIComponent(id)}/deck_pdf`;
   const session = await auth().catch(() => null);
   const actor = session?.user?.email?.trim().toLowerCase() || "partner";
-  const encoder = new TextEncoder();
+  const urlObj = new URL(request.url);
+  const isAsync = fd.get("async") === "true" || urlObj.searchParams.get("async") === "true";
 
-  // Stream progress as one JSON object per line, persist server-side, then emit the finished deal.
+  // 1. Upfront database persistence: Commit deal row & raw files BEFORE extraction starts
+  // This guarantees that network blips, tab closures, or timeouts never drop uploaded files.
+  if (driver() !== "none") {
+    await mergeDeals([
+      {
+        id,
+        slug: id,
+        company_name: form.companyName.trim(),
+        sector: form.sector || "B2B software",
+        sub_category: form.sector || "B2B software",
+        stage: form.stage || "Seed",
+        country: form.country || "Global",
+        city: null,
+        ask_amount: form.amountUsd,
+        currency: "USD",
+        status: "New",
+        checks_status: "AI Screening in Progress...",
+        ai_status: "Processing",
+        received_at: receivedAt,
+        is_historical: false,
+        website: form.website || null,
+        founder_name: form.founders?.[0]?.name || null,
+        founder_email: form.email || null,
+      },
+    ]).catch(() => undefined);
+
+    if (!sample) {
+      await putPitchDeck(id, deck.name || "deck.pdf", "application/pdf", new Uint8Array(bytes)).catch(() => undefined);
+      if (sheetBytes && sheetFileName) {
+        await putFinancialFile(id, "monthly_csv", sheetFileName, "text/csv", sheetBytes).catch(() => undefined);
+      }
+    }
+    revalidatePath("/deals");
+    revalidatePath("/");
+  }
+
+  const runExtraction = async (onStep?: (msg: string) => void): Promise<DealResult> => {
+    const deal = await processDeal({
+      id,
+      source: sample ? "sample" : "upload",
+      receivedAt,
+      form,
+      pdfBase64: bytes.toString("base64"),
+      fileName: deck.name || "deck.pdf",
+      deckUrl,
+      sheet,
+      onStep,
+    });
+
+    if (driver() !== "none") {
+      const teamScore = deal.scores.find((s) => s.key === "team")?.level ?? null;
+      await patchDeal(id, {
+        company_name: form.companyName.trim(),
+        sector: form.sector || "B2B software",
+        sub_category: deal.record.company.sector.value || form.sector || "B2B software",
+        stage: form.stage || "Seed",
+        country: form.country || "Global",
+        city: deal.record.company.city.value || null,
+        ask_amount: form.amountUsd,
+        currency: "USD",
+        status: "New",
+        band: deal.band,
+        founder_fit: teamScore,
+        website: form.website || null,
+        founder_name: form.founders?.[0]?.name || null,
+        founder_email: form.email || null,
+        summary: deal.ai.summary,
+        checks_json: deal.flags,
+        checks_status: summarizeChecks(deal.flags),
+        ai_status: "Complete",
+        received_at: receivedAt,
+        is_historical: false,
+        record_json: deal,
+      }).catch(() => undefined);
+
+      const existingDeals = (await getState<Record<string, DealResult>>(STATE_KEYS.deals).catch(() => undefined)) ?? {};
+      await putState(STATE_KEYS.deals, { ...existingDeals, [id]: deal }).catch(() => undefined);
+
+      void insertAuditLog("DEAL_AI_PROCESSED", actor, {
+        dealId: id,
+        companyName: form.companyName,
+        band: deal.band,
+        flagsCount: deal.flags.length,
+      }).catch(() => undefined);
+
+      try {
+        broadcastRealtimeEvent("deal.created", { id, company_name: form.companyName, band: deal.band });
+      } catch {
+        // non-blocking
+      }
+      revalidatePath("/deals");
+      revalidatePath("/");
+    }
+
+    return deal;
+  };
+
+  // If async mode requested, run via background task and immediately return 202 Accepted
+  if (isAsync) {
+    after(async () => {
+      try {
+        await runExtraction();
+      } catch (err) {
+        console.error(`[process][async] Failed for ${id}:`, err);
+        await patchDeal(id, {
+          ai_status: "Failed",
+          checks_status: `AI Extraction Failed: ${(err as Error).message?.slice(0, 120) || "Unknown error"}`,
+        }).catch(() => undefined);
+      }
+    });
+
+    return NextResponse.json(
+      { ok: true, dealId: id, status: "Processing", companyName: form.companyName },
+      { status: 202 },
+    );
+  }
+
+  // Stream progress as NDJSON for interactive frontend upload dialogs
+  const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
       try {
-        const deal = await processDeal({
-          id,
-          source: sample ? "sample" : "upload",
-          receivedAt,
-          form,
-          pdfBase64: bytes.toString("base64"),
-          fileName: deck.name || "deck.pdf",
-          deckUrl,
-          sheet,
-          onStep: (message) => send({ type: "step", message }),
-        });
-
-        // Automatically persist AI-processed deals and attached files server-side so refreshes never lose work
-        if (driver() !== "none") {
-          send({ type: "step", message: "Saving structured deal record to workspace database..." });
-          const teamScore = deal.scores.find((s) => s.key === "team")?.level ?? null;
-          await mergeDeals([
-            {
-              id,
-              slug: id,
-              company_name: form.companyName.trim(),
-              sector: form.sector || "B2B software",
-              sub_category: deal.record.company.sector.value || form.sector || "B2B software",
-              stage: form.stage || "Seed",
-              country: form.country || "Global",
-              city: deal.record.company.city.value || null,
-              ask_amount: form.amountUsd,
-              currency: "USD",
-              status: "New",
-              band: deal.band,
-              founder_fit: teamScore,
-              website: form.website || null,
-              founder_name: form.founders?.[0]?.name || null,
-              founder_email: form.email || null,
-              summary: deal.ai.summary,
-              checks_json: deal.flags,
-              checks_status: summarizeChecks(deal.flags),
-              ai_status: "Complete",
-              received_at: receivedAt,
-              is_historical: false,
-              record_json: deal,
-            },
-          ]);
-
-          if (!sample) {
-            await putPitchDeck(id, deck.name || "deck.pdf", "application/pdf", new Uint8Array(bytes)).catch(() => undefined);
-            if (sheetBytes && sheetFileName) {
-              await putFinancialFile(id, "monthly_csv", sheetFileName, "text/csv", sheetBytes).catch(() => undefined);
-            }
-          }
-
-          const existingDeals = (await getState<Record<string, DealResult>>(STATE_KEYS.deals).catch(() => undefined)) ?? {};
-          await putState(STATE_KEYS.deals, { ...existingDeals, [id]: deal }).catch(() => undefined);
-
-          void insertAuditLog("DEAL_AI_PROCESSED", actor, {
-            dealId: id,
-            companyName: form.companyName,
-            band: deal.band,
-            flagsCount: deal.flags.length,
-          }).catch(() => undefined);
-
-          try {
-            broadcastRealtimeEvent("deal.created", { id, company_name: form.companyName, band: deal.band });
-          } catch {
-            // non-blocking
-          }
-          revalidatePath("/deals");
-          revalidatePath("/");
-        }
-
+        const deal = await runExtraction((message) => send({ type: "step", message }));
         send({ type: "result", deal });
       } catch (e) {
         console.error("process failed", e);
-        send({ type: "error", error: (e as Error).message || "Processing failed." });
+        const errMsg = (e as Error).message || "Processing failed.";
+        await patchDeal(id, {
+          ai_status: "Failed",
+          checks_status: `AI Extraction Failed: ${errMsg.slice(0, 120)}`,
+        }).catch(() => undefined);
+        send({ type: "error", error: errMsg });
       } finally {
         controller.close();
       }

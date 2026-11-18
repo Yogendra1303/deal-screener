@@ -410,6 +410,52 @@ export async function getFile(dealId: string, fileType: string): Promise<{ row: 
   }
 }
 
+/**
+ * Creates a short-lived signed download URL (300s) directly from Supabase Storage CDN,
+ * offloading binary transfer from serverless function memory.
+ */
+export async function getFileSignedUrl(
+  dealId: string,
+  fileType: string,
+  expiresInSeconds = 300,
+): Promise<{ url: string; fileName: string; mimeType: string } | null> {
+  need();
+  const row = (await listFiles(dealId)).find((f) => f.file_type === fileType);
+  if (!row) return null;
+  if (driver() === "supabase" && SB_URL && SB_KEY) {
+    try {
+      const signRes = await sb(`/storage/v1/object/sign/${BUCKET}/${row.storage_path}`, {
+        method: "POST",
+        ...json({ expiresIn: expiresInSeconds }),
+      });
+      const data = (await signRes.json()) as { signedURL?: string };
+      if (data?.signedURL) {
+        const fullUrl = data.signedURL.startsWith("http")
+          ? data.signedURL
+          : `${SB_URL}/storage/v1${data.signedURL}`;
+        return { url: fullUrl, fileName: row.file_name, mimeType: row.mime_type };
+      }
+    } catch {
+      try {
+        const signRes = await sb(`/storage/v1/object/sign/pitch_decks/${row.storage_path}`, {
+          method: "POST",
+          ...json({ expiresIn: expiresInSeconds }),
+        });
+        const data = (await signRes.json()) as { signedURL?: string };
+        if (data?.signedURL) {
+          const fullUrl = data.signedURL.startsWith("http")
+            ? data.signedURL
+            : `${SB_URL}/storage/v1${data.signedURL}`;
+          return { url: fullUrl, fileName: row.file_name, mimeType: row.mime_type };
+        }
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
 // ---------- Signals ----------
 
 export async function replaceSignals(dealId: string, rows: Omit<SignalRow, "id" | "deal_id" | "created_at">[]): Promise<void> {

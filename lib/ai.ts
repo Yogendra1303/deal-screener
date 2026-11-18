@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-export const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
+export const MODEL = process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
 
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export const EFFORT: Effort = (["low", "medium", "high", "xhigh", "max"] as const).includes(
@@ -28,6 +28,10 @@ export function getClient(): Anthropic {
 
 // List prices in USD per million tokens. Used only for the cost estimate shown in the app.
 const PRICES: Record<string, { input: number; output: number }> = {
+  "claude-3-5-sonnet-20241022": { input: 3, output: 15 },
+  "claude-3-7-sonnet-20250219": { input: 3, output: 15 },
+  "claude-3-5-haiku-20241022": { input: 0.8, output: 4 },
+  "claude-3-opus-20240229": { input: 15, output: 75 },
   "claude-opus-5-5": { input: 4, output: 20 },
   "claude-opus-5": { input: 5, output: 25 },
   "claude-sonnet-5-5": { input: 2, output: 10 },

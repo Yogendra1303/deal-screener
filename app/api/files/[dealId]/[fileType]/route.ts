@@ -1,5 +1,6 @@
 // The original files behind a deal: the deck PDF, the monthly CSV, the intake form. PUT stores one, GET serves it back.
-import { NoDatabaseError, getFile, putFile } from "@/lib/db/repository";
+import { NextResponse } from "next/server";
+import { NoDatabaseError, getFile, getFileSignedUrl, putFile } from "@/lib/db/repository";
 import { requireRole } from "@/lib/nextauth";
 
 // deck_pdf, monthly_csv, intake_form, registry_json, audit_html, or a founder-link file key.
@@ -13,9 +14,21 @@ export async function GET(request: Request, ctx: { params: Promise<{ dealId: str
 
   const { dealId, fileType } = await ctx.params;
   try {
+    const url = new URL(request.url);
+    const direct = url.searchParams.get("direct") !== "false";
+
+    // 1. Direct CDN signed redirect for Supabase Storage to eliminate serverless memory buffering
+    if (direct) {
+      const signed = await getFileSignedUrl(dealId, fileType, 300);
+      if (signed?.url) {
+        return NextResponse.redirect(signed.url, 307);
+      }
+    }
+
+    // 2. Fallback to direct buffer response (local file storage driver or direct=false)
     const hit = await getFile(dealId, fileType);
     if (!hit) return Response.json({ error: "No such file." }, { status: 404 });
-    const download = new URL(request.url).searchParams.get("download") != null;
+    const download = url.searchParams.get("download") != null;
     return new Response(hit.bytes as BodyInit, {
       headers: {
         "Content-Type": hit.row.mime_type,

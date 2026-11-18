@@ -67,19 +67,23 @@ async function runDigest(req: NextRequest, sendEmail: boolean) {
     }
   }
 
-  const today = DEMO_DATE;
+  // Dynamic evaluation date: defaults to real calendar today, supports query/env override for testing
+  const paramDate = req.nextUrl.searchParams.get("date") || process.env.OVERRIDE_CRON_DATE;
+  const today = paramDate || (process.env.NODE_ENV === "test" ? DEMO_DATE : new Date().toISOString().slice(0, 10));
+
   // Hydrate live partner/founder MIS submissions from DB so already-submitted reports are not falsely flagged overdue
   const overlay = await getState<SavedPortfolioOverlay>("ds.portfolio.v1").catch(() => undefined);
   const livePortfolio = mergeLivePortfolio(PORTFOLIO, overlay, today);
 
-  const overdueReports: Array<{ company: string; owner: string; what: string; overdueDays: number }> = [];
-  const lowRunway: Array<{ company: string; owner: string; months: number; health: string }> = [];
+  const overdueReports: Array<{ company: string; companyId: string; owner: string; what: string; overdueDays: number }> = [];
+  const lowRunway: Array<{ company: string; companyId: string; owner: string; months: number; health: string }> = [];
 
   for (const c of livePortfolio) {
     const missing = missingItems(c, today).filter((m) => !m.key.endsWith(":question"));
     for (const m of missing) {
       overdueReports.push({
         company: c.name,
+        companyId: c.id,
         owner: c.owner,
         what: m.what,
         overdueDays: m.overdueDays,
@@ -89,6 +93,7 @@ async function runDigest(req: NextRequest, sendEmail: boolean) {
     if (rw && rw.months < WATCH_RUNWAY_MONTHS) {
       lowRunway.push({
         company: c.name,
+        companyId: c.id,
         owner: c.owner,
         months: Math.round(rw.months * 10) / 10,
         health: companyHealth(c, today).band,
@@ -99,8 +104,34 @@ async function runDigest(req: NextRequest, sendEmail: boolean) {
   overdueReports.sort((a, b) => b.overdueDays - a.overdueDays);
   lowRunway.sort((a, b) => a.months - b.months);
 
-  let emailed = false;
+  // Optional automated founder reminder dispatch (?remind=true)
+  const shouldRemindFounders = req.nextUrl.searchParams.get("remind") === "true";
+  const founderReminders: Array<{ company: string; what: string; sent: boolean }> = [];
+
   const apiKey = process.env.RESEND_API_KEY;
+  if (shouldRemindFounders && apiKey && overdueReports.length > 0) {
+    const resend = new Resend(apiKey);
+    for (const item of overdueReports.slice(0, 6)) {
+      try {
+        await resend.emails.send({
+          from: ALERT_FROM,
+          to: ALERT_TO, // In production, route to founder or partner owner
+          subject: `Aarka Reminder: Monthly MIS Due for ${item.company} (${item.what})`,
+          html: `<p>Hi team,</p><p>This is a friendly automated reminder that the <strong>${escapeHtml(item.what)}</strong> for <strong>${escapeHtml(item.company)}</strong> is due for fund review.</p><p>Please upload your monthly CSV numbers or MIS deck directly in your workspace:</p><p><a href="https://www.aarkavc.xyz/portfolio/${encodeURIComponent(item.companyId)}" style="color:#2563eb;font-weight:600;">Open Portfolio Data Room &rarr;</a></p><p>Best regards,<br/>Aarka Portfolio Operations</p>`,
+        });
+        founderReminders.push({ company: item.company, what: item.what, sent: true });
+        void insertAuditLog("FOUNDER_MIS_REMINDER", "portfolio-cron", {
+          company: item.company,
+          companyId: item.companyId,
+          what: item.what,
+        }).catch(() => undefined);
+      } catch {
+        founderReminders.push({ company: item.company, what: item.what, sent: false });
+      }
+    }
+  }
+
+  let emailed = false;
   if ((sendEmail || isCron) && apiKey) {
     const resend = new Resend(apiKey);
     const runwayRows = lowRunway
@@ -145,17 +176,21 @@ async function runDigest(req: NextRequest, sendEmail: boolean) {
     lowRunwayCount: lowRunway.length,
     overdueReportsCount: overdueReports.length,
     emailed,
-    message: `Portfolio monitor checked ${livePortfolio.length} companies: ${lowRunway.length} runway alerts, ${overdueReports.length} overdue MIS items${emailed ? " (digest emailed)" : ""}.`,
+    founderRemindersCount: founderReminders.length,
+    evaluationDate: today,
+    message: `Portfolio monitor checked ${livePortfolio.length} companies as of ${today}: ${lowRunway.length} runway alerts, ${overdueReports.length} overdue MIS items${emailed ? " (digest emailed)" : ""}.`,
   }).catch(() => undefined);
 
   return NextResponse.json({
     ok: true,
     checkedAt: new Date().toISOString(),
+    evaluationDate: today,
     companiesChecked: livePortfolio.length,
     liveOverlayMerged: Boolean(overlay),
     lowRunway,
     overdueReports,
     emailed,
+    founderReminders,
   });
 }
 

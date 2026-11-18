@@ -3,7 +3,7 @@
 
 export interface RealtimeEvent {
   id: string;
-  type: "deal.created" | "deal.updated" | "file.uploaded" | "metrics.updated" | "ping";
+  type: "deal.created" | "deal.updated" | "deal.deleted" | "file.uploaded" | "metrics.updated" | "ic.voted" | "ping";
   timestamp: string;
   data: any;
 }
@@ -38,11 +38,41 @@ class RealtimeBus {
       }
     }
 
+    // Cross-instance dispatch to Supabase Realtime broadcast REST API when configured
+    void publishToSupabaseRealtime(event).catch(() => undefined);
+
     return event;
   }
 
   getRecentEvents(): RealtimeEvent[] {
     return [...this.history];
+  }
+}
+
+async function publishToSupabaseRealtime(event: RealtimeEvent): Promise<void> {
+  const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!sbUrl || !sbKey) return;
+  try {
+    await fetch(`${sbUrl}/realtime/v1/api/broadcast`, {
+      method: "POST",
+      headers: {
+        apikey: sbKey,
+        Authorization: `Bearer ${sbKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            topic: "realtime:aarka-dashboard",
+            event: event.type,
+            payload: event,
+          },
+        ],
+      }),
+    });
+  } catch {
+    // Non-blocking fire-and-forget
   }
 }
 
