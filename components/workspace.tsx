@@ -3,12 +3,12 @@
 // Who is signed in (partner or analyst), and the questions between them. The sign-in stays in this
 // browser; the questions are saved on the server too, laid over the sample questions that ship with the app.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
-import { DEMO_DATE } from "@/lib/portfolio/health";
 import { SEED_QUESTIONS, type Answer, type Question } from "@/lib/questions";
 import { signInCheck, type Session } from "@/lib/auth";
 import type { Role } from "@/lib/team";
 import { hydrate, persist } from "@/lib/db/client";
+
+const DEMO_DATE = "2026-10-29";
 
 export const ROLE_STORAGE_KEY = "ds.role.v1";
 const KEYS = { session: "ds.session.v1", questions: "ds.questions.v1" };
@@ -83,7 +83,6 @@ function persistRole(role: Role) {
 }
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const { data: authSession } = useSession();
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [local, setLocal] = useState<LocalQuestions>(EMPTY);
@@ -117,21 +116,24 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setSession(localSession);
     setLocal(read(KEYS.questions, EMPTY));
 
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null; image?: string | null } | null; role?: string | null } | null) => {
-        if (data?.enabled && !data.user) {
-          setSession(null);
-          try {
-            window.localStorage.removeItem(KEYS.session);
-          } catch {
-            // Ignore storage errors.
-          }
-          return;
-        }
-        if (data?.enabled && data.user?.email && data.role) {
-          const isVc = data.role === "VC" || data.role === "partner" || data.role === "analyst";
-          if (!isVc) {
+    const path = typeof window !== "undefined" ? window.location.pathname : "/";
+    const isStandalonePublic =
+      path === "/pitch" ||
+      path.startsWith("/pitch/") ||
+      path.startsWith("/login") ||
+      path.startsWith("/pending") ||
+      path.startsWith("/unauthorized");
+
+    if (isStandalonePublic && !localSession) {
+      setReady(true);
+      return;
+    }
+
+    const checkServerSession = () => {
+      fetch("/api/auth/me", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { enabled?: boolean; user?: { email?: string | null; name?: string | null; image?: string | null } | null; role?: string | null } | null) => {
+          if (data?.enabled && !data.user) {
             setSession(null);
             try {
               window.localStorage.removeItem(KEYS.session);
@@ -140,26 +142,46 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             }
             return;
           }
-          const serverRole: Role = data.role === "analyst" ? "Analyst" : "Partner";
-          const currentRole = readStoredRole();
-          const role: Role = urlOverride ?? currentRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole);
-          persistRole(role);
-          const defaultName = role === "Partner" ? "Kabir Shah" : "Riya Menon";
-          const realName = data.user.name?.trim() || data.user.email.split("@")[0];
-          const next: Session = {
-            name: defaultName,
-            role,
-            email: data.user.email,
-            userName: realName,
-            userImage: data.user.image ?? undefined,
-          };
-          setSession(next);
-          write(KEYS.session, next);
-          hydrate<Partial<LocalQuestions>>(KEYS.questions, (v) => setLocal({ ...EMPTY, ...v }), window.localStorage.getItem(KEYS.questions) ? read(KEYS.questions, EMPTY) : null);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => setReady(true));
+          if (data?.enabled && data.user?.email && data.role) {
+            const isVc = data.role === "VC" || data.role === "partner" || data.role === "analyst";
+            if (!isVc) {
+              setSession(null);
+              try {
+                window.localStorage.removeItem(KEYS.session);
+              } catch {
+                // Ignore storage errors.
+              }
+              return;
+            }
+            const serverRole: Role = data.role === "analyst" ? "Analyst" : "Partner";
+            const currentRole = readStoredRole();
+            const role: Role = urlOverride ?? currentRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole);
+            persistRole(role);
+            const defaultName = role === "Partner" ? "Kabir Shah" : "Riya Menon";
+            const realName = data.user.name?.trim() || data.user.email.split("@")[0];
+            const next: Session = {
+              name: defaultName,
+              role,
+              email: data.user.email,
+              userName: realName,
+              userImage: data.user.image ?? undefined,
+            };
+            setSession(next);
+            write(KEYS.session, next);
+            hydrate<Partial<LocalQuestions>>(KEYS.questions, (v) => setLocal({ ...EMPTY, ...v }), window.localStorage.getItem(KEYS.questions) ? read(KEYS.questions, EMPTY) : null);
+          }
+        })
+        .catch(() => undefined)
+        .finally(() => setReady(true));
+    };
+
+    if (path === "/" && !localSession) {
+      setReady(true);
+      const timer = window.setTimeout(checkServerSession, 1800);
+      return () => window.clearTimeout(timer);
+    }
+
+    checkServerSession();
   }, []);
 
   const setDemoRole = useCallback((role: Role) => {
@@ -197,7 +219,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Nothing saved to remove.
     }
-    void nextAuthSignOut({ callbackUrl: "/" });
+    void import("next-auth/react").then(({ signOut: nextAuthSignOut }) => {
+      void nextAuthSignOut({ callbackUrl: "/" });
+    });
   }, []);
 
   const update = useCallback((fn: (l: LocalQuestions) => LocalQuestions) => {
@@ -222,9 +246,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       session,
       role: session?.role ?? "Analyst",
       me: session?.name ?? "",
-      userName: authSession?.user?.name || session?.userName || session?.name || "",
-      userEmail: authSession?.user?.email || session?.email || "",
-      userImage: authSession?.user?.image || session?.userImage || "",
+      userName: session?.userName || session?.name || "",
+      userEmail: session?.email || "",
+      userImage: session?.userImage || "",
       setDemoRole,
       signIn,
       signOut,
@@ -239,7 +263,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       questionsChanged: local.added.length > 0 || Object.keys(local.answers).length > 0,
       resetQuestions: () => update(() => EMPTY),
     }),
-    [ready, session, authSession, setDemoRole, signIn, signOut, questions, update, local],
+    [ready, session, setDemoRole, signIn, signOut, questions, update, local],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

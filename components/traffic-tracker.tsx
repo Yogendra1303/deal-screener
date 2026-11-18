@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 
 /**
  * Lightweight, privacy-safe, ad-blocker-proof pageview + active time-on-page beacon.
@@ -11,13 +10,15 @@ import { useSession } from "next-auth/react";
  * Skips authenticated VC partners automatically.
  */
 export function TrafficTracker() {
-  const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const pathname = usePathname() || "/";
   const activeVisitRef = useRef<{ visitId: string; key: string; startedAt: number; accumulatedMs: number; hidden: boolean; flushed: boolean } | null>(null);
 
   useEffect(() => {
-    if (status === "loading") return;
-    if (session?.role === "VC") return;
+    try {
+      if (typeof window !== "undefined" && window.localStorage.getItem("ds.session.v1")) return;
+    } catch {
+      // ignore storage errors
+    }
 
     const isPublic =
       pathname === "/" ||
@@ -101,16 +102,18 @@ export function TrafficTracker() {
       language,
     };
 
-    try {
-      void fetch("/api/track", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      });
-    } catch {
-      // non-blocking
-    }
+    const timer = window.setTimeout(() => {
+      try {
+        void fetch("/api/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        });
+      } catch {
+        // non-blocking
+      }
+    }, 2500);
 
     const onVisibility = () => {
       if (document.hidden) {
@@ -141,11 +144,12 @@ export function TrafficTracker() {
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
     return () => {
+      window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
       flushDuration(visitState);
     };
-  }, [pathname, session?.role, status]);
+  }, [pathname]);
 
   return null;
 }

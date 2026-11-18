@@ -390,7 +390,7 @@ function PitchForm() {
           <div className="border-b border-slate-100 pb-5">
             <h1 className="text-xl font-semibold tracking-tight text-slate-900">Submit your pitch</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Early-stage mandate up to $4M. Share your pitch deck and core details—every submission goes privately into our review queue.
+              Early-stage mandate up to $4M. Share your pitch deck and core details: every submission goes privately into our review queue.
             </p>
           </div>
 
@@ -612,7 +612,7 @@ function PitchForm() {
             )}
 
             <div className="rounded-md border border-slate-100 bg-slate-50/70 px-3.5 py-2.5 text-[11px] leading-relaxed text-slate-500">
-              Confidentiality: Your pitch deck and metrics are stored privately and reviewed strictly by the Aarka investment team—never shared publicly or visible to other founders.
+              Confidentiality: Your pitch deck and metrics are stored privately and reviewed strictly by the Aarka investment team. They are never shared publicly or visible to other founders.
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">

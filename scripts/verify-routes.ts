@@ -22,7 +22,7 @@ async function run() {
   const homeHtml = await homeRes.text();
   check("GET / returns 200", homeRes.status === 200, `status ${homeRes.status}`);
   check("Landing page has 'Partner Sign In' in navbar", homeHtml.includes("Partner Sign In"));
-  check("Landing page has 'Explore the Platform' button", homeHtml.includes("Explore the Platform"));
+  check("Landing page has 'Request Fund Workspace' hero CTA", homeHtml.includes("Request Fund Workspace"));
   check("Landing page has 'Submit a Pitch' hero CTA", homeHtml.includes("Submit a Pitch"));
 
   const logoRes = await fetch(`${BASE}/logo.png`, { cache: "no-store" });

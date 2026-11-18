@@ -1,1230 +1,587 @@
-"use client";
-
-import { motion } from "framer-motion";
-import { signIn as nextAuthSignIn } from "next-auth/react";
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { AccessRequestModal } from "./access-request-modal";
+import {
+  CapabilitiesInteractiveTabs,
+  MobileHeaderMenu,
+  PartnerSignInButton,
+  WorkflowInteractiveGrid,
+  WorkspaceRequestFormClient,
+} from "./landing-interactive";
 
-interface LightboxAsset {
-  src: string;
-  width: number;
-  height: number;
-  alt: string;
-  caption: string;
-}
-
-const WORKFLOW_STEPS = [
-  {
-    num: "01",
-    title: "Capture",
-    targetId: "teams",
-    body: "Collect founder pitch decks and monthly financial sheets through a single public link or analyst request—preserved as received in the company data room.",
-  },
-  {
-    num: "02",
-    title: "Structure",
-    targetId: "architecture",
-    body: "AI reads unstructured deck slides and tables into a standardised company record, attaching the file, page number and a verbatim quote to every claim.",
-  },
-  {
-    num: "03",
-    title: "Validate",
-    targetId: "capabilities",
-    body: "Deterministic code checks ARR against MRR, cash runway against net burn, and deck figures against monthly CSV rows—flagging any discrepancy over 10%.",
-  },
-  {
-    num: "04",
-    title: "Evaluate",
-    targetId: "pipeline",
-    body: "Code applies your fund’s written rules (stage, sector, geography, round size) alongside traction and founder-fit assessments to sort opportunities clearly.",
-  },
-  {
-    num: "05",
-    title: "Monitor",
-    targetId: "portfolio",
-    body: "Track re-engagement triggers on passed deals and monitor monthly MIS reporting, cash runway and plan variance across every portfolio company.",
-  },
-] as const;
+const SOFTWARE_APPLICATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Aarka",
+  url: "https://www.aarkavc.xyz",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "A structured workspace for startup pitches and investor review. Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
+  featureList: [
+    "Startup pitch deck and monthly CSV financial sheet intake",
+    "Source-cited slide claim extraction with verbatim page provenance",
+    "Deterministic arithmetic verification (ARR vs. MRR x 12, runway, compounded growth)",
+    "Cap table, SAFE, and priced round dilution modeling",
+    "Portfolio MIS reporting health and fund analytics",
+  ],
+};
 
 export function LandingPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [SigningIn, setSigningIn] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [diligenceTab, setDiligenceTab] = useState<"audit" | "compare">("audit");
-  const [marketTab, setMarketTab] = useState<"momentum" | "sector">("momentum");
-  const [lightbox, setLightbox] = useState<LightboxAsset | null>(null);
-
-  useEffect(() => {
-    if (!lightbox && !mobileMenuOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setLightbox(null);
-        setMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [lightbox, mobileMenuOpen]);
-
-  function scrollToSection(id: string) {
-    setMobileMenuOpen(false);
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }
-
-  function handleSignIn() {
-    setSigningIn(true);
-    void nextAuthSignIn("google", { callbackUrl: "/" });
-  }
-
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#FAF9F6] text-slate-900 selection:bg-slate-900 selection:text-white">
+    <div className="min-h-screen overflow-x-clip bg-[#FAF9F6] text-slate-900 selection:bg-slate-900 selection:text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_APPLICATION_JSON_LD) }}
+      />
       {/* =====================================================================
-          HEADER & NAVIGATION — Clean, Minimal, Institutional
+          MINIMALIST STICKY NAVIGATION
          ===================================================================== */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-xs">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2.5 focus:outline-none">
-            <Image
+          <Link href="/" className="flex items-center gap-2.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/aarka-logo.png"
-              alt="Aarka"
-              width={26}
-              height={26}
-              unoptimized
-              className="h-[26px] w-[26px] shrink-0 rounded-md object-contain ring-1 ring-slate-900/10"
+              alt="Aarka logo"
+              width={28}
+              height={28}
+              className="h-7 w-7 shrink-0 rounded-md object-contain ring-1 ring-slate-900/10"
             />
             <span className="text-[15px] font-semibold tracking-[-0.02em] text-slate-950">Aarka</span>
           </Link>
 
-          <nav aria-label="Primary" className="hidden items-center gap-8 md:flex">
-            <button
-              type="button"
-              onClick={() => scrollToSection("workflow")}
-              className="cursor-pointer text-[13.5px] font-medium text-slate-600 transition-colors hover:text-slate-950"
+          <nav aria-label="Primary" className="hidden items-center gap-7 md:flex">
+            <a
+              href="#workflow"
+              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-950"
             >
               Workflow
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection("capabilities")}
-              className="cursor-pointer text-[13.5px] font-medium text-slate-600 transition-colors hover:text-slate-950"
+            </a>
+            <a
+              href="#capabilities"
+              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-950"
             >
               Capabilities
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection("architecture")}
-              className="cursor-pointer text-[13.5px] font-medium text-slate-600 transition-colors hover:text-slate-950"
+            </a>
+            <a
+              href="#privacy"
+              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-950"
             >
-              Architecture
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection("teams")}
-              className="cursor-pointer text-[13.5px] font-medium text-slate-600 transition-colors hover:text-slate-950"
+              Data &amp; Privacy
+            </a>
+            <a
+              href="#request-workspace"
+              className="text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-950"
             >
-              For Venture Teams
-            </button>
+              Request Workspace
+            </a>
           </nav>
 
-          <div className="hidden items-center md:flex">
-            <button
-              type="button"
-              onClick={handleSignIn}
-              disabled={SigningIn}
-              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-[13px] font-medium text-white transition-all duration-200 hover:scale-[1.02] hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60"
+          <div className="hidden items-center gap-2.5 md:flex">
+            <Link
+              href="/pitch"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
             >
-              <span>{SigningIn ? "Connecting…" : "Partner Sign In"}</span>
-            </button>
+              Submit a Pitch
+            </Link>
+            <PartnerSignInButton
+              className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md bg-slate-900 px-3.5 text-xs font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+            />
           </div>
 
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen((v) => !v)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={mobileMenuOpen}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 md:hidden"
-          >
-            {mobileMenuOpen ? (
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-            )}
-          </button>
+          <MobileHeaderMenu />
         </div>
-
-        {mobileMenuOpen && (
-          <div className="border-t border-slate-200 bg-white px-4 pt-3 pb-5 shadow-md md:hidden">
-            <nav className="flex flex-col space-y-1">
-              <button
-                type="button"
-                onClick={() => scrollToSection("workflow")}
-                className="rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Workflow
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("capabilities")}
-                className="rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Capabilities
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("architecture")}
-                className="rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Architecture
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("teams")}
-                className="rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                For Venture Teams
-              </button>
-            </nav>
-            <div className="mt-4 border-t border-slate-100 pt-4">
-              <button
-                type="button"
-                onClick={handleSignIn}
-                disabled={SigningIn}
-                className="inline-flex h-9 w-full items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
-              >
-                {SigningIn ? "Connecting…" : "Partner Sign In"}
-              </button>
-            </div>
-          </div>
-        )}
       </header>
 
       <main>
         {/* ===================================================================
-            HERO — Restrained Editorial Hierarchy & Centered Compact Showcase
+            STATIC ABOVE-THE-FOLD HERO SECTION
+            Pure Server Component HTML/CSS: Zero client hydration delay on LCP
            =================================================================== */}
-        <section className="border-b border-slate-200/80 bg-white pt-14 pb-16 sm:pt-20 sm:pb-24">
+        <section className="relative border-b border-slate-200/80 pt-12 pb-16 sm:pt-16 sm:pb-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              >
-                <div className="flex items-center justify-center">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-blue-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
-                    INVITE-ONLY INSTITUTIONAL PLATFORM
-                  </span>
-                </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 shadow-2xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden="true" />
+                <span className="font-mono text-[11px] font-medium tracking-wide text-slate-700">
+                  SOURCE-CITED DILIGENCE · DETERMINISTIC MATH VERIFICATION
+                </span>
+              </div>
 
-                <h1 className="mt-4 font-serif text-4xl font-normal tracking-[-0.02em] text-balance text-slate-950 sm:text-5xl lg:text-[52px] lg:leading-[1.08]">
-                  See beyond the pitch.
-                </h1>
-              </motion.div>
+              <h1 className="mt-5 font-serif text-[clamp(2rem,4vw+0.85rem,3.35rem)] font-normal leading-[1.08] tracking-[-0.025em] text-slate-950">
+                A Structured Workspace for Startup Pitches and Investor Review.
+              </h1>
 
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-              >
-                <p className="mt-3 text-base font-medium tracking-[-0.01em] text-slate-800 sm:text-lg">
-                  One workspace for more informed investment decisions.
-                </p>
+              <p className="mx-auto mt-4 max-w-[60ch] text-[clamp(1rem,0.45vw+0.9rem,1.125rem)] font-medium leading-[1.55] text-slate-800">
+                Bring startup submissions and investment opportunities into a structured review process.
+              </p>
 
-                <p className="mx-auto mt-3.5 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-[15px]">
-                  Reduce the manual work involved in screening, structuring and reviewing investment opportunities without removing human investment judgment. Turn incoming pitches into structured records, validate financial claims and track your pipeline with clarity.
-                </p>
-              </motion.div>
+              <p className="mx-auto mt-3 max-w-[62ch] text-[clamp(0.875rem,0.25vw+0.82rem,0.975rem)] leading-[1.65] text-slate-600">
+                Extract slide claims with verbatim page citations, verify stated ARR and runway against monthly CSV rows in plain code, model SAFE or priced round dilution, and monitor portfolio MIS cadence in one workspace.
+              </p>
 
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
-              >
-                <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-                  <button
-                    type="button"
-                    onClick={() => setIsInviteModalOpen(true)}
-                    className="group inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-[13.5px] font-semibold text-white shadow-sm transition-all duration-200 hover:scale-[1.02] hover:bg-blue-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  >
-                    <span>Explore the Platform</span>
-                    <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
-                  </button>
-                  <Link
-                    href="/pitch"
-                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-transparent px-5 text-[13.5px] font-medium text-slate-800 transition-all duration-200 hover:scale-[1.02] hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950 active:scale-[0.98]"
-                  >
-                    Submit a Pitch
-                  </Link>
-                </div>
+              {/* Dual-Track Primary CTAs */}
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <a
+                  href="#request-workspace"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-900 px-5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-slate-800"
+                >
+                  <span>Request Fund Workspace</span>
+                  <span aria-hidden="true">→</span>
+                </a>
 
-                <p className="mx-auto mt-3.5 max-w-xl text-xs leading-relaxed text-slate-500">
-                  <strong className="font-medium text-slate-700">Invite-only fund workspace:</strong> Verified fund partners and analysts enter with credentials. If you are exploring for a fund, click{" "}
-                  <button
-                    type="button"
-                    onClick={() => setIsInviteModalOpen(true)}
-                    className="cursor-pointer font-medium text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-800"
-                  >
-                    Explore the Platform
-                  </button>{" "}
-                  to request trial access. Founders submit decks via{" "}
-                  <Link href="/pitch" className="font-medium text-slate-800 underline decoration-slate-300 underline-offset-4 hover:text-slate-950">
-                    Pitch Form
-                  </Link>
-                  .
-                </p>
-              </motion.div>
+                <Link
+                  href="/pitch"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 text-xs font-semibold text-slate-900 shadow-2xs transition-colors hover:border-slate-400 hover:bg-slate-50"
+                >
+                  <span>Submit a Pitch</span>
+                </Link>
+              </div>
+
+              {/* Concrete Architecture Pill Strip */}
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] text-slate-600">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+                  <span>PDF deck + monthly CSV corroboration</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden="true" />
+                  <span>10.0% deterministic variance threshold</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" aria-hidden="true" />
+                  <span>Invite-only partner &amp; analyst access</span>
+                </span>
+              </div>
             </div>
 
-            {/* Centered Hero Product Showcase (880px max width) */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-              className="mx-auto mt-12 max-w-[880px]"
-            >
-              <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_12px_36px_-12px_rgba(15,23,42,0.08)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-4 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-slate-300" />
-                    <span className="h-2 w-2 rounded-full bg-slate-300" />
-                    <span className="h-2 w-2 rounded-full bg-slate-300" />
-                    <span className="ml-2 text-[11px] font-medium text-slate-500">
-                      Aarka — Partner Workspace
+            {/* ===============================================================
+                HERO PRODUCT VISUAL
+                Lightweight, Static Browser-Style HTML/CSS Product Mockup
+                Reserved layout space (zero CLS), synthetic demonstration data
+               =============================================================== */}
+            <div className="mx-auto mt-10 max-w-5xl sm:mt-12">
+              <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-lg shadow-slate-900/5">
+                {/* Browser Window Chrome Header */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5" aria-hidden="true">
+                      <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                    </div>
+                    <span className="ml-2 rounded border border-slate-200/90 bg-white px-2.5 py-0.5 font-mono text-[11px] text-slate-600">
+                      aarkavc.xyz/deals/velora-systems
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLightbox({
-                        src: "/images/aarka/hero-workspace.png",
-                        width: 1024,
-                        height: 575,
-                        alt: "Aarka main investment workspace showing active deal-flow pipeline, team distribution, sector momentum map and incoming pitches.",
-                        caption: "Main Investment Workspace: Live deal flow, sector heatmaps, partner notifications, team workload and incoming pitches.",
-                      })
-                    }
-                    className="cursor-pointer text-[11px] font-medium text-slate-600 hover:text-slate-950"
-                  >
-                    Expand view ↗
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-blue-700">
+                      Synthetic Demo Record
+                    </span>
+                    <span className="hidden rounded bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-emerald-800 sm:inline-block">
+                      Priority · Fits Mandate
+                    </span>
+                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLightbox({
-                      src: "/images/aarka/hero-workspace.png",
-                      width: 1024,
-                      height: 575,
-                      alt: "Aarka main investment workspace showing active deal-flow pipeline, team distribution, sector momentum map and incoming pitches.",
-                      caption: "Main Investment Workspace: Live deal flow, sector heatmaps, partner notifications, team workload and incoming pitches.",
-                    })
-                  }
-                  aria-label="Inspect Main Investment Workspace screenshot in full size"
-                  className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                >
-                  <Image
-                    src="/images/aarka/hero-workspace.png"
-                    alt="Aarka main investment workspace showing active deal-flow pipeline, team distribution, sector momentum map and incoming pitches."
-                    width={1024}
-                    height={575}
-                    unoptimized
-                    priority
-                    className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                  />
-                </button>
+                {/* Product Workspace Mockup Body */}
+                <div className="grid divide-y divide-slate-200 lg:grid-cols-12 lg:divide-x lg:divide-y-0">
+                  {/* Left Pane: Company Record & Verbatim Citations (7 cols) */}
+                  <div className="p-4 sm:p-6 lg:col-span-7">
+                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-semibold text-slate-950">Velora Systems</span>
+                          <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-700">
+                            Seed · B2B Software
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Automated cold-chain telemetry and invoice reconciliation for regional distributors.
+                        </p>
+                      </div>
+                      <div className="text-right font-mono">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">Round Ask</div>
+                        <div className="text-sm font-semibold text-slate-950">$1.50M on $6.0M Post</div>
+                      </div>
+                    </div>
+
+                    {/* Extracted Claims Table with Slide Page Citations */}
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        <span>Extracted Claim &amp; Provenance</span>
+                        <span>Corroboration Status</span>
+                      </div>
+
+                      <div className="mt-2 divide-y divide-slate-100 text-xs">
+                        <div className="flex items-center justify-between gap-2 py-2.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900">Annualized Run-Rate (ARR)</span>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                                Deck p. 4
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
+                              &ldquo;Reached $1.44M ARR in Sep with $120K monthly recurring revenue.&rdquo;
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="font-mono font-semibold text-slate-950">$1.44M</div>
+                            <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-emerald-800">
+                              Checked · CSV Match
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 py-2.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900">Monthly Revenue Growth</span>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                                Deck p. 6
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
+                              &ldquo;Growing 14.0% month-over-month across enterprise accounts.&rdquo;
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="font-mono font-semibold text-rose-700">14.0% vs. 9.1%</div>
+                            <span className="inline-block rounded bg-rose-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-rose-800">
+                              Conflict · +53.8% Gap
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 py-2.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900">Cash Runway &amp; Net Burn</span>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                                Deck p. 11 · CSV
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
+                              Cash $1.16M divided by $80K monthly net burn = 14.5 months.
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="font-mono font-semibold text-slate-950">14.5 months</div>
+                            <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-emerald-800">
+                              Checked · Formula
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Pane: Deterministic Code Checks & Dilution Summary (5 cols) */}
+                  <div className="bg-slate-50/60 p-4 sm:p-6 lg:col-span-5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-700">
+                        Deterministic Code Checks
+                      </span>
+                      <span className="font-mono text-[11px] text-slate-600">Tolerance: 10.0%</span>
+                    </div>
+
+                    <div className="mt-3 space-y-2.5 text-xs">
+                      <div className="rounded-lg border border-slate-200 bg-white p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-900">ARR vs. MRR x 12</span>
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-emerald-800">
+                            Checked · 0.0% Gap
+                          </span>
+                        </div>
+                        <p className="mt-1 font-mono text-[11px] text-slate-600">
+                          Deck ARR ($1.44M) = Latest CSV MRR ($120K) x 12.
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-rose-200 bg-rose-50/50 p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-900">Deck Growth vs. Monthly CSV Compounded</span>
+                          <span className="rounded bg-rose-600 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-white">
+                            Conflict · 53.8% Gap
+                          </span>
+                        </div>
+                        <p className="mt-1 font-mono text-[11px] text-slate-700">
+                          Deck p. 6 claims 14.0% MoM; CSV rows (Apr to Sep) compound at 9.1% MoM.
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-white p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-900">Cap Table &amp; SAFE Dilution Preview</span>
+                          <span className="font-mono text-[11px] font-semibold text-blue-700">
+                            10.0% Post-Round
+                          </span>
+                        </div>
+                        <p className="mt-1 font-mono text-[11px] text-slate-600">
+                          $600K check on $6.0M Post-Money SAFE · $300K Series A pro-rata reserve.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="mt-2.5 text-center text-[11px] text-slate-400">
-                Sample demonstration pipeline and company records shown for illustration. Click any preview to inspect full size.
+              <p className="mt-2.5 text-center text-[11px] text-slate-600">
+                Synthetic demonstration data illustrating Aarka&apos;s source-cited extraction and deterministic verification engine.
               </p>
-            </motion.div>
+            </div>
           </div>
         </section>
 
         {/* ===================================================================
-            THE AARKA WORKFLOW — 5-Step Connected Sequence
+            PRODUCT WORKFLOW: Restrained Sticky Scroll on Desktop, Stacked on Mobile
            =================================================================== */}
         <section id="workflow" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="max-w-2xl"
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                THE INVESTMENT WORKFLOW
+            <div className="max-w-2xl">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Structured Review Pipeline
               </p>
-              <h2 className="mt-2.5 font-serif text-3xl font-normal tracking-[-0.015em] text-slate-950 sm:text-4xl">
-                From incoming pitches to informed decisions.
+              <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.35rem)] font-normal leading-[1.15] tracking-[-0.02em] text-slate-950">
+                From founder pitch submission to verified partner review.
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-[15px]">
-                Every stage of a deal carries manual work—extracting deck claims, cross-checking CSV sheets, verifying registry dates and tracking monthly reports. Aarka structures and validates the record so your team can focus on judgment.
+              <p className="mt-3 max-w-[62ch] text-[clamp(0.875rem,0.25vw+0.82rem,0.975rem)] leading-[1.65] text-slate-600">
+                Each submission moves through five concrete stages. Original founder files stay intact while code verifies arithmetic consistency and structures the record for investment review.
               </p>
-            </motion.div>
-
-            <div className="mt-10 border-t border-slate-200/90 pt-8">
-              <ol className="grid gap-6 md:grid-cols-5 md:gap-6">
-                {WORKFLOW_STEPS.map((step, idx) => (
-                  <motion.li
-                    key={step.num}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 0.45, delay: idx * 0.07, ease: "easeOut" }}
-                    className="relative border-l border-slate-300 pl-4 md:border-l-0 md:pl-0"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => scrollToSection(step.targetId)}
-                      className="group block cursor-pointer text-left focus:outline-none"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-medium text-slate-500">
-                          {step.num}
-                        </span>
-                        <span className="text-slate-300">—</span>
-                        <h3 className="text-sm font-semibold text-slate-950 transition-colors group-hover:text-blue-700">
-                          {step.title}
-                        </h3>
-                      </div>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-600">{step.body}</p>
-                    </button>
-                  </motion.li>
-                ))}
-              </ol>
             </div>
+
+            <WorkflowInteractiveGrid />
           </div>
         </section>
 
         {/* ===================================================================
-            01 · FINANCIAL DUE DILIGENCE (Text Left, Compact Preview Right)
+            CONFIRMED PRODUCT CAPABILITIES (Tabbed Below-the-Fold Previews)
            =================================================================== */}
         <section id="capabilities" className="scroll-mt-16 border-b border-slate-200/80 bg-white py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12"
-            >
-              <div className="lg:col-span-5">
-                <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                  01 · FINANCIAL DUE DILIGENCE
-                </p>
-                <h2 className="mt-2.5 font-serif text-3xl font-normal tracking-[-0.015em] text-slate-950 sm:text-4xl">
-                  Every number deserves a closer look.
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  Aarka compares stated pitch deck figures against the founder’s monthly CSV sheet, intake form and registry record. Original claims remain untouched while variances over 10% are flagged with their exact formula.
-                </p>
-
-                <dl className="mt-7 space-y-4 border-t border-slate-200/80 pt-5">
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Revenue, growth &amp; runway verification</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Cross-checks stated ARR against MRR×12, runway against cash divided by net burn, and deck growth against compounded monthly CSV rows.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Missing facts &amp; discrepancy flags</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Highlights omitted core metrics (such as customer count or cash balance) and flags &gt;10% discrepancies before the first partner call.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Linked source evidence &amp; founder domain fit</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Every company record links its Deck summary, Monthly CSV, Financial snapshot, Intake form and printable Audit report.
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="lg:col-span-7">
-                <div className="mx-auto max-w-[560px]">
-                  <div className="mb-2.5 flex items-center justify-between">
-                    <div className="inline-flex rounded-md border border-slate-200 bg-slate-100/80 p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setDiligenceTab("audit")}
-                        className={
-                          diligenceTab === "audit"
-                            ? "cursor-pointer rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-950 shadow-2xs transition-all duration-200"
-                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-950"
-                        }
-                      >
-                        Diligence Checks
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDiligenceTab("compare")}
-                        className={
-                          diligenceTab === "compare"
-                            ? "cursor-pointer rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-950 shadow-2xs transition-all duration-200"
-                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-950"
-                        }
-                      >
-                        Growth Benchmark
-                      </button>
-                    </div>
-                    <span className="text-[11px] text-slate-400">Click to enlarge ↗</span>
-                  </div>
-
-                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                    {diligenceTab === "audit" ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLightbox({
-                            src: "/images/aarka/financial-diligence-rahatrail.png",
-                            width: 992,
-                            height: 675,
-                            alt: "Company diligence view showing matched checks, a flagged 14% vs 9.0% monthly growth discrepancy, missing customer count and founder credibility.",
-                            caption: "Company Diligence Record: 5 of 6 checks matched, 1 growth discrepancy (>10%) flagged, and 1 core fact missing.",
-                          })
-                        }
-                        aria-label="Inspect Company Diligence screenshot in full size"
-                        className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                      >
-                        <Image
-                          src="/images/aarka/financial-diligence-rahatrail.png"
-                          alt="Company diligence view showing matched checks, a flagged 14% vs 9.0% monthly growth discrepancy, missing customer count and founder credibility."
-                          width={992}
-                          height={675}
-                          unoptimized
-                          className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                        />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLightbox({
-                            src: "/images/aarka/financial-comparison-growth.png",
-                            width: 992,
-                            height: 636,
-                            alt: "Compare view ranking companies by monthly growth and marking conflicted or stale metrics with striped bars.",
-                            caption: "Cross-Company Comparison (/compare): Standardized growth benchmarking with explicit conflicted and stale indicators.",
-                          })
-                        }
-                        aria-label="Inspect Growth Comparison screenshot in full size"
-                        className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                      >
-                        <Image
-                          src="/images/aarka/financial-comparison-growth.png"
-                          alt="Compare view ranking companies by monthly growth and marking conflicted or stale metrics with striped bars."
-                          width={992}
-                          height={636}
-                          unoptimized
-                          className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                        />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+            <CapabilitiesInteractiveTabs />
           </div>
         </section>
 
         {/* ===================================================================
-            02 · MARKET INTELLIGENCE (Compact Preview Left, Text Right)
+            AUTHENTIC TRUST SIGNALS: DATA HANDLING, ARCHITECTURE & PRIVACY
+            Strictly factual implementation details: zero fake logos or fake badges
            =================================================================== */}
-        <section id="market" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
+        <section id="privacy" className="scroll-mt-16 border-b border-slate-200/80 bg-slate-950 py-16 text-white sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12"
-            >
-              <div className="order-2 lg:order-1 lg:col-span-7">
-                <div className="mx-auto max-w-[560px]">
-                  <div className="mb-2.5 flex items-center justify-between">
-                    <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setMarketTab("momentum")}
-                        className={
-                          marketTab === "momentum"
-                            ? "cursor-pointer rounded bg-slate-900 px-2.5 py-1 text-xs font-medium text-white transition-all duration-200"
-                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-950"
-                        }
-                      >
-                        Momentum Map
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMarketTab("sector")}
-                        className={
-                          marketTab === "sector"
-                            ? "cursor-pointer rounded bg-slate-900 px-2.5 py-1 text-xs font-medium text-white transition-all duration-200"
-                            : "cursor-pointer rounded px-2.5 py-1 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-950"
-                        }
-                      >
-                        B2B Software Drilldown
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLightbox(
-                          marketTab === "momentum"
-                            ? {
-                                src: "/images/aarka/market-momentum-map.png",
-                                width: 992,
-                                height: 658,
-                                alt: "Full Market Intelligence dashboard showing sector KPI strip, Momentum map and monthly deck volume.",
-                                caption: "Market Intelligence (/sectors): Sector momentum scatter plot paired with monthly inbound deck breakdown.",
-                              }
-                            : {
-                                src: "/images/aarka/market-sector-b2b.png",
-                                width: 994,
-                                height: 637,
-                                alt: "B2B software sector drilldown showing +117% deck growth, $23M raised and pipeline conversion.",
-                                caption: "Sector Drilldown (/sectors/B2B software): Cohort pitch velocity, tracked rounds, rule fit and conversion funnel.",
-                              },
-                        )
-                      }
-                      className="cursor-pointer text-[11px] font-medium text-slate-500 hover:text-slate-950"
-                    >
-                      Open full dashboard ↗
-                    </button>
-                  </div>
-
-                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                    {marketTab === "momentum" ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLightbox({
-                            src: "/images/aarka/market-momentum-map.png",
-                            width: 992,
-                            height: 658,
-                            alt: "Full Market Intelligence dashboard showing sector KPI strip, Momentum map and monthly deck volume.",
-                            caption: "Market Intelligence (/sectors): Sector momentum scatter plot paired with monthly inbound deck breakdown.",
-                          })
-                        }
-                        aria-label="Inspect full Market Intelligence dashboard in lightbox"
-                        className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                      >
-                        <Image
-                          src="/images/aarka/market-momentum-chart-crop.png"
-                          alt="Aarka Sector Momentum Map plotting decks received against money raised across Heating up, Crowding, Steady and Cooling quadrants."
-                          width={570}
-                          height={446}
-                          unoptimized
-                          className="mx-auto block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                        />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLightbox({
-                            src: "/images/aarka/market-sector-b2b.png",
-                            width: 994,
-                            height: 637,
-                            alt: "B2B software sector drilldown showing +117% deck growth, $23M raised and pipeline conversion.",
-                            caption: "Sector Drilldown (/sectors/B2B software): Cohort pitch velocity, tracked rounds, rule fit and conversion funnel.",
-                          })
-                        }
-                        aria-label="Inspect B2B Software Sector Drilldown in lightbox"
-                        className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                      >
-                        <Image
-                          src="/images/aarka/market-sector-b2b.png"
-                          alt="B2B software sector drilldown showing +117% deck growth, $23M raised and pipeline conversion."
-                          width={994}
-                          height={637}
-                          unoptimized
-                          className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                        />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="order-1 lg:order-2 lg:col-span-5">
-                <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                  02 · MARKET INTELLIGENCE
-                </p>
-                <h2 className="mt-2.5 font-serif text-3xl font-normal tracking-[-0.015em] text-slate-950 sm:text-4xl">
-                  Know where the market is moving.
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  Analyse sector momentum directly from your fund’s inbound pitch flow against tracked market funding—identifying which categories are heating up, crowding or cooling.
-                </p>
-
-                <dl className="mt-7 space-y-4 border-t border-slate-200/80 pt-5">
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Quantified sector temperature (±15% rule)</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Compares the last 3 months of inbound decks against the prior 3-month window and 90-day capital raised across each sector.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Sector &amp; sub-category drilldowns</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Click any sector to inspect cohort conversion from pitched to meeting alongside founder-market fit distributions.
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ===================================================================
-            03 · DEAL-FLOW MANAGEMENT (Text Left, Compact Preview Right)
-           =================================================================== */}
-        <section id="pipeline" className="scroll-mt-16 border-b border-slate-200/80 bg-white py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12"
-            >
-              <div className="lg:col-span-5">
-                <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                  03 · DEAL-FLOW MANAGEMENT
-                </p>
-                <h2 className="mt-2.5 font-serif text-3xl font-normal tracking-[-0.015em] text-slate-950 sm:text-4xl">
-                  Every opportunity. One clear pipeline.
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  Organise incoming pitches across To Read, Look Again, Meetings and Passed queues—keeping pass reasoning and re-engagement triggers intact across funding cycles.
-                </p>
-
-                <dl className="mt-7 space-y-4 border-t border-slate-200/80 pt-5">
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Rule-fit &amp; verification filters</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Filter the pipeline by Strong Founder Fit, Math Gap &gt;10%, Missing Facts, Re-Engage Due and Never Opened status.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Look-again triggers on passed deals</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Record why you passed and set a scheduled check date or milestone trigger so companies automatically resurface when ready.
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="lg:col-span-7">
-                <div className="mx-auto max-w-[560px]">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-600">Deal Flow Pulse (/deals)</span>
-                    <span className="text-[11px] text-slate-400">Click to enlarge ↗</span>
-                  </div>
-                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLightbox({
-                          src: "/images/aarka/dealflow-pulse.png",
-                          width: 1012,
-                          height: 660,
-                          alt: "Deal Flow Pulse pipeline view showing To read, Look again, Meetings, Passed tabs and automated check badges.",
-                          caption: "Deal Flow Pulse (/deals): Triage incoming pitches with rule-fit filters, math-gap alerts and re-engagement triggers.",
-                        })
-                      }
-                      aria-label="Inspect Deal Flow Pulse screenshot in full size"
-                      className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                    >
-                      <Image
-                        src="/images/aarka/dealflow-pulse.png"
-                        alt="Deal Flow Pulse pipeline view showing To read, Look again, Meetings, Passed tabs and automated check badges."
-                        width={1012}
-                        height={660}
-                        unoptimized
-                        className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ===================================================================
-            04 · PORTFOLIO INTELLIGENCE (Compact Preview Left, Text Right)
-           =================================================================== */}
-        <section id="portfolio" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12"
-            >
-              <div className="order-2 lg:order-1 lg:col-span-7">
-                <div className="mx-auto max-w-[560px]">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-600">Portfolio Health Grid (/portfolio)</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLightbox({
-                          src: "/images/aarka/portfolio-overview.png",
-                          width: 1024,
-                          height: 555,
-                          alt: "Full Portfolio dashboard showing backed companies with Needs help, Watch and Healthy status badges, cash runway and reporting gaps.",
-                          caption: "Portfolio Overview (/portfolio): Tracks cash runway, monthly revenue, overdue MIS reports and variance against plan.",
-                        })
-                      }
-                      className="cursor-pointer text-[11px] font-medium text-slate-500 hover:text-slate-950"
-                    >
-                      Open full workspace view ↗
-                    </button>
-                  </div>
-
-                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLightbox({
-                          src: "/images/aarka/portfolio-overview.png",
-                          width: 1024,
-                          height: 555,
-                          alt: "Full Portfolio dashboard showing backed companies with Needs help, Watch and Healthy status badges, cash runway and reporting gaps.",
-                          caption: "Portfolio Overview (/portfolio): Tracks cash runway, monthly revenue, overdue MIS reports and variance against plan.",
-                        })
-                      }
-                      aria-label="Inspect full Portfolio Overview screenshot in lightbox"
-                      className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                    >
-                      <Image
-                        src="/images/aarka/portfolio-cards-crop.png"
-                        alt="Portfolio company health cards showing Sehatflow, Voltnest, Brightcart, Mandiwise, Kitebay and Nestara with runway, revenue and MIS report status."
-                        width={788}
-                        height={472}
-                        unoptimized
-                        className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="order-1 lg:order-2 lg:col-span-5">
-                <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                  04 · PORTFOLIO INTELLIGENCE
-                </p>
-                <h2 className="mt-2.5 font-serif text-3xl font-normal tracking-[-0.015em] text-slate-950 sm:text-4xl">
-                  Stay close to every portfolio company.
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  Monitor monthly MIS reporting, cash runway, burn and revenue against the pitch deck’s original plan—so quiet reporting or tightening runway is spotted early.
-                </p>
-
-                <dl className="mt-7 space-y-4 border-t border-slate-200/80 pt-5">
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Runway, burn &amp; plan variance</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Computes months of cash left at latest net burn and compares reported monthly revenue against the deck’s forecast.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-900">Reporting cadence &amp; health status</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Flags overdue MIS reports and assigns Needs help, Watch or Healthy indicators from deterministic code rules.
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ===================================================================
-            THE AARKA DIFFERENCE — AI -> Code -> People Architecture
-           =================================================================== */}
-        <section id="architecture" className="scroll-mt-16 border-b border-slate-200/80 bg-[#0F172A] py-16 text-white sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className="max-w-2xl"
-            >
-              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                THE AARKA ARCHITECTURE
+            <div className="max-w-3xl">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+                Data Handling &amp; Privacy Architecture
               </p>
-              <h2 className="mt-2.5 font-serif text-3xl font-normal tracking-[-0.015em] text-white sm:text-4xl">
-                AI reads and explains. Code checks the numbers. People decide.
+              <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.35rem)] font-normal leading-[1.15] tracking-[-0.02em] text-white">
+                Clear separation between AI extraction, deterministic code, and partner access.
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                Aarka separates document reading, financial calculation and investment judgment into three distinct layers so every figure remains traceable to its source.
+              <p className="mt-3 max-w-[62ch] text-xs leading-relaxed text-slate-300 sm:text-sm">
+                Aarka is engineered around strict data boundaries. Uploaded founder decks are never rewritten by language models, arithmetic checks run in deterministic TypeScript, and every workspace route is protected by default-deny authentication.
               </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, delay: 0.08, ease: "easeOut" }}
-              className="mt-10 grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 md:grid-cols-3"
-            >
-              <div className="bg-[#131C31] p-6 transition-colors duration-300 hover:bg-[#17223B]">
-                <span className="font-mono text-xs font-medium text-slate-400">01 · AI Layer</span>
-                <h3 className="mt-3 font-serif text-lg font-normal text-white">
-                  Extracts, structures and explains.
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                  Reads pages, charts and tables from pitch decks into one standard company record—keeping the file name, page number and a verbatim quote for every fact without doing the sums.
-                </p>
-              </div>
-
-              <div className="bg-[#131C31] p-6 transition-colors duration-300 hover:bg-[#17223B]">
-                <span className="font-mono text-xs font-medium text-emerald-400">02 · Code Layer</span>
-                <h3 className="mt-3 font-serif text-lg font-normal text-white">
-                  Validates and calculates deterministically.
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                  Compares deck, form, monthly CSV sheet, MIS and registry records. Calculates runway, growth and burn multiple, and labels every figure Checked, Reported, Claimed, Conflict or Missing.
-                </p>
-              </div>
-
-              <div className="bg-[#131C31] p-6 transition-colors duration-300 hover:bg-[#17223B]">
-                <span className="font-mono text-xs font-medium text-slate-400">03 · Human Layer</span>
-                <h3 className="mt-3 font-serif text-lg font-normal text-white">
-                  Reviews evidence and makes the call.
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                  Analysts and partners inspect source quotes, resolve conflicts with founders, override bands with written reasoning when warranted and record the final investment decision.
-                </p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, delay: 0.14, ease: "easeOut" }}
-              className="group mt-8 grid items-center gap-8 rounded-xl border border-white/10 bg-[#131C31]/70 p-5 transition-all duration-500 ease-out hover:-translate-y-1 hover:border-white/25 hover:shadow-xl sm:p-6 lg:grid-cols-12"
-            >
-              <div className="lg:col-span-5">
-                <span className="font-mono text-[11px] text-slate-400">Data Lineage (/sources)</span>
-                <h3 className="mt-1.5 font-serif text-xl font-normal text-white">
-                  Full provenance for every metric.
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                  Every number in Aarka starts in a file a founder sent or a public record. A conflict stays open until a person settles it with a source—AI never changes a founder’s number.
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLightbox({
-                      src: "/images/aarka/data-transparency-lineage.png",
-                      width: 998,
-                      height: 655,
-                      alt: "Where data comes from diagram showing 1. Comes in, 2. Aarka works on it, and 3. Shows up for the team.",
-                      caption: "Where Data Comes From (/sources): End-to-end lineage from founder files through AI extraction and code verification.",
-                    })
-                  }
-                  className="mt-4 inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-200 underline decoration-slate-600 underline-offset-4 hover:text-white"
-                >
-                  <span>Inspect data lineage diagram ↗</span>
-                </button>
-              </div>
-
-              <div className="lg:col-span-7">
-                <div className="mx-auto max-w-[520px] overflow-hidden rounded-lg border border-white/15 bg-white">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLightbox({
-                        src: "/images/aarka/data-transparency-lineage.png",
-                        width: 998,
-                        height: 655,
-                        alt: "Where data comes from diagram showing 1. Comes in, 2. Aarka works on it, and 3. Shows up for the team.",
-                        caption: "Where Data Comes From (/sources): End-to-end lineage from founder files through AI extraction and code verification.",
-                      })
-                    }
-                    aria-label="Inspect Data Transparency Lineage screenshot in full size"
-                    className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                  >
-                    <Image
-                      src="/images/aarka/data-transparency-lineage.png"
-                      alt="Where data comes from diagram showing 1. Comes in, 2. Aarka works on it, and 3. Shows up for the team."
-                      width={998}
-                      height={655}
-                      unoptimized
-                      className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                    />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ===================================================================
-            FOR INVESTMENT TEAMS & FOUNDER EXPERIENCE
-           =================================================================== */}
-        <section id="teams" className="scroll-mt-16 border-b border-slate-200/80 bg-white py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className="max-w-2xl"
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                ROLE-VERIFIED ACCESS
-              </p>
-              <h2 className="mt-2.5 font-serif text-3xl font-normal tracking-[-0.015em] text-slate-950 sm:text-4xl">
-                Built for partners, analysts and founders.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                One unified Google Sign-In routes authorised investment team members to the fund workspace and directs all other visitors straight to the Founder Pitch Form.
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, delay: 0.08, ease: "easeOut" }}
-              className="mt-10 grid gap-8 lg:grid-cols-12 lg:items-center"
-            >
-              <div className="space-y-4 lg:col-span-6">
-                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5 transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-950">Investment Partners</h3>
-                    <span className="font-mono text-[11px] text-slate-500">Invite-Only · Partner View</span>
-                  </div>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-                    Fund-wide visibility, weekly decision queue, inbound pipeline velocity, sector momentum trends, configurable fund rules and portfolio oversight.
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5 transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-950">Investment Analysts</h3>
-                    <span className="font-mono text-[11px] text-slate-500">Invite-Only · Analyst View</span>
-                  </div>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-                    Pitch screening queue, AI deck extraction, deterministic math and registry verification, page-cited evidence matrices and founder document request links.
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-[#FAF9F6] p-5 transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-950">Founders</h3>
-                    <span className="font-mono text-[11px] text-slate-500">Open Pitch Intake</span>
-                  </div>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-                    Anyone signing in without an authorised fund email is routed directly to the Founder Pitch Form to submit their deck (up to 100 MB PDF) and track review status.
-                  </p>
-                </div>
-              </div>
-
-              <div className="lg:col-span-6">
-                <div className="mx-auto max-w-[460px]">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-600">Founder Pitch Submission (/pitch)</span>
-                    <span className="text-[11px] text-slate-400">Click to enlarge ↗</span>
-                  </div>
-                  <div className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[0_8px_28px_-8px_rgba(15,23,42,0.07)] transition-all duration-500 ease-out hover:-translate-y-1 hover:border-zinc-300 hover:shadow-xl">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLightbox({
-                          src: "/images/aarka/founder-pitch-portal.png",
-                          width: 605,
-                          height: 657,
-                          alt: "Aarka founder pitch submission page with company details and 100 MB PDF deck upload.",
-                          caption: "Founder Pitch Intake (/pitch): Direct submission experience for founders.",
-                        })
-                      }
-                      aria-label="Inspect Founder Pitch Portal screenshot in full size"
-                      className="block w-full cursor-zoom-in overflow-hidden bg-white text-left focus:outline-none"
-                    >
-                      <Image
-                        src="/images/aarka/founder-pitch-portal.png"
-                        alt="Aarka founder pitch submission page with company details and 100 MB PDF deck upload."
-                        width={605}
-                        height={657}
-                        unoptimized
-                        className="block h-auto w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ===================================================================
-            FINAL CONVERSION SECTION
-           =================================================================== */}
-        <section className="border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-            className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8"
-          >
-            <h2 className="font-serif text-3xl font-normal tracking-[-0.015em] text-balance text-slate-950 sm:text-4xl">
-              Make every investment decision more informed.
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
-              Bring deal flow, diligence and investment intelligence into one connected workspace.
-            </p>
-            <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-              <button
-                type="button"
-                onClick={handleSignIn}
-                disabled={SigningIn}
-                className="inline-flex h-10 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-slate-900 px-5 text-[13.5px] font-medium text-white transition-all duration-200 hover:scale-[1.02] hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60"
-              >
-                <span>{SigningIn ? "Redirecting to Google…" : "Sign In with Google"}</span>
-              </button>
-              <Link
-                href="/pitch"
-                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-5 text-[13.5px] font-medium text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 active:scale-[0.98]"
-              >
-                Submit a Founder Pitch
-              </Link>
             </div>
-          </motion.div>
+
+            {/* 3-Layer Responsibility Matrix */}
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-semibold text-blue-400">01 · AI Extraction Layer</span>
+                  <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Read &amp; Cite</span>
+                </div>
+                <h3 className="mt-3 text-sm font-semibold text-white">Structured reading with verbatim quotes</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Models read uploaded PDF slides to populate a typed schema with slide page numbers and direct quotes. Models are never trusted to compute financial ratios, ARR multiples, or runway arithmetic.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-semibold text-emerald-400">02 · Deterministic Code Layer</span>
+                  <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Verify &amp; Score</span>
+                </div>
+                <h3 className="mt-3 text-sm font-semibold text-white">Auditable math and mandate checks</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Plain TypeScript routines compute MRR x 12, compounded monthly CSV growth, cash divided by net burn, and SAFE or priced round dilution. Any gap greater than 10.0% is flagged automatically.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-semibold text-amber-300">03 · Human Decision Layer</span>
+                  <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Override &amp; Vote</span>
+                </div>
+                <h3 className="mt-3 text-sm font-semibold text-white">Partner overrides with written trail</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Partners and analysts can override any score, mark facts as verified, record IC votes, and set pass or hold reasons. Every manual change preserves the original code baseline alongside the written rationale.
+                </p>
+              </div>
+            </div>
+
+            {/* 4 Concrete Security & Data Handling Cards */}
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-800/90 bg-slate-900/40 p-5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+                    Row-Level Founder Isolation (HMAC-SHA256)
+                  </h3>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  When a founder submits a pitch, Aarka issues a per-deal HMAC-SHA256 tracking token bound to that specific deal ID. A token for one pitch cannot read, list, or enumerate any other founder&apos;s pitch deck or data room files.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800/90 bg-slate-900/40 p-5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-400" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+                    Default-Deny Route Proxy &amp; Invite-Only OAuth
+                  </h3>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Internal workspace routes (/deals, /portfolio, /fund, /dataroom, /team) and APIs are locked behind a default-deny middleware proxy. Only partner-whitelisted Google OAuth accounts are granted workspace sessions.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800/90 bg-slate-900/40 p-5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-400" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+                    Binary File Validation &amp; Direct Signed Uploads
+                  </h3>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Uploaded pitch decks are verified against %PDF- magic bytes (up to 32 MB) and financial sheets against UTF-8 CSV/TSV or ZIP/XLSX signatures (up to 10 MB) before storage in isolated, non-public buckets.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800/90 bg-slate-900/40 p-5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+                    Scoped LLM Processing &amp; Account-Bridge Option
+                  </h3>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Teams can run deck extraction via a server-side Anthropic API key or use the manual account-bridge workflow to process prompts in their own subscription and paste validated JSON back into the workspace.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===================================================================
+            EMBEDDED CONVERSION FORM + FOUNDER CTA
+            Connected directly to POST /api/access-request
+           =================================================================== */}
+        <section id="request-workspace" className="scroll-mt-16 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
+              {/* Left Column: Context & Founder Routing */}
+              <div className="space-y-6 lg:col-span-5">
+                <div>
+                  <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+                    Workspace Onboarding
+                  </p>
+                  <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.25rem)] font-normal leading-[1.15] tracking-[-0.02em] text-slate-950">
+                    Request a Fund Workspace or submit a startup pitch.
+                  </h2>
+                  <p className="mt-3 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                    Aarka workspaces are invite-only. Submit your fund details to request partner access, or use the direct founder intake if you are raising capital.
+                  </p>
+                </div>
+
+                <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-950">Founders Raising Capital</h3>
+                    <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-700">
+                      Up to $4M Mandate
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    No account is required to submit a pitch deck. Upload your PDF deck and optional monthly CSV sheet to receive a private status tracking link.
+                  </p>
+                  <div className="pt-1">
+                    <Link
+                      href="/pitch"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-slate-900 px-4 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
+                    >
+                      <span>Go to Submit a Pitch</span>
+                      <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-600">
+                  <div className="font-semibold text-slate-900">Already an approved partner or analyst?</div>
+                  <p className="leading-relaxed">
+                    Sign in with your whitelisted Google account to open the active workspace.
+                  </p>
+                  <div className="pt-1">
+                    <PartnerSignInButton
+                      label="Partner Sign In with Google"
+                      loadingLabel="Redirecting to Google…"
+                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Live Conversion Form connected to POST /api/access-request */}
+              <div className="lg:col-span-7">
+                <WorkspaceRequestFormClient />
+              </div>
+            </div>
+          </div>
         </section>
       </main>
 
       {/* =====================================================================
           FOOTER
          ===================================================================== */}
-      <footer className="bg-white py-10 text-xs text-slate-500">
+      <footer className="bg-white py-10 text-xs text-slate-600">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-6 border-b border-slate-200/80 pb-8 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-3">
-              <Image
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/aarka-logo.png"
                 alt="Aarka"
                 width={22}
                 height={22}
-                unoptimized
                 className="h-[22px] w-[22px] shrink-0 rounded-md object-contain"
               />
               <span className="text-sm font-semibold text-slate-950">Aarka</span>
-              <span className="text-slate-300">·</span>
-              <span className="text-xs text-slate-500">
-                Investment intelligence and deal-flow management for venture capital teams.
+              <span className="text-slate-300" aria-hidden="true">·</span>
+              <span className="text-xs text-slate-600">
+                A Structured Workspace for Startup Pitches and Investor Review.
               </span>
             </div>
 
             <nav aria-label="Footer" className="flex flex-wrap items-center gap-6 text-xs font-medium text-slate-600">
-              <button
-                type="button"
-                onClick={() => scrollToSection("workflow")}
-                className="cursor-pointer hover:text-slate-950"
-              >
+              <a href="#workflow" className="hover:text-slate-950">
                 Workflow
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("capabilities")}
-                className="cursor-pointer hover:text-slate-950"
-              >
+              </a>
+              <a href="#capabilities" className="hover:text-slate-950">
                 Capabilities
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("architecture")}
-                className="cursor-pointer hover:text-slate-950"
-              >
-                Architecture
-              </button>
+              </a>
+              <a href="#privacy" className="hover:text-slate-950">
+                Data &amp; Privacy
+              </a>
               <Link href="/pitch" className="hover:text-slate-950">
                 Submit a Pitch
               </Link>
-              <button
-                type="button"
-                onClick={handleSignIn}
+              <PartnerSignInButton
                 className="cursor-pointer font-semibold text-slate-900 hover:text-slate-700"
-              >
-                Sign In
-              </button>
+              />
             </nav>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-600">
             <p>© {new Date().getFullYear()} Aarka. All rights reserved.</p>
-            <p>Dashboard previews display fictional sample data for demonstration purposes.</p>
+            <p>Public previews display synthetic demonstration data for illustration.</p>
           </div>
         </div>
       </footer>
-
-      {/* =====================================================================
-          ACCESSIBLE IMAGE PREVIEW LIGHTBOX MODAL
-         ===================================================================== */}
-      {lightbox && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={lightbox.alt}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs sm:p-6"
-          onClick={() => setLightbox(null)}
-        >
-          <div
-            className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-white/15 bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-              <span className="text-xs font-medium text-slate-700">{lightbox.caption}</span>
-              <button
-                type="button"
-                onClick={() => setLightbox(null)}
-                className="inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Close (Esc)
-              </button>
-            </div>
-            <div className="overflow-auto bg-slate-100/80 p-3 sm:p-5">
-              <Image
-                src={lightbox.src}
-                alt={lightbox.alt}
-                width={lightbox.width}
-                height={lightbox.height}
-                unoptimized
-                className="mx-auto block h-auto max-w-full rounded-lg border border-slate-200 bg-white object-contain shadow-xs"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Institutional Invite Access Request Modal */}
-      <AccessRequestModal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-      />
     </div>
   );
 }

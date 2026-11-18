@@ -1,19 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
-import { AuthSessionProvider } from "@/components/auth-provider";
-import { EvidenceProvider } from "@/components/evidence";
-import { LinksProvider } from "@/components/links-store";
-import { PortfolioProvider } from "@/components/portfolio-store";
-import { Shell } from "@/components/shell";
-import { StoreProvider } from "@/components/store";
-import { WorkspaceProvider } from "@/components/workspace";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import { RealtimeListener } from "@/components/realtime-listener";
-import { ErrorMonitor } from "@/components/error-monitor";
+import { AppProviders } from "@/components/app-providers";
 import { ScrollManager } from "@/components/scroll-manager";
-import { TrafficTracker } from "@/components/traffic-tracker";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -23,12 +12,14 @@ const inter = Inter({
 
 const newsreader = Newsreader({
   subsets: ["latin"],
+  weight: "400",
   variable: "--font-newsreader",
   display: "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
+  weight: ["400", "600"],
   variable: "--font-jetbrains-mono",
   display: "swap",
 });
@@ -36,11 +27,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.aarkavc.xyz"),
   title: {
-    default: "Aarka — Investment Intelligence Platform",
+    default: "Aarka | Structured Workspace for Startup Pitches and Investor Review",
     template: "%s | Aarka",
   },
   description:
-    "Investment Intelligence Platform for Venture Capital. Screen, structure and validate early-stage investment opportunities with source-cited AI extraction, deterministic financial verification and portfolio monitoring.",
+    "A structured workspace for startup pitches and investor review. Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
   applicationName: "Aarka",
   icons: {
     icon: "/aarka-logo.png",
@@ -51,11 +42,11 @@ export const metadata: Metadata = {
     canonical: "https://www.aarkavc.xyz",
   },
   openGraph: {
-    title: "Aarka — Investment Intelligence Platform",
+    title: "Aarka | Structured Workspace for Startup Pitches and Investor Review",
     description:
-      "Screen, structure and validate early-stage investment opportunities with source-cited AI extraction, deterministic financial verification and portfolio monitoring.",
+      "Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
     url: "https://www.aarkavc.xyz",
-    siteName: "Aarka — Investment Intelligence Platform",
+    siteName: "Aarka: Investment Review Workspace",
     locale: "en_US",
     type: "website",
     images: [
@@ -64,7 +55,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         type: "image/png",
-        alt: "Aarka — Investment Intelligence Platform",
+        alt: "Aarka: Structured Workspace for Startup Pitches and Investor Review",
       },
       {
         url: "https://www.aarkavc.xyz/aarka-social-logo.png",
@@ -77,9 +68,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Aarka — Investment Intelligence Platform",
+    title: "Aarka | Structured Workspace for Startup Pitches and Investor Review",
     description:
-      "Screen, structure and validate early-stage investment opportunities with source-cited AI extraction, deterministic financial verification and portfolio monitoring.",
+      "Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
     images: ["https://www.aarkavc.xyz/og-card.png"],
   },
 };
@@ -91,25 +82,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${newsreader.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="h-full bg-slate-50 text-slate-900">
-        <AuthSessionProvider>
-          <ScrollManager />
-          <TrafficTracker />
-          <ErrorMonitor />
-          <RealtimeListener />
-          <StoreProvider>
-            <PortfolioProvider>
-              <WorkspaceProvider>
-                <LinksProvider>
-                  <EvidenceProvider>
-                    <Shell>{children}</Shell>
-                  </EvidenceProvider>
-                </LinksProvider>
-              </WorkspaceProvider>
-            </PortfolioProvider>
-          </StoreProvider>
-        </AuthSessionProvider>
-        <Analytics />
-        <SpeedInsights />
+        <ScrollManager />
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

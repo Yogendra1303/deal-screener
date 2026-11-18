@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { DropdownSelect } from "@/components/ui";
+import { DropdownSelect } from "@/components/dropdown-select";
 
 const BACKGROUND_OPTIONS = [
   "VC (Partner / Principal / Associate)",
