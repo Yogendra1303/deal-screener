@@ -12,12 +12,16 @@ export function VCMetricsPanel({
   record,
   askAmount,
   className,
+  onRequestMissingFacts,
+  onAttachCsv,
 }: {
   deal?: DealResult | null;
   sheet: SheetRow[] | null;
   record?: Partial<DealRecord> | null;
   askAmount?: number | null;
   className?: string;
+  onRequestMissingFacts?: (missingFacts: string[]) => void;
+  onAttachCsv?: (csvText: string, fileName: string) => void;
 }) {
   const [activeInspector, setActiveInspector] = useState<{
     title: string;
@@ -92,17 +96,51 @@ export function VCMetricsPanel({
 
       {/* Subtitle / Risk Alert */}
       {vc.conviction.missingFacts.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3.5 py-2 text-xs text-amber-900">
-          <span>
-            <strong>Data Disclosure Friction:</strong> {vc.conviction.missingFacts.length} of {vc.conviction.totalCoreFacts} core institutional facts missing from submission ({vc.conviction.missingFacts.slice(0, 4).join(", ")}{vc.conviction.missingFacts.length > 4 ? "..." : ""}).
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-xs text-amber-900">
+          <span className="min-w-0 flex-1">
+            <strong>Data Disclosure Friction:</strong> {vc.conviction.missingFacts.length} of {vc.conviction.totalCoreFacts} core institutional facts missing ({vc.conviction.missingFacts.slice(0, 4).join(", ")}{vc.conviction.missingFacts.length > 4 ? "..." : ""}).
           </span>
-          <button
-            type="button"
-            onClick={() => setActiveInspector({ title: "Data Completeness & Disclosures", dimension: vc.conviction.dimensions.disclosure })}
-            className="cursor-pointer font-semibold underline hover:text-amber-950"
-          >
-            Review Penalties
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onRequestMissingFacts && (
+              <button
+                type="button"
+                onClick={() => onRequestMissingFacts(vc.conviction.missingFacts)}
+                className="cursor-pointer rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs hover:bg-slate-800"
+              >
+                Request Missing Facts
+              </button>
+            )}
+            {onAttachCsv && (
+              <label className="cursor-pointer rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-950 shadow-2xs hover:bg-amber-100">
+                Upload CSV &amp; Re-Score
+                <input
+                  type="file"
+                  accept=".csv,.tsv,.txt"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const text = ev.target?.result;
+                      if (typeof text === "string" && text.trim()) {
+                        onAttachCsv(text, file.name);
+                      }
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={() => setActiveInspector({ title: "Data Completeness & Disclosures", dimension: vc.conviction.dimensions.disclosure })}
+              className="cursor-pointer font-semibold underline hover:text-amber-950"
+            >
+              Review Penalties
+            </button>
+          </div>
         </div>
       )}
 

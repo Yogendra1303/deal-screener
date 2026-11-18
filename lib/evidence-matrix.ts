@@ -36,6 +36,23 @@ export interface EvidenceRow {
 }
 
 const sameCurrency = (a?: string | null, b?: string | null) => !a || !b || a.trim().toUpperCase() === b.trim().toUpperCase();
+
+/** Reference FX rates (units per 1 USD) for optional multi-currency normalization. */
+export const FX_RATES_PER_USD: Record<string, number> = {
+  USD: 1,
+  INR: 84,
+  AED: 3.6725,
+  SAR: 3.75,
+  EUR: 0.92,
+  GBP: 0.79,
+};
+
+function convertToUsd(amount: number, currency?: string | null): number | null {
+  const code = (currency || "USD").trim().toUpperCase();
+  const rate = FX_RATES_PER_USD[code];
+  if (!rate) return null;
+  return amount / rate;
+}
 /** Signed to one decimal; the sign follows the rounded figure, so −0.04% reads "0.0%", never "−0.0%". */
 const signed1 = (n: number, unit: string) => {
   const r = Math.round(n * 10) / 10;
@@ -53,8 +70,14 @@ function periodNote(asOf: string | null | undefined, month: string): string | nu
 }
 
 /** Build the matrix. Same inputs as runChecks(); same answer every time. */
-export function evidenceMatrix(args: { record: DealRecord; form: FormInput; sheet: SheetRow[] | null; registry: RegistryRecord | null }): EvidenceRow[] {
-  const { record, form, sheet, registry } = args;
+export function evidenceMatrix(args: {
+  record: DealRecord;
+  form: FormInput;
+  sheet: SheetRow[] | null;
+  registry: RegistryRecord | null;
+  normalizeFx?: boolean;
+}): EvidenceRow[] {
+  const { record, form, sheet, registry, normalizeFx = false } = args;
   const t = record.traction;
   const rows: EvidenceRow[] = [];
   const hasSheet = Boolean(sheet && sheet.length);
@@ -76,8 +99,43 @@ export function evidenceMatrix(args: { record: DealRecord; form: FormInput; shee
     if (!monthly) rows.push({ ...base, support: null, supportSource: "Monthly sheet", variance: null, varianceText: "N/A", state: "not_run", note: "The deck states no revenue.", formula: null });
     else if (!hasSheet) rows.push({ ...base, support: null, supportSource: "Monthly sheet", variance: null, varianceText: "N/A", state: "not_run", note: noSheet, formula: null });
     else if (!row || !row.revenue) rows.push({ ...base, support: null, supportSource: "Monthly sheet", variance: null, varianceText: "N/A", state: "not_run", note: "The sheet has no revenue to compare (missing or zero), so there is no base for a percentage.", formula: null });
-    else if (!sameCurrency(monthly.currency, row.currency))
-      rows.push({ ...base, support: fmtMoney(row.revenue, row.currency), supportSource: `Monthly sheet, ${fmtMonth(row.month)}`, variance: null, varianceText: "N/A", state: "not_run", note: `Currency differs (deck ${monthly.currency}, sheet ${row.currency}); the prototype does not convert, so the check does not run.`, formula: null });
+    else if (!sameCurrency(monthly.currency, row.currency)) {
+      const deckUsd = normalizeFx ? convertToUsd(monthly.amount!, monthly.currency) : null;
+      const sheetUsd = normalizeFx ? convertToUsd(isAnnual ? row.revenue * 12 : row.revenue, row.currency) : null;
+      if (normalizeFx && deckUsd != null && sheetUsd != null && sheetUsd > 0) {
+        const variance = (deckUsd - sheetUsd) / sheetUsd;
+        const gap = Math.abs(variance);
+        const deckCur = (monthly.currency || "USD").toUpperCase();
+        const sheetCur = (row.currency || "USD").toUpperCase();
+        rows.push({
+          ...base,
+          support: `${fmtMoney(sheetUsd, "USD")}${isAnnual ? " a year" : " a month"} (${fmtMoney(isAnnual ? row.revenue * 12 : row.revenue, sheetCur)})`,
+          supportSource: `Monthly sheet (${fmtMonth(row.month)}) · FX normalized to USD`,
+          variance,
+          varianceText: signedPct(variance),
+          state: gap > GAP_TOLERANCE ? "conflict" : "match",
+          note: [
+            `FX normalized (${deckCur} vs ${sheetCur} at reference USD rates).`,
+            periodNote(monthly.asOf, row.month),
+            SHEET_NOTE,
+          ]
+            .filter(Boolean)
+            .join(" "),
+          formula: `(${fmtMoney(deckUsd, "USD")} − ${fmtMoney(sheetUsd, "USD")}) ÷ ${fmtMoney(sheetUsd, "USD")} × 100 = ${signedPct(variance)}`,
+        });
+      } else {
+        rows.push({
+          ...base,
+          support: fmtMoney(row.revenue, row.currency),
+          supportSource: `Monthly sheet, ${fmtMonth(row.month)}`,
+          variance: null,
+          varianceText: "N/A",
+          state: "not_run",
+          note: `Currency differs (deck ${monthly.currency}, sheet ${row.currency}); enable FX Normalization to convert and compare.`,
+          formula: null,
+        });
+      }
+    }
     else {
       const cur = monthly.currency || row.currency;
       const deckValue = monthly.amount!;
@@ -207,7 +265,33 @@ export function evidenceMatrix(args: { record: DealRecord; form: FormInput; shee
     const base = { checkId: "round_deck_vs_form", metric: "Round size", deck: round.amount ? `${fmtMoney(round.amount, round.currency || "USD")} (deck)` : null, ...deckOf(round), rule };
     if (!round.amount) rows.push({ ...base, support: form.amountUsd ? `${usd(form.amountUsd)} (form)` : null, supportSource: "Intake form", variance: null, varianceText: "N/A", state: "not_run", note: "The deck states no round size.", formula: null });
     else if (!form.amountUsd) rows.push({ ...base, support: null, supportSource: "Intake form", variance: null, varianceText: "N/A", state: "not_run", note: "The form has no round ask.", formula: null });
-    else if (round.currency && round.currency.toUpperCase() !== "USD") rows.push({ ...base, support: `${usd(form.amountUsd)} (form)`, supportSource: "Intake form", variance: null, varianceText: "N/A", state: "not_run", note: `The deck states ${round.currency}; the prototype compares USD only.`, formula: null });
+    else if (round.currency && round.currency.toUpperCase() !== "USD") {
+      const deckUsd = normalizeFx ? convertToUsd(round.amount, round.currency) : null;
+      if (normalizeFx && deckUsd != null && form.amountUsd > 0) {
+        const variance = (deckUsd - form.amountUsd) / form.amountUsd;
+        rows.push({
+          ...base,
+          support: `${usd(form.amountUsd)} (form)`,
+          supportSource: "Intake form · FX normalized to USD",
+          variance,
+          varianceText: signedPct(variance),
+          state: Math.abs(variance) > GAP_TOLERANCE ? "conflict" : "match",
+          note: `FX normalized from ${round.currency.toUpperCase()} to USD at reference rate.`,
+          formula: `(${usd(Math.round(deckUsd))} − ${usd(form.amountUsd)}) ÷ ${usd(form.amountUsd)} × 100 = ${signedPct(variance)}`,
+        });
+      } else {
+        rows.push({
+          ...base,
+          support: `${usd(form.amountUsd)} (form)`,
+          supportSource: "Intake form",
+          variance: null,
+          varianceText: "N/A",
+          state: "not_run",
+          note: `The deck states ${round.currency}; enable FX Normalization to compare against the USD form ask.`,
+          formula: null,
+        });
+      }
+    }
     else {
       const variance = (round.amount - form.amountUsd) / form.amountUsd;
       rows.push({

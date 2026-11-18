@@ -7,23 +7,36 @@ export function FounderOutreachModal({
   isOpen,
   onClose,
   deal,
+  prefillMissingFacts,
 }: {
   isOpen: boolean;
   onClose: () => void;
   deal: DealResult;
+  prefillMissingFacts?: string[] | null;
 }) {
   const defaultEmail = deal.form.email || "";
   const conflicts = deal.flags.filter((f) => f.kind === "conflict");
   const missing = deal.flags.filter((f) => f.kind === "missing");
 
-  const defaultBody = (() => {
+  const buildBody = (missingList?: string[] | null) => {
     const founderFirst = deal.form.founders?.[0]?.name?.split(/\s+/)[0] || "there";
     const lines: string[] = [
       `Hi ${founderFirst},`,
       "",
-      `Thanks for sharing ${deal.form.companyName}'s pitch deck with the Aarka investment team. We reviewed your materials and would love to clarify a few details before moving to our next review step:`,
+      missingList && missingList.length > 0
+        ? `Thanks for submitting ${deal.form.companyName} to Aarka. Our initial diligence screen flagged ${missingList.length} missing institutional disclosures required before we can score the round and schedule a partner call:`
+        : `Thanks for sharing ${deal.form.companyName}'s pitch deck with the Aarka investment team. We reviewed your materials and would love to clarify a few details before moving to our next review step:`,
       "",
     ];
+    if (missingList && missingList.length > 0) {
+      lines.push("Missing core disclosures requested:");
+      for (const item of missingList) {
+        lines.push(`• ${item}`);
+      }
+      lines.push("");
+      lines.push("Please upload a trailing 6-month CSV (month, revenue, net_burn, cash, customers) or updated pitch deck via your private data room link below.");
+      return lines.join("\n");
+    }
     if (conflicts.length > 0) {
       lines.push("Numbers to reconcile:");
       for (const c of conflicts.slice(0, 3)) {
@@ -45,15 +58,29 @@ export function FounderOutreachModal({
     }
     lines.push("You can upload files or update numbers directly in your private data room link below.");
     return lines.join("\n");
-  })();
+  };
 
   const [toEmail, setToEmail] = useState(defaultEmail);
   const [subject, setSubject] = useState(`Aarka Diligence Follow-Up: ${deal.form.companyName}`);
-  const [message, setMessage] = useState(defaultBody);
+  const [message, setMessage] = useState(() => buildBody(prefillMissingFacts));
   const [includeDataRoomLink, setIncludeDataRoomLink] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentNote, setSentNote] = useState<{ note: string; link?: string } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSentNote(null);
+    setError(null);
+    if (prefillMissingFacts && prefillMissingFacts.length > 0) {
+      setSubject(`Action Required: Missing Diligence Disclosures for ${deal.form.companyName}`);
+      setMessage(buildBody(prefillMissingFacts));
+    } else {
+      setSubject(`Aarka Diligence Follow-Up: ${deal.form.companyName}`);
+      setMessage(buildBody(null));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, prefillMissingFacts, deal.id]);
 
   useEffect(() => {
     if (!isOpen) return;

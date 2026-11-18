@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { EvidenceMatrix } from "@/components/evidence-matrix";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
@@ -18,8 +19,12 @@ import { EnrichmentPanel } from "@/components/enrichment-panel";
 import { FounderOutreachModal } from "@/components/founder-outreach-modal";
 import { ICVotingPanel } from "@/components/ic-voting-panel";
 import { PdfSlideViewer } from "@/components/pdf-slide-viewer";
+import { usePortfolio } from "@/components/portfolio-store";
+import { PromoteToPortfolioModal } from "@/components/promote-to-portfolio-modal";
 import { VCMetricsPanel } from "@/components/vc-metrics-panel";
+import { runChecks } from "@/lib/checks";
 import { escapeHtml, exportICMemoPdf, openPrintableReport } from "@/lib/export";
+import { parseSheet } from "@/lib/sheet";
 import { calculateVCMetrics, GRADE_BADGE_STYLE } from "@/lib/vc-metrics";
 import { useStore } from "@/components/store";
 import { useWorkspace } from "@/components/workspace";
@@ -57,16 +62,63 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
   const { id } = use(params);
   const initial = use(searchParams).tab as Tab | undefined;
   const store = useStore();
+  const portfolio = usePortfolio();
   const deal = store.getDeal(id);
   const deckUrl = useDeckUrl(deal);
   const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "overview");
   const [outreachOpen, setOutreachOpen] = useState(false);
+  const [outreachMissingFacts, setOutreachMissingFacts] = useState<string[] | null>(null);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [csvNotice, setCsvNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [pdfViewerPage, setPdfViewerPage] = useState(1);
 
   const openSlide = (page: number) => {
     setPdfViewerPage(Math.max(1, page));
     setPdfViewerOpen(true);
+  };
+
+  const handleRequestMissingFacts = (missing: string[]) => {
+    setOutreachMissingFacts(missing);
+    setOutreachOpen(true);
+  };
+
+  const handleAttachCsv = (csvText: string, fileName: string) => {
+    if (!deal) return;
+    try {
+      const parsedSheet = parseSheet(csvText);
+      const nextFlags = runChecks({
+        record: deal.record,
+        form: deal.form,
+        sheet: parsedSheet,
+        registry: deal.registry,
+      });
+      const updatedDeal: DealResult = {
+        ...deal,
+        sheet: parsedSheet,
+        flags: nextFlags,
+      };
+      store.saveDeal(updatedDeal);
+      void fetch(`/api/deals/${encodeURIComponent(deal.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          record_json: updatedDeal,
+          checks_json: nextFlags,
+        }),
+      }).catch(() => undefined);
+
+      const newVc = calculateVCMetrics(updatedDeal.sheet, updatedDeal.record, updatedDeal.form.amountUsd, { deal: updatedDeal });
+      setCsvNotice({
+        kind: "ok",
+        text: `Ingested ${fileName} (${parsedSheet.length} months). Re-scored live: Grade ${newVc.grade} (${newVc.overallScore}/100) · ${nextFlags.filter((fl) => fl.kind === "conflict").length} conflict(s).`,
+      });
+    } catch (err: unknown) {
+      setCsvNotice({
+        kind: "err",
+        text: err instanceof Error ? err.message : "Could not parse CSV. Ensure it includes 'month' and 'revenue' columns.",
+      });
+    }
   };
 
   useEffect(() => {
@@ -174,11 +226,30 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
           />
           <button
             type="button"
-            onClick={() => setOutreachOpen(true)}
+            onClick={() => {
+              setOutreachMissingFacts(null);
+              setOutreachOpen(true);
+            }}
             className="cursor-pointer rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
           >
             Follow up
           </button>
+          {portfolio.get(deal.id) ? (
+            <Link
+              href={`/portfolio/${encodeURIComponent(deal.id)}`}
+              className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 shadow-2xs transition-colors hover:bg-emerald-100"
+            >
+              In Portfolio →
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPromoteOpen(true)}
+              className="cursor-pointer rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-2xs transition-colors hover:bg-emerald-700"
+            >
+              Mark Invested
+            </button>
+          )}
           <button
             type="button"
             onClick={() =>
@@ -209,10 +280,26 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
         </div>
       </div>
 
+      {csvNotice && (
+        <div
+          className={cx(
+            "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-2.5 text-xs font-medium",
+            csvNotice.kind === "ok"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "border-rose-200 bg-rose-50 text-rose-900",
+          )}
+        >
+          <span>{csvNotice.text}</span>
+          <button type="button" onClick={() => setCsvNotice(null)} className="cursor-pointer font-semibold underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <KeyStrip
         items={[
           ["Stage", f.stage],
-          ["Round ask", <span key="a" className="font-mono">{f.amountUsd ? usd(f.amountUsd) : "—"}</span>],
+          ["Round ask", <span key="a" className="font-mono">{f.amountUsd ? usd(f.amountUsd) : "-"}</span>],
           ["Sector", f.sector],
           ["Country", f.country],
           ["Received", <span key="r" className="font-mono">{fmtDate(deal.receivedAt)}</span>],
@@ -225,7 +312,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
         <CheckSummary cover={coverage({ record: deal.record, form: deal.form, sheet: deal.sheet, registry: deal.registry, flags: deal.flags })} />
       </section>
 
-      <EvidenceMatrix deal={deal} deckUrl={deckUrl} />
+      <EvidenceMatrix deal={deal} deckUrl={deckUrl} onOpenSlide={openSlide} />
 
       <Verdict deal={deal} band={band} overruled={Boolean(overrule?.band)} />
 
@@ -247,7 +334,14 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
               note="Written by code from the record; lines marked AI are the model's reading"
             />
             <KeyNumbers facts={facts.filter((x) => x.headline)} company={company} />
-            <VCMetricsPanel deal={deal} sheet={deal.sheet} record={deal.record} askAmount={deal.form.amountUsd} />
+            <VCMetricsPanel
+              deal={deal}
+              sheet={deal.sheet}
+              record={deal.record}
+              askAmount={deal.form.amountUsd}
+              onRequestMissingFacts={handleRequestMissingFacts}
+              onAttachCsv={handleAttachCsv}
+            />
             <QuestionsPanel company={company} />
           </div>
           <aside className="space-y-4">
@@ -264,7 +358,19 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
         </div>
         </div>
       )}
-      <FounderOutreachModal isOpen={outreachOpen} onClose={() => setOutreachOpen(false)} deal={deal} />
+      <FounderOutreachModal
+        isOpen={outreachOpen}
+        onClose={() => setOutreachOpen(false)}
+        deal={deal}
+        prefillMissingFacts={outreachMissingFacts}
+      />
+      <PromoteToPortfolioModal
+        isOpen={promoteOpen}
+        onClose={() => setPromoteOpen(false)}
+        deal={deal}
+        leadPartner={w.me || "Partner"}
+        owner={links.ownerOf(deal.id) || w.me || "Partner"}
+      />
       {deckUrl && (
         <PdfSlideViewer
           isOpen={pdfViewerOpen}
@@ -277,7 +383,14 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
       )}
       {tab === "numbers" && (
         <div className="space-y-6">
-          <VCMetricsPanel deal={deal} sheet={deal.sheet} record={deal.record} askAmount={deal.form.amountUsd} />
+          <VCMetricsPanel
+            deal={deal}
+            sheet={deal.sheet}
+            record={deal.record}
+            askAmount={deal.form.amountUsd}
+            onRequestMissingFacts={handleRequestMissingFacts}
+            onAttachCsv={handleAttachCsv}
+          />
           <CapTableModeler
             dealId={deal.id}
             companyName={f.companyName}

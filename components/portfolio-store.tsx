@@ -14,6 +14,7 @@ import type { AskTopic, FounderAsk, FundNote, MetricKey, MonthlyReport, Portfoli
 const KEY = "ds.portfolio.v1";
 
 interface Local {
+  added?: PortfolioCompany[];
   submitted: Record<string, Record<string, { receivedAt: string; fileName: string; numbers: Partial<Record<MetricKey, ReportedNumber>> }>>;
   acks: Record<string, Record<string, string>>;
   asks: Record<string, FounderAsk[]>;
@@ -38,7 +39,7 @@ export interface RunningPlay {
   outcome?: string;
 }
 
-const EMPTY: Local = { submitted: {}, acks: {}, asks: {}, answered: {}, reminders: {}, notes: {}, docs: {}, plays: {} };
+const EMPTY: Local = { added: [], submitted: {}, acks: {}, asks: {}, answered: {}, reminders: {}, notes: {}, docs: {}, plays: {} };
 
 function merge(c: PortfolioCompany, local: Local, today: string): PortfolioCompany {
   const byMonth = new Map<string, MonthlyReport>(c.reports.map((r) => [r.month, { ...r }]));
@@ -82,6 +83,7 @@ interface PortfolioStore {
   today: string;
   companies: PortfolioCompany[];
   get: (id: string) => PortfolioCompany | undefined;
+  addCompany: (company: PortfolioCompany) => void;
   changed: boolean;
   submitReport: (id: string, month: string, numbers: Partial<Record<MetricKey, number>>, fileName: string) => void;
   acknowledge: (id: string, month: string) => void;
@@ -141,7 +143,16 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const companies = useMemo(() => PORTFOLIO.map((c) => merge(c, local, today)), [local, today]);
+  const companies = useMemo(() => {
+    const seen = new Set<string>();
+    const combined: PortfolioCompany[] = [];
+    for (const c of [...(local.added ?? []), ...PORTFOLIO]) {
+      if (!c?.id || seen.has(c.id)) continue;
+      seen.add(c.id);
+      combined.push(merge(c, local, today));
+    }
+    return combined;
+  }, [local, today]);
 
   const value = useMemo<PortfolioStore>(
     () => ({
@@ -149,6 +160,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
       today,
       companies,
       get: (id) => companies.find((c) => c.id === id),
+      addCompany: (company) =>
+        update((l) => {
+          const rest = (l.added ?? []).filter((c) => c.id !== company.id);
+          return { ...l, added: [company, ...rest] };
+        }),
       changed: JSON.stringify(local) !== JSON.stringify(EMPTY),
       submitReport: (id, month, numbers, fileName) =>
         update((l) => {
