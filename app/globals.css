@@ -34,3 +34,24 @@ body {
     vertical-align: middle;
   }
 }
+
+@keyframes aarkaPanelEnter {
+  from {
+    opacity: 0.72;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.aarka-panel-enter {
+  animation: aarkaPanelEnter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aarka-panel-enter {
+    animation: none;
+  }
+}

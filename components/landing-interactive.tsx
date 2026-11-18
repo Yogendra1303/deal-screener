@@ -12,6 +12,60 @@ interface LightboxAsset {
   caption: string;
 }
 
+export function ScrollReveal({
+  children,
+  className = "",
+  delayMs = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delayMs?: number;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [revealed, setRevealed] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const node = ref.current;
+    if (!node) return;
+
+    const rect = node.getBoundingClientRect();
+    if (rect.top < window.innerHeight * 0.96) {
+      return;
+    }
+
+    setRevealed(false);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setRevealed(true);
+            observer.disconnect();
+            break;
+          }
+        }
+      },
+      { rootMargin: "0px 0px -48px 0px", threshold: 0.08 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={delayMs > 0 ? { transitionDelay: `${delayMs}ms` } : undefined}
+      className={`motion-safe:transition-all motion-safe:duration-500 motion-safe:ease-out ${
+        revealed ? "opacity-100 translate-y-0" : "motion-safe:opacity-0 motion-safe:translate-y-3"
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 export interface WorkflowStep {
   num: string;
   stage: string;
@@ -156,65 +210,102 @@ export function PartnerSignInButton({
 
 export function MobileHeaderMenu() {
   const [open, setOpen] = useState(false);
+  const toggleBtnRef = useRef<HTMLButtonElement | null>(null);
+  const firstLinkRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    firstLinkRef.current?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        toggleBtnRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  function closeMenu() {
+    setOpen(false);
+    toggleBtnRef.current?.focus();
+  }
 
   return (
     <>
       <button
+        ref={toggleBtnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={open}
-        className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 md:hidden"
+        aria-controls="mobile-nav-drawer"
+        className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 motion-safe:transition-colors motion-safe:duration-200 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:hidden"
       >
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
           {open ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
         </svg>
       </button>
 
       {open && (
-        <div className="absolute top-16 right-0 left-0 border-b border-slate-200 bg-white px-4 py-4 shadow-md md:hidden">
-          <nav aria-label="Mobile" className="flex flex-col gap-2">
-            <a
-              href="#workflow"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Workflow
-            </a>
-            <a
-              href="#capabilities"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Capabilities
-            </a>
-            <a
-              href="#privacy"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Data &amp; Privacy
-            </a>
-            <a
-              href="#request-workspace"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Request Workspace
-            </a>
-            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
-              <Link
-                href="/pitch"
-                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800"
+        <>
+          <div
+            aria-hidden="true"
+            onClick={closeMenu}
+            className="fixed inset-x-0 top-16 bottom-0 z-30 bg-slate-950/25 backdrop-blur-[1px] md:hidden"
+          />
+          <div
+            id="mobile-nav-drawer"
+            role="dialog"
+            aria-label="Mobile navigation"
+            className="aarka-panel-enter absolute top-16 right-0 left-0 z-40 border-b border-slate-200 bg-white px-4 py-4 shadow-lg md:hidden"
+          >
+            <nav aria-label="Mobile" className="flex flex-col gap-1">
+              <a
+                ref={firstLinkRef}
+                href="#workflow"
+                onClick={() => setOpen(false)}
+                className="flex min-h-[44px] items-center rounded-md px-3 text-sm font-medium text-slate-700 motion-safe:transition-colors hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               >
-                Submit a Pitch
-              </Link>
-              <PartnerSignInButton
-                className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-semibold text-white"
-              />
-            </div>
-          </nav>
-        </div>
+                Workflow
+              </a>
+              <a
+                href="#capabilities"
+                onClick={() => setOpen(false)}
+                className="flex min-h-[44px] items-center rounded-md px-3 text-sm font-medium text-slate-700 motion-safe:transition-colors hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              >
+                Capabilities
+              </a>
+              <a
+                href="#privacy"
+                onClick={() => setOpen(false)}
+                className="flex min-h-[44px] items-center rounded-md px-3 text-sm font-medium text-slate-700 motion-safe:transition-colors hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              >
+                Data &amp; Privacy
+              </a>
+              <a
+                href="#request-workspace"
+                onClick={() => setOpen(false)}
+                className="flex min-h-[44px] items-center rounded-md px-3 text-sm font-medium text-slate-700 motion-safe:transition-colors hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              >
+                Request Workspace
+              </a>
+              <div className="mt-2 grid grid-cols-2 gap-2.5 border-t border-slate-100 pt-3">
+                <Link
+                  href="/pitch"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Submit a Pitch
+                </Link>
+                <PartnerSignInButton
+                  className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800"
+                />
+              </div>
+            </nav>
+          </div>
+        </>
       )}
     </>
   );
@@ -258,66 +349,117 @@ export function WorkflowInteractiveGrid() {
 
   return (
     <div className="mt-10 grid gap-8 lg:grid-cols-12 lg:items-start">
-      {/* Left Column: Vertically Stacked Workflow Steps */}
-      <div className="space-y-4 lg:col-span-6">
-        {WORKFLOW_STEPS.map((step, idx) => {
-          const isActive = activeStep === idx;
-          return (
-            <div
-              key={step.num}
-              ref={(el) => {
-                stepRefs.current[idx] = el;
-              }}
-              data-step-index={idx}
-              onClick={() => setActiveStep(idx)}
-              className={`cursor-pointer rounded-xl border p-5 transition-colors ${
-                isActive
-                  ? "border-blue-600 bg-white shadow-sm"
-                  : "border-slate-200/90 bg-white/80 hover:border-slate-300 hover:bg-white"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveStep(idx)}
-                  className="cursor-pointer text-left font-mono text-xs font-semibold text-blue-700 focus:outline-none focus-visible:underline"
-                >
-                  {step.num} · {step.stage}
-                </button>
-                <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-slate-600">
-                  {step.routeLabel}
-                </span>
-              </div>
-              <h3 className="mt-2 text-[clamp(1.02rem,0.9vw+0.75rem,1.18rem)] font-semibold leading-[1.3] text-slate-950">
-                {step.title}
-              </h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">{step.summary}</p>
+      {/* Left Column: Connected Vertical Timeline (Cleanly Expanded on Mobile, Interactive on Desktop) */}
+      <div className="relative pl-7 sm:pl-9 lg:col-span-6">
+        {/* Subtle Vertical SVG Connector Rail linking 01 -> 05 */}
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute top-6 bottom-6 left-[11px] h-[calc(100%-3rem)] w-0.5 text-slate-300 sm:left-[15px]"
+          preserveAspectRatio="none"
+          viewBox="0 0 2 100"
+        >
+          <line x1="1" y1="0" x2="1" y2="100" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
+        </svg>
 
-              {/* Mobile inline step verification details */}
-              <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 lg:hidden">
-                {step.metrics.map((m) => (
-                  <div key={m.label} className="flex items-center justify-between gap-2 text-[11px]">
-                    <span className="text-slate-600">{m.label}</span>
-                    <span className="font-mono font-semibold text-slate-900">{m.value}</span>
+        <div className="space-y-4">
+          {WORKFLOW_STEPS.map((step, idx) => {
+            const isActive = activeStep === idx;
+            return (
+              <div
+                key={step.num}
+                ref={(el) => {
+                  stepRefs.current[idx] = el;
+                }}
+                data-step-index={idx}
+                onClick={() => setActiveStep(idx)}
+                className="relative"
+              >
+                {/* Timeline Step Connector Node */}
+                <span
+                  aria-hidden="true"
+                  className={`absolute top-5 -left-7 flex h-6 w-6 items-center justify-center rounded-full border font-mono text-[10px] font-semibold motion-safe:transition-colors motion-safe:duration-200 sm:-left-9 sm:h-7 sm:w-7 ${
+                    isActive
+                      ? "border-blue-600 bg-blue-600 text-white shadow-2xs"
+                      : "border-slate-300 bg-[#FAF9F6] text-slate-600"
+                  }`}
+                >
+                  {step.num}
+                </span>
+
+                <div
+                  className={`cursor-pointer rounded-xl border p-4 motion-safe:transition-all motion-safe:duration-200 sm:p-5 ${
+                    isActive
+                      ? "border-blue-600 bg-white shadow-sm"
+                      : "border-slate-200/90 bg-white/85 hover:border-slate-300 hover:bg-white"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveStep(idx)}
+                      className="cursor-pointer text-left font-mono text-xs font-semibold text-blue-700 focus:outline-none focus-visible:underline"
+                    >
+                      {step.num} · {step.stage}
+                    </button>
+                    <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-600">
+                      {step.routeLabel}
+                    </span>
                   </div>
-                ))}
+                  <h3 className="mt-2 text-[clamp(1rem,0.9vw+0.75rem,1.18rem)] font-semibold leading-[1.3] text-slate-950">
+                    {step.title}
+                  </h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{step.summary}</p>
+
+                  {/* Mobile Inline Stage Inspection & Output Preview (Zero Sticky Trapping) */}
+                  <div className="mt-3.5 space-y-2.5 border-t border-slate-100 pt-3 lg:hidden">
+                    <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 text-xs">
+                      <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        Cross-Check Output Sample
+                      </div>
+                      <div className="mt-2 space-y-2">
+                        {step.metrics.map((m) => (
+                          <div key={m.label} className="flex flex-col gap-1 border-t border-slate-200/60 pt-2 first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                            <span className="text-xs font-medium text-slate-700">{m.label}</span>
+                            <span
+                              className={`inline-block w-fit max-w-full break-words rounded px-2 py-0.5 font-mono text-xs font-semibold ${
+                                m.status === "checked"
+                                  ? "bg-emerald-50 text-emerald-800"
+                                  : m.status === "flagged"
+                                    ? "bg-rose-50 text-rose-800"
+                                    : "bg-blue-50 text-blue-800"
+                              }`}
+                            >
+                              {m.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white">
+                      <span className="min-w-0 text-slate-200">{step.output}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Right Column: Sticky Live Inspection Card on Desktop */}
       <div className="hidden lg:sticky lg:top-24 lg:col-span-6 lg:block">
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-3">
-            <div>
+        <div
+          key={currentStep.num}
+          className="aarka-panel-enter overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+        >
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3">
+            <div className="min-w-0">
               <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-blue-700">
                 Stage {currentStep.num} Inspection
               </span>
               <h3 className="text-sm font-semibold text-slate-950">{currentStep.stage}</h3>
             </div>
-            <span className="rounded border border-slate-200 bg-white px-2.5 py-1 font-mono text-[11px] text-slate-700">
+            <span className="shrink-0 rounded border border-slate-200 bg-white px-2.5 py-1 font-mono text-[11px] text-slate-700">
               {currentStep.routeLabel}
             </span>
           </div>
@@ -362,14 +504,14 @@ export function WorkflowInteractiveGrid() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg bg-slate-900 px-4 py-3 text-white">
-              <div>
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-900 px-4 py-3 text-white">
+              <div className="min-w-0">
                 <div className="text-[10px] uppercase tracking-wider text-slate-300">Resulting Artifact</div>
                 <div className="mt-0.5 text-xs font-medium">{currentStep.output}</div>
               </div>
               <Link
                 href="/pitch"
-                className="shrink-0 rounded bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-900 hover:bg-slate-100"
+                className="shrink-0 rounded bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-900 motion-safe:transition-colors motion-safe:duration-200 hover:bg-slate-100"
               >
                 Try Pitch Intake →
               </Link>
@@ -396,7 +538,7 @@ export function CapabilitiesInteractiveTabs() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
             Workspace Modules
@@ -406,7 +548,12 @@ export function CapabilitiesInteractiveTabs() {
           </h2>
         </div>
 
-        <div className="inline-flex flex-wrap rounded-lg border border-slate-200 bg-slate-100/80 p-1" role="tablist" aria-label="Workspace modules">
+        {/* Clean 2x2 Grid on Mobile (44px tap targets), Inline Tab Bar on Desktop */}
+        <div
+          className="grid w-full grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-100/80 p-1 sm:inline-flex sm:w-auto sm:flex-wrap"
+          role="tablist"
+          aria-label="Workspace modules"
+        >
           {(
             [
               ["diligence", "01 · Financial Diligence"],
@@ -421,7 +568,7 @@ export function CapabilitiesInteractiveTabs() {
               role="tab"
               aria-selected={capabilityTab === key}
               onClick={() => setCapabilityTab(key)}
-              className={`cursor-pointer rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-2.5 py-1.5 text-center text-xs font-semibold motion-safe:transition-all motion-safe:duration-200 sm:min-h-0 sm:px-3 ${
                 capabilityTab === key
                   ? "bg-white text-slate-950 shadow-2xs"
                   : "text-slate-600 hover:text-slate-950"
@@ -434,7 +581,7 @@ export function CapabilitiesInteractiveTabs() {
       </div>
 
       {capabilityTab === "diligence" && (
-        <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
+        <div key="diligence" className="aarka-panel-enter mt-8 grid items-center gap-8 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-5">
             <span className="font-mono text-xs font-semibold text-blue-700">01 · Financial Due Diligence</span>
             <h3 className="font-serif text-2xl font-normal text-slate-950">
@@ -456,7 +603,7 @@ export function CapabilitiesInteractiveTabs() {
             </ul>
           </div>
           <div className="lg:col-span-7">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm motion-safe:transition-shadow motion-safe:duration-200 hover:shadow-md">
               <button
                 type="button"
                 onClick={() =>
@@ -488,7 +635,7 @@ export function CapabilitiesInteractiveTabs() {
       )}
 
       {capabilityTab === "pipeline" && (
-        <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
+        <div key="pipeline" className="aarka-panel-enter mt-8 grid items-center gap-8 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-5">
             <span className="font-mono text-xs font-semibold text-blue-700">02 · Deal-Flow Management</span>
             <h3 className="font-serif text-2xl font-normal text-slate-950">
@@ -507,7 +654,7 @@ export function CapabilitiesInteractiveTabs() {
             </ul>
           </div>
           <div className="lg:col-span-7">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm motion-safe:transition-shadow motion-safe:duration-200 hover:shadow-md">
               <button
                 type="button"
                 onClick={() =>
@@ -539,7 +686,7 @@ export function CapabilitiesInteractiveTabs() {
       )}
 
       {capabilityTab === "market" && (
-        <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
+        <div key="market" className="aarka-panel-enter mt-8 grid items-center gap-8 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-5">
             <span className="font-mono text-xs font-semibold text-blue-700">03 · Sector Momentum</span>
             <h3 className="font-serif text-2xl font-normal text-slate-950">
@@ -558,7 +705,7 @@ export function CapabilitiesInteractiveTabs() {
             </ul>
           </div>
           <div className="lg:col-span-7">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm motion-safe:transition-shadow motion-safe:duration-200 hover:shadow-md">
               <button
                 type="button"
                 onClick={() =>
@@ -590,7 +737,7 @@ export function CapabilitiesInteractiveTabs() {
       )}
 
       {capabilityTab === "portfolio" && (
-        <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
+        <div key="portfolio" className="aarka-panel-enter mt-8 grid items-center gap-8 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-5">
             <span className="font-mono text-xs font-semibold text-blue-700">04 · Portfolio &amp; Fund Analytics</span>
             <h3 className="font-serif text-2xl font-normal text-slate-950">
@@ -609,7 +756,7 @@ export function CapabilitiesInteractiveTabs() {
             </ul>
           </div>
           <div className="lg:col-span-7">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm motion-safe:transition-shadow motion-safe:duration-200 hover:shadow-md">
               <button
                 type="button"
                 onClick={() =>
@@ -649,15 +796,15 @@ export function CapabilitiesInteractiveTabs() {
           onClick={() => setLightbox(null)}
         >
           <div
-            className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-white/15 bg-white shadow-2xl"
+            className="aarka-panel-enter relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-white/15 bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-              <span className="text-xs font-medium text-slate-700">{lightbox.caption}</span>
+              <span className="min-w-0 text-xs font-medium text-slate-700">{lightbox.caption}</span>
               <button
                 type="button"
                 onClick={() => setLightbox(null)}
-                className="inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="inline-flex min-h-[36px] shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-100"
               >
                 Close (Esc)
               </button>
@@ -733,17 +880,17 @@ export function WorkspaceRequestFormClient() {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
       {!reqSuccess ? (
         <form onSubmit={handleWorkspaceRequest} className="space-y-4" noValidate>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-semibold text-slate-950">Request Fund Workspace Access</h3>
               <p className="mt-0.5 text-xs text-slate-600">
                 Requests are saved with PENDING status and reviewed manually by an Aarka partner.
               </p>
             </div>
-            <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-blue-800">
+            <span className="shrink-0 rounded border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-blue-800">
               Invite-Only Waitlist
             </span>
           </div>
@@ -766,7 +913,7 @@ export function WorkspaceRequestFormClient() {
             className="hidden"
           />
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="landing-req-name" className="mb-1.5 block text-xs font-medium text-slate-700">
                 Full Name *
@@ -778,7 +925,7 @@ export function WorkspaceRequestFormClient() {
                 value={reqName}
                 onChange={(e) => setReqName(e.target.value)}
                 placeholder="e.g. Kabir Shah"
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none sm:h-10"
               />
             </div>
 
@@ -793,7 +940,7 @@ export function WorkspaceRequestFormClient() {
                 value={reqEmail}
                 onChange={(e) => setReqEmail(e.target.value)}
                 placeholder="name@fund.com"
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none sm:h-10"
               />
             </div>
 
@@ -807,7 +954,7 @@ export function WorkspaceRequestFormClient() {
                 value={reqFirm}
                 onChange={(e) => setReqFirm(e.target.value)}
                 placeholder="e.g. Horizon Seed Fund"
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none sm:h-10"
               />
             </div>
 
@@ -822,7 +969,7 @@ export function WorkspaceRequestFormClient() {
                 onChange={setReqRole}
                 options={BACKGROUND_OPTIONS}
                 className="w-full"
-                buttonClassName="h-10 rounded-md border-slate-300 px-3 text-sm"
+                buttonClassName="h-11 rounded-md border-slate-300 px-3 text-sm sm:h-10"
               />
             </div>
 
@@ -837,7 +984,7 @@ export function WorkspaceRequestFormClient() {
                 onChange={setReqIntent}
                 options={INTENT_OPTIONS}
                 className="w-full"
-                buttonClassName="h-10 rounded-md border-slate-300 px-3 text-sm"
+                buttonClassName="h-11 rounded-md border-slate-300 px-3 text-sm sm:h-10"
               />
             </div>
 
@@ -856,14 +1003,14 @@ export function WorkspaceRequestFormClient() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <p className="text-[11px] text-slate-600">
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-relaxed text-slate-600 sm:text-[11px]">
               Submitting records a pending request. Access is granted after partner whitelist approval.
             </p>
             <button
               type="submit"
               disabled={reqLoading}
-              className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-[44px] w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-5 text-xs font-semibold text-white shadow-xs motion-safe:transition-all motion-safe:duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <span>{reqLoading ? "Submitting Request…" : "Request Fund Workspace"}</span>
               {!reqLoading && <span aria-hidden="true">→</span>}
@@ -891,7 +1038,7 @@ export function WorkspaceRequestFormClient() {
                 setReqFirm("");
                 setReqNotes("");
               }}
-              className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              className="min-h-[44px] cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 sm:min-h-0"
             >
               Submit another request
             </button>
