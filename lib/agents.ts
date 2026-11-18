@@ -9,12 +9,15 @@ import type { Question } from "./questions";
 
 export type SourceStatus = "Connected" | "Needs an API key" | "Assisted" | "Planned";
 export type SourceCategory = "Founder Intake" | "Financials & MIS" | "External Intelligence" | "Enterprise Connectors";
+export type FlowTrack = "deal" | "portfolio" | "both";
 
 export interface DataSource {
   id: string;
   name: string;
   shortName: string;
   category: SourceCategory;
+  track: FlowTrack;
+  feedsEngines: string[];
   gives: string;
   howRead: string;
   status: SourceStatus;
@@ -29,6 +32,8 @@ export const SOURCES: DataSource[] = [
     name: "Pitch Decks (PDF)",
     shortName: "Pitch deck PDFs",
     category: "Founder Intake",
+    track: "deal",
+    feedsEngines: ["deck_extractor", "math_auditor", "conviction_engine", "memo_captable"],
     gives: "Company thesis, round ask, valuation cap, traction claims, unit economics, team roles, and market sizing.",
     howRead:
       "Dual-engine pipeline: Claude Sonnet 4.5 native PDF vision plus a zero-dependency ToUnicode CMap text parser and 7-section structural deck validator. Every extracted claim keeps its exact slide page and verbatim quote.",
@@ -45,6 +50,8 @@ export const SOURCES: DataSource[] = [
     name: "Founder Intake & Private Data Rooms",
     shortName: "Founder intake & links",
     category: "Founder Intake",
+    track: "both",
+    feedsEngines: ["deck_extractor", "portfolio_radar"],
     gives: "Structured pitch form answers, requested diligence packs (cap tables, bank statements, cohorts), and direct status updates.",
     howRead:
       "Founders submit via /pitch or partner-issued request links without creating an account. Uploads stream directly to encrypted storage and trigger live re-scoring.",
@@ -61,6 +68,8 @@ export const SOURCES: DataSource[] = [
     name: "Structured Intake Form",
     shortName: "Application form",
     category: "Founder Intake",
+    track: "deal",
+    feedsEngines: ["deck_extractor", "math_auditor", "conviction_engine", "memo_captable"],
     gives: "Stage, sector, geography, USD round ask, website URL, founder names, LinkedIn profiles, and contact email.",
     howRead:
       "Validated deterministically on submission and immediately cross-checked against written Fund Mandate rules and the deck's stated round size.",
@@ -77,6 +86,8 @@ export const SOURCES: DataSource[] = [
     name: "Monthly Financial Sheets (CSV / Excel)",
     shortName: "Monthly CSV sheets",
     category: "Financials & MIS",
+    track: "deal",
+    feedsEngines: ["math_auditor", "conviction_engine", "memo_captable"],
     gives: "Month-by-month revenue/MRR, paying customers, headcount, net burn, and cash in bank.",
     howRead:
       "Parsed deterministically by code into a normalized monthly series. Cross-checked against deck claims using the strict >10% variance threshold and optional multi-currency FX normalization (USD/INR/AED/SAR/EUR/GBP).",
@@ -93,6 +104,8 @@ export const SOURCES: DataSource[] = [
     name: "Portfolio Monthly MIS & Runway Radar",
     shortName: "Portfolio monthly MIS",
     category: "Financials & MIS",
+    track: "portfolio",
+    feedsEngines: ["portfolio_radar"],
     gives: "Post-investment monthly revenue, net burn, cash balance, paying customers, and MIS attachments.",
     howRead:
       "Ingested via self-serve Partner CSV dropzones on /portfolio/[id] or founder reporting links. Immediately refreshes revenue-vs-plan charts, runway radar (<9 mo warnings), and Fund Analytics NAV.",
@@ -109,6 +122,8 @@ export const SOURCES: DataSource[] = [
     name: "Live Web Research & Competitor Matrix",
     shortName: "Live web research",
     category: "External Intelligence",
+    track: "deal",
+    feedsEngines: ["market_research", "memo_captable"],
     gives: "Named and unnamed competitors, bottom-up TAM sizing, and cited public red flags.",
     howRead:
       "Runs Claude with live web search tool execution; every competitor entry, market assumption, and risk signal requires a verifiable source URL.",
@@ -125,6 +140,8 @@ export const SOURCES: DataSource[] = [
     name: "Entity Probes & Registry Verification",
     shortName: "Registries & web probes",
     category: "External Intelligence",
+    track: "deal",
+    feedsEngines: ["math_auditor", "market_research"],
     gives: "Live website SSL/HTTP reachability, page metadata, Hacker News mentions, and direct MCA/ZaubaCorp, OpenCorporates, Crunchbase, LinkedIn, and SEC verification links.",
     howRead:
       "SSRF-hardened server probes verify the company domain and public mentions in real time, paired with curated registry lookups to cross-check incorporation year and directors.",
@@ -141,6 +158,8 @@ export const SOURCES: DataSource[] = [
     name: "Founder Background & Pedigree Signals",
     shortName: "Founder profiles",
     category: "External Intelligence",
+    track: "deal",
+    feedsEngines: ["conviction_engine"],
     gives: "Prior founding history, domain operator depth, technical/CTO roles, and role tenure verification.",
     howRead:
       "Evaluated deterministically inside Pillar 3 of the Conviction Matrix (Serial Founder +35, Domain Overlap +30, Tech Pedigree +20, Registry Match +15). School, age, and hometown are strictly excluded.",
@@ -157,6 +176,8 @@ export const SOURCES: DataSource[] = [
     name: "Email & Calendar Relationship Graph",
     shortName: "Email & calendar",
     category: "Enterprise Connectors",
+    track: "deal",
+    feedsEngines: ["deck_extractor"],
     gives: "Warm intro paths, partner touchpoint recency, and automatic inbound pitch forwarding.",
     howRead:
       "Inbound pitch webhook (/api/webhooks/inbound-email) is ready for Resend/Postmark routing; full Google Workspace / Microsoft 365 header sync is scheduled for Phase 2.",
@@ -170,6 +191,8 @@ export const SOURCES: DataSource[] = [
     name: "External Data Rooms (Drive / DocSend)",
     shortName: "Drive / DocSend sync",
     category: "Enterprise Connectors",
+    track: "both",
+    feedsEngines: ["deck_extractor", "math_auditor"],
     gives: "Multi-file diligence folders, signed SAFEs, audited financials, and cap table exports.",
     howRead:
       "Native Aarka Data Room is live today; automated one-click mirroring from Google Drive, SharePoint, and DocSend is on the enterprise roadmap.",
@@ -183,6 +206,8 @@ export const SOURCES: DataSource[] = [
     name: "Institutional Data Feeds (PitchBook / Tracxn)",
     shortName: "PitchBook / Tracxn API",
     category: "Enterprise Connectors",
+    track: "deal",
+    feedsEngines: ["market_research"],
     gives: "Verified prior funding rounds, co-investor syndicates, and historical headcount curves.",
     howRead:
       "Designed for Bring-Your-Own-License (BYOL) API integration using the fund's existing data provider credentials.",
@@ -197,6 +222,11 @@ export type AgentStatus = "Live · Hybrid AI + Code" | "Live · Deterministic Co
 
 export interface Agent {
   id: string;
+  step: string;
+  shortName: string;
+  badge: "AI + Code" | "Code" | "AI + Probe";
+  track: FlowTrack;
+  outputs: string[];
   name: string;
   job: string;
   reads: string[];
@@ -211,6 +241,11 @@ export interface Agent {
 export const AGENTS: Agent[] = [
   {
     id: "deck_extractor",
+    step: "01",
+    shortName: "Deck Gate & PDF Read",
+    badge: "AI + Code",
+    track: "deal",
+    outputs: ["deals", "dataroom"],
     name: "Pitch Deck Extractor & Structural Gate",
     job: "Validates pitch deck structure and extracts source-cited facts with page numbers and verbatim quotes.",
     reads: ["PDF Deck", "Intake Form", "ToUnicode Text Layer"],
@@ -223,6 +258,11 @@ export const AGENTS: Agent[] = [
   },
   {
     id: "math_auditor",
+    step: "02",
+    shortName: "10% Math Gap & FX Auditor",
+    badge: "Code",
+    track: "deal",
+    outputs: ["deals", "compare", "method"],
     name: "Financial Math Gap & FX Auditor",
     job: "Deterministically cross-checks slide claims against monthly CSV sheets, forms, and registry filings.",
     reads: ["Deck Claims", "Monthly CSV", "Intake Form", "Registry"],
@@ -235,6 +275,11 @@ export const AGENTS: Agent[] = [
   },
   {
     id: "conviction_engine",
+    step: "03",
+    shortName: "5-Pillar Conviction (A-G)",
+    badge: "Code",
+    track: "deal",
+    outputs: ["deals", "compare", "method"],
     name: "5-Pillar Conviction Matrix (Grade A to G)",
     job: "Scores every deal from 0 to 100 across Disclosure, Financial Veracity, Founder Signal, Unit Economics, and Mandate Fit.",
     reads: ["10 Core Facts", "Conflict Flags", "Founder Pedigree", "Burn & Runway", "Ownership"],
@@ -247,10 +292,15 @@ export const AGENTS: Agent[] = [
   },
   {
     id: "memo_captable",
+    step: "04",
+    shortName: "IC Memo, SAFE & Promotion",
+    badge: "Code",
+    track: "both",
+    outputs: ["deals", "portfolio", "fund"],
     name: "IC Memo PDF & Cap Table Modeler",
-    job: "Compiles publication-grade Investment Committee memos and models Post/Pre-Money SAFE and Priced Equity dilution.",
+    job: "Compiles publication-grade Investment Committee memos, models Post/Pre-Money SAFE dilution, and promotes closed deals to Portfolio.",
     reads: ["5-Pillar Matrix", "Evidence Conflicts", "Rubric Scores", "Round Terms"],
-    suggests: "Printable IC Diligence Pack with signature blocks, ownership schedules, option pool carve-outs, and Series A pro-rata reserves.",
+    suggests: "Printable IC Diligence Pack with signature blocks, ownership schedules, option pool carve-outs, and one-click Mark Invested promotion.",
     approval: "Lead Partner and Managing Partner review and sign off before promoting the deal to Portfolio.",
     guardrail: "Deterministic cap table math guaranteed finite (zero NaN/Infinity) with clipboard schedule export.",
     status: "Live · Deterministic Code",
@@ -258,7 +308,29 @@ export const AGENTS: Agent[] = [
     href: "/deals",
   },
   {
+    id: "market_research",
+    step: "05",
+    shortName: "Market & Entity Probes",
+    badge: "AI + Probe",
+    track: "deal",
+    outputs: ["deals", "compare"],
+    name: "Live Market & Competitor Researcher",
+    job: "Verifies domain SSL & Hacker News signals live and searches the open web for unnamed rivals and bottom-up TAM sizing.",
+    reads: ["Company Website", "Sector Thesis", "Live Web Search", "HN & Registry Links"],
+    suggests: "Competitor comparison table flagging rivals omitted from the deck, bottom-up TAM math, and linked public sources.",
+    approval: "Read-only research pack attached to the Market tab for partner verification.",
+    guardrail: "Every external claim must include a clickable URL citation; runs live domain SSL probes with SSRF protection.",
+    status: "Live · Needs API Key",
+    statusNote: "Domain/HN/registry enrichment runs out of the box; full web TAM research activates with ANTHROPIC_API_KEY.",
+    href: "/sectors",
+  },
+  {
     id: "portfolio_radar",
+    step: "06",
+    shortName: "MIS & <9 mo Runway Radar",
+    badge: "Code",
+    track: "portfolio",
+    outputs: ["portfolio", "fund", "compare"],
     name: "Portfolio MIS Monitor & Runway Radar",
     job: "Tracks post-investment monthly reporting compliance, cash runway alerts, and real-time Fund I capital pacing.",
     reads: ["Monthly MIS CSV", "Pitch Plan", "Investment Terms", "Fund Parameters"],
@@ -268,18 +340,6 @@ export const AGENTS: Agent[] = [
     status: "Live · Deterministic Code",
     statusNote: "Backed by automated weekly digest checks (/api/cron/portfolio-digest).",
     href: "/portfolio",
-  },
-  {
-    id: "market_research",
-    name: "Live Market & Competitor Researcher",
-    job: "Searches the open web for unnamed rivals, bottom-up market sizing, and public risk signals.",
-    reads: ["Company Website", "Sector Thesis", "Live Web Search", "HN & Registry Links"],
-    suggests: "Competitor comparison table flagging rivals omitted from the deck, bottom-up TAM math, and linked public sources.",
-    approval: "Read-only research pack attached to the Market tab for partner verification.",
-    guardrail: "Every external claim must include a clickable URL citation; runs live domain SSL probes with SSRF protection.",
-    status: "Live · Needs API Key",
-    statusNote: "Domain/HN/registry enrichment runs out of the box; full web TAM research activates with ANTHROPIC_API_KEY.",
-    href: "/sectors",
   },
 ];
 

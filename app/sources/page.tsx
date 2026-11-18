@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePortfolio } from "@/components/portfolio-store";
 import { Avatar } from "@/components/shell";
 import { useLinks } from "@/components/links-store";
@@ -15,6 +15,7 @@ import {
   type Agent,
   type AgentStatus,
   type DataSource,
+  type FlowTrack,
   type LogEntry,
   type SourceCategory,
   type SourceStatus,
@@ -23,6 +24,28 @@ import { fmtDay } from "@/lib/dates";
 import { TEAM } from "@/lib/team";
 
 type HubTab = "sources" | "engines" | "activity";
+type TrackFilter = "all" | "deal" | "portfolio";
+
+interface WorkspaceSurface {
+  id: string;
+  title: string;
+  desc: string;
+  href: string;
+  stat: string;
+  track: FlowTrack;
+}
+
+interface EdgeGeom {
+  key: string;
+  d: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  tone: "indigo" | "emerald";
+  active: boolean;
+  dim: boolean;
+}
 
 const SOURCE_TONE: Record<SourceStatus, { pill: string; dot: string; label: string }> = {
   Connected: { pill: "bg-emerald-50 text-emerald-800 ring-emerald-200", dot: "bg-emerald-500", label: "Connected" },
@@ -61,12 +84,27 @@ export default function SourcesPage() {
   const links = useLinks();
 
   const [hubTab, setHubTab] = useState<HubTab>("sources");
+  const [flowTrack, setFlowTrack] = useState<TrackFilter>("all");
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [category, setCategory] = useState<"All" | SourceCategory>("All");
   const [onlyLiveSources, setOnlyLiveSources] = useState(false);
   const [activityKind, setActivityKind] = useState<"all" | LogEntry["kind"]>("all");
   const [activityQuery, setActivityQuery] = useState("");
   const [activityPage, setActivityPage] = useState(1);
   const [inspector, setInspector] = useState<InspectorState>(null);
+
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const nodeRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const [edges, setEdges] = useState<EdgeGeom[]>([]);
+  const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+
+  const registerNode = useCallback(
+    (id: string) => (el: HTMLElement | null) => {
+      if (el) nodeRefs.current.set(id, el);
+      else nodeRefs.current.delete(id);
+    },
+    [],
+  );
 
   const effectiveToday = useMemo(() => {
     const nowIso = new Date().toISOString().slice(0, 10);
@@ -101,13 +139,13 @@ export default function SourcesPage() {
   const liveBadgeForSource = (id: string): string => {
     switch (id) {
       case "pitch_decks":
-        return `${telemetry.dealsCount} decks indexed`;
+        return `${telemetry.dealsCount} deck${telemetry.dealsCount === 1 ? "" : "s"} indexed`;
       case "founder_links":
         return `${links.inbound.length + Object.keys(links.requests).length} active links`;
       case "application_form":
-        return `${telemetry.dealsCount} forms checked`;
+        return `${telemetry.dealsCount} form${telemetry.dealsCount === 1 ? "" : "s"} checked`;
       case "numbers_sheet":
-        return `${telemetry.withSheet} CSV sheets verified`;
+        return `${telemetry.withSheet} CSV ${telemetry.withSheet === 1 ? "sheet" : "sheets"} verified`;
       case "monthly_mis":
         return `${telemetry.totalMis} MIS reports · ${telemetry.portfolioCount} cos`;
       case "web_research":
@@ -120,6 +158,245 @@ export default function SourcesPage() {
         return "Phase 2 connector";
     }
   };
+
+  const compactBadgeForSource = (id: string): string => {
+    switch (id) {
+      case "pitch_decks":
+        return `${telemetry.dealsCount} PDF${telemetry.dealsCount === 1 ? "" : "s"}`;
+      case "founder_links":
+        return `${links.inbound.length + Object.keys(links.requests).length} links`;
+      case "application_form":
+        return `${telemetry.dealsCount} forms`;
+      case "numbers_sheet":
+        return `${telemetry.withSheet} CSV${telemetry.withSheet === 1 ? "" : "s"}`;
+      case "monthly_mis":
+        return `${telemetry.totalMis} MIS`;
+      case "web_research":
+        return store.server?.hasKey ? "Live API" : "API opt";
+      case "entity_enrichment":
+        return "SSL + MCA";
+      case "founder_profiles":
+        return "Pillar 3";
+      default:
+        return "Phase 2";
+    }
+  };
+
+  const flowSources = useMemo(() => SOURCES.slice(0, 8), []);
+
+  const surfaces = useMemo<WorkspaceSurface[]>(
+    () => [
+      {
+        id: "deals",
+        title: "Pipeline & Deals",
+        desc: "Kanban triage, Grade A-G pills & IC Memo PDF",
+        href: "/deals",
+        stat: `${telemetry.dealsCount} screened`,
+        track: "deal",
+      },
+      {
+        id: "dataroom",
+        title: "Data Room",
+        desc: "Signed vault, missing checklist & founder links",
+        href: "/dataroom",
+        stat: "Encrypted",
+        track: "deal",
+      },
+      {
+        id: "compare",
+        title: "Compare Matrix",
+        desc: "Rank deals & portfolio on Grade, Burn & ARR",
+        href: "/compare",
+        stat: "FX-ready",
+        track: "both",
+      },
+      {
+        id: "portfolio",
+        title: "Portfolio Oversight",
+        desc: "Partner MIS CSV upload & <9 mo Runway Radar",
+        href: "/portfolio",
+        stat: `${telemetry.portfolioCount} cos`,
+        track: "portfolio",
+      },
+      {
+        id: "fund",
+        title: "Fund Analytics",
+        desc: "Deployed capital, TVPI, dry powder & LP Pack",
+        href: "/fund",
+        stat: "Real-time",
+        track: "portfolio",
+      },
+      {
+        id: "method",
+        title: "Conviction Rule Book",
+        desc: "Master equations, >10% math & Grade A-G tiers",
+        href: "/method",
+        stat: "Auditable",
+        track: "deal",
+      },
+    ],
+    [telemetry.dealsCount, telemetry.portfolioCount],
+  );
+
+  const trackMatches = useCallback(
+    (track: FlowTrack) => flowTrack === "all" || track === "both" || track === flowTrack,
+    [flowTrack],
+  );
+
+  const connectedNodeIds = useMemo<Set<string> | null>(() => {
+    if (!hoveredNode) return null;
+    const set = new Set<string>([hoveredNode]);
+
+    const src = flowSources.find((s) => `src:${s.id}` === hoveredNode);
+    if (src) {
+      for (const eid of src.feedsEngines) {
+        set.add(`eng:${eid}`);
+        const eng = AGENTS.find((a) => a.id === eid);
+        if (eng) {
+          for (const oid of eng.outputs) set.add(`out:${oid}`);
+        }
+      }
+      return set;
+    }
+
+    const eng = AGENTS.find((a) => `eng:${a.id}` === hoveredNode);
+    if (eng) {
+      for (const s of flowSources) {
+        if (s.feedsEngines.includes(eng.id)) set.add(`src:${s.id}`);
+      }
+      for (const oid of eng.outputs) set.add(`out:${oid}`);
+      return set;
+    }
+
+    const out = surfaces.find((o) => `out:${o.id}` === hoveredNode);
+    if (out) {
+      for (const a of AGENTS) {
+        if (a.outputs.includes(out.id)) {
+          set.add(`eng:${a.id}`);
+          for (const s of flowSources) {
+            if (s.feedsEngines.includes(a.id)) set.add(`src:${s.id}`);
+          }
+        }
+      }
+      return set;
+    }
+
+    return null;
+  }, [hoveredNode, flowSources, surfaces]);
+
+  const computeEdges = useCallback(() => {
+    const wrap = canvasRef.current;
+    if (!wrap) return;
+    const box = wrap.getBoundingClientRect();
+    setCanvasSize({ w: box.width, h: box.height });
+
+    if (box.width < 900) {
+      setEdges([]);
+      return;
+    }
+
+    const next: EdgeGeom[] = [];
+    const buildCurve = (
+      fromKey: string,
+      toKey: string,
+      tone: "indigo" | "emerald",
+      trackOk: boolean,
+    ) => {
+      const a = nodeRefs.current.get(fromKey);
+      const b = nodeRefs.current.get(toKey);
+      if (!a || !b) return;
+      const ra = a.getBoundingClientRect();
+      const rb = b.getBoundingClientRect();
+      const x1 = ra.right - box.left;
+      const y1 = ra.top + ra.height / 2 - box.top;
+      const x2 = rb.left - box.left;
+      const y2 = rb.top + rb.height / 2 - box.top;
+      if (x2 <= x1 + 6) return;
+      const dx = Math.max(24, (x2 - x1) * 0.48);
+      const active = Boolean(connectedNodeIds && connectedNodeIds.has(fromKey) && connectedNodeIds.has(toKey));
+      const dim = connectedNodeIds ? !active : !trackOk;
+      next.push({
+        key: `${fromKey}->${toKey}`,
+        d: `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`,
+        x1,
+        y1,
+        x2,
+        y2,
+        tone,
+        active,
+        dim,
+      });
+    };
+
+    for (const s of flowSources) {
+      for (const eid of s.feedsEngines) {
+        const eng = AGENTS.find((a) => a.id === eid);
+        if (!eng) continue;
+        buildCurve(`src:${s.id}`, `eng:${eid}`, "indigo", trackMatches(s.track) && trackMatches(eng.track));
+      }
+    }
+    for (const eng of AGENTS) {
+      for (const oid of eng.outputs) {
+        const surf = surfaces.find((o) => o.id === oid);
+        if (!surf) continue;
+        buildCurve(`eng:${eng.id}`, `out:${oid}`, "emerald", trackMatches(eng.track) && trackMatches(surf.track));
+      }
+    }
+
+    setEdges(next);
+  }, [connectedNodeIds, flowSources, surfaces, trackMatches]);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(computeEdges);
+    const wrap = canvasRef.current;
+    if (!wrap || typeof ResizeObserver === "undefined") return () => cancelAnimationFrame(raf);
+    const ro = new ResizeObserver(() => requestAnimationFrame(computeEdges));
+    ro.observe(wrap);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [computeEdges]);
+
+  const hoveredSummary = useMemo(() => {
+    if (!hoveredNode) return null;
+    const src = flowSources.find((s) => `src:${s.id}` === hoveredNode);
+    if (src) {
+      const targetEngines = src.feedsEngines
+        .map((id) => AGENTS.find((a) => a.id === id)?.shortName)
+        .filter(Boolean)
+        .join(", ");
+      return {
+        role: "INGESTION",
+        title: src.shortName,
+        detail: `Feeds ${targetEngines}. Click to inspect ingestion rules & security boundary.`,
+      };
+    }
+    const eng = AGENTS.find((a) => `eng:${a.id}` === hoveredNode);
+    if (eng) {
+      const targetSurfaces = eng.outputs
+        .map((id) => surfaces.find((o) => o.id === id)?.title)
+        .filter(Boolean)
+        .join(", ");
+      return {
+        role: "VERIFICATION ENGINE",
+        title: eng.name,
+        detail: `Powers ${targetSurfaces}. Click to audit exact inputs & zero-hallucination guardrails.`,
+      };
+    }
+    const out = surfaces.find((o) => `out:${o.id}` === hoveredNode);
+    if (out) {
+      const feeding = AGENTS.filter((a) => a.outputs.includes(out.id))
+        .map((a) => a.shortName)
+        .join(", ");
+      return {
+        role: "WORKSPACE SURFACE",
+        title: out.title,
+        detail: `Powered live by ${feeding}. Click card to open ${out.href}.`,
+      };
+    }
+    return null;
+  }, [hoveredNode, flowSources, surfaces]);
 
   const log = useMemo(() => {
     const mine = (owner?: string) => w.role === "Partner" || owner === w.me;
@@ -252,7 +529,7 @@ export default function SourcesPage() {
             <span className="text-sm font-normal text-slate-400"> cos</span>
           </div>
           <p className="mt-1 text-xs text-slate-500 group-hover:text-blue-700">
-            {telemetry.withSheet} CSVs · {telemetry.totalMis} MIS reports →
+            {telemetry.withSheet} {telemetry.withSheet === 1 ? "CSV" : "CSVs"} · {telemetry.totalMis} MIS reports →
           </p>
         </button>
 
@@ -275,163 +552,325 @@ export default function SourcesPage() {
         </button>
       </div>
 
-      {/* Interactive 3-Stage Visual Architecture Flow */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100">
+      {/* Institutional Interactive 3-Stage Data Lineage Canvas */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+        {/* Canvas Top Bar + Track Switcher */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-slate-900">
-              End-to-End Data Flow (Click any node to inspect)
+              End-to-End Data Lineage
             </h2>
-            <p className="text-xs text-slate-500">
-              How raw founder uploads transform into verified math checks, Grade A-G conviction ratings, and LP reporting.
+            <p className="mt-0.5 text-xs text-slate-500">
+              Hover any node to trace live upstream and downstream paths. Click any source or engine to open its specification.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-            {(["Connected", "Needs an API key", "Assisted", "Planned"] as SourceStatus[]).map((st) => (
-              <span key={st} className="inline-flex items-center gap-1.5">
-                <span className={cx("h-2 w-2 rounded-full", SOURCE_TONE[st].dot)} />
-                {SOURCE_TONE[st].label}
-              </span>
+
+          <div
+            className="inline-flex rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 text-xs font-semibold"
+            role="tablist"
+            aria-label="Filter data flow track"
+          >
+            {(
+              [
+                ["all", "Full System"],
+                ["deal", "Deal Screening"],
+                ["portfolio", "Portfolio & Fund"],
+              ] as [TrackFilter, string][]
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={flowTrack === k}
+                onClick={() => {
+                  setFlowTrack(k);
+                  setHoveredNode(null);
+                }}
+                className={cx(
+                  "cursor-pointer whitespace-nowrap rounded-md px-3 py-1.5 transition",
+                  flowTrack === k
+                    ? "bg-white text-slate-900 shadow-2xs ring-1 ring-slate-200/80"
+                    : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                {label}
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_24px_minmax(0,1.15fr)_24px_minmax(0,1fr)] lg:items-stretch">
-          {/* Stage 1: Ingestion */}
-          <div className="flex flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">01 · Ingestion</span>
-              <span className="text-[11px] font-medium text-slate-400">Click to inspect</span>
-            </div>
-            <div className="mt-3 space-y-1.5">
-              {SOURCES.slice(0, 8).map((src) => {
-                const st = effectiveStatus(src);
-                return (
-                  <button
-                    key={src.id}
-                    type="button"
-                    onClick={() => setInspector({ type: "source", item: src })}
-                    className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-white px-3 py-2 text-left text-xs font-medium text-slate-800 shadow-2xs transition hover:border-indigo-400 hover:text-indigo-700"
-                  >
-                    <span className="truncate">{src.shortName}</span>
-                    <span className="flex shrink-0 items-center gap-1.5">
-                      <span className="hidden font-mono text-[10px] text-slate-400 xl:inline">
-                        {liveBadgeForSource(src.id).split(" ")[0]}
+        {/* Architectural Dot-Grid Canvas + Live SVG Bezier Connectors */}
+        <div
+          ref={canvasRef}
+          onMouseLeave={() => setHoveredNode(null)}
+          className="relative bg-slate-50/50 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:18px_18px] p-5 sm:p-6"
+        >
+          {/* SVG Bezier Edge Layer (Desktop) */}
+          {canvasSize.w > 0 && edges.length > 0 && (
+            <svg
+              aria-hidden
+              viewBox={`0 0 ${canvasSize.w} ${canvasSize.h}`}
+              className="pointer-events-none absolute inset-0 hidden h-full w-full lg:block"
+            >
+              {/* Render dimmed/idle curves underneath active curves */}
+              {edges
+                .filter((e) => !e.active)
+                .map((e) => (
+                  <path
+                    key={e.key}
+                    d={e.d}
+                    fill="none"
+                    stroke="#94a3b8"
+                    strokeWidth={1.15}
+                    strokeOpacity={e.dim ? 0.14 : 0.42}
+                  />
+                ))}
+              {edges
+                .filter((e) => e.active)
+                .map((e) => {
+                  const stroke = e.tone === "indigo" ? "#4f46e5" : "#059669";
+                  return (
+                    <g key={e.key}>
+                      <path
+                        d={e.d}
+                        fill="none"
+                        stroke={stroke}
+                        strokeWidth={2}
+                        strokeOpacity={0.92}
+                      />
+                      <circle cx={e.x1} cy={e.y1} r={3} fill={stroke} />
+                      <circle cx={e.x2} cy={e.y2} r={3} fill={stroke} />
+                    </g>
+                  );
+                })}
+            </svg>
+          )}
+
+          <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)_minmax(0,1fr)] lg:items-center lg:gap-10">
+            {/* Stage 1: Ingestion Channels */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  01 · Ingestion
+                </span>
+                <span className="font-mono text-[10px] font-medium text-slate-400">
+                  8 live inputs
+                </span>
+              </div>
+              <div className="space-y-2">
+                {flowSources.map((src) => {
+                  const st = effectiveStatus(src);
+                  const nodeKey = `src:${src.id}`;
+                  const isLit = connectedNodeIds ? connectedNodeIds.has(nodeKey) : trackMatches(src.track);
+                  const isDirect = hoveredNode === nodeKey;
+                  return (
+                    <button
+                      key={src.id}
+                      ref={registerNode(nodeKey)}
+                      type="button"
+                      onMouseEnter={() => setHoveredNode(nodeKey)}
+                      onFocus={() => setHoveredNode(nodeKey)}
+                      onClick={() => setInspector({ type: "source", item: src })}
+                      className={cx(
+                        "group flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border bg-white px-3.5 py-2.5 text-left shadow-2xs transition",
+                        isDirect
+                          ? "border-indigo-500 ring-2 ring-indigo-500/15"
+                          : isLit
+                            ? "border-slate-200/90 hover:border-indigo-300"
+                            : "border-slate-200/60 opacity-35",
+                      )}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={cx("h-2 w-2 shrink-0 rounded-full", SOURCE_TONE[st].dot)}
+                          title={SOURCE_TONE[st].label}
+                        />
+                        <span className="truncate text-xs font-medium text-slate-800 group-hover:text-indigo-700">
+                          {src.shortName}
+                        </span>
                       </span>
-                      <span className={cx("h-2 w-2 rounded-full", SOURCE_TONE[st].dot)} title={SOURCE_TONE[st].label} />
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <FlowArrow />
-
-          {/* Stage 2: Aarka Core Engine */}
-          <div className="flex flex-col rounded-xl bg-slate-900 p-4 text-white shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">02 · Aarka Verification Core</span>
-              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
-                Zero Hallucination
-              </span>
-            </div>
-            <div className="mt-3 flex-1 space-y-2">
-              {[
-                {
-                  step: "01",
-                  title: "Structural Deck Gate & PDF Read",
-                  tag: "AI + Code",
-                  desc: "Validates 7 VC pitch sections, catches non-decks, extracts claims with slide pages & verbatim quotes.",
-                  agentId: "deck_extractor",
-                },
-                {
-                  step: "02",
-                  title: "10% Math Gap & FX Auditor",
-                  tag: "Code",
-                  desc: "Cross-checks deck vs. CSV, form & registry across USD/INR/AED/SAR/EUR/GBP with written formulas.",
-                  agentId: "math_auditor",
-                },
-                {
-                  step: "03",
-                  title: "5-Pillar Conviction Matrix",
-                  tag: "Code",
-                  desc: "Scores Grade A-G (0-100) across Disclosure, Veracity, Founder Pedigree, Unit Economics & Mandate.",
-                  agentId: "conviction_engine",
-                },
-                {
-                  step: "04",
-                  title: "IC Memo, Cap Table & MIS Radar",
-                  tag: "Code",
-                  desc: "Generates printable IC packs, SAFE dilution schedules, and promotes closed deals into Fund Analytics.",
-                  agentId: "memo_captable",
-                },
-              ].map((node) => {
-                const matchedAgent = AGENTS.find((a) => a.id === node.agentId)!;
-                return (
-                  <button
-                    key={node.step}
-                    type="button"
-                    onClick={() => setInspector({ type: "engine", item: matchedAgent })}
-                    className="group block w-full cursor-pointer rounded-lg border border-white/10 bg-white/5 p-3 text-left transition hover:border-indigo-400/60 hover:bg-white/10"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-white group-hover:text-indigo-200">
-                        <span className="mr-1.5 font-mono text-[10px] text-slate-400">{node.step}</span>
-                        {node.title}
+                      <span className="shrink-0 whitespace-nowrap rounded-md border border-slate-200/80 bg-slate-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-slate-600">
+                        {compactBadgeForSource(src.id)}
                       </span>
-                      <span
-                        className={cx(
-                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold",
-                          node.tag === "AI + Code" ? "bg-indigo-500/30 text-indigo-200" : "bg-emerald-500/20 text-emerald-300",
-                        )}
-                      >
-                        {node.tag}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] leading-snug text-slate-300">{node.desc}</p>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <p className="mt-3 border-t border-white/10 pt-2.5 text-[11px] text-slate-400">
-              Rule: AI extracts and explains; TypeScript code computes every ratio and variance; Partners make every decision.
-            </p>
-          </div>
 
-          <FlowArrow />
+            {/* Stage 2: Aarka Verification Core (All 6 Active Engines + Closed-Loop Bridge) */}
+            <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/5">
+              <div className="flex items-center justify-between gap-2 bg-slate-900 px-4 py-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-100">
+                  02 · Aarka Verification Core
+                </span>
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300 ring-1 ring-inset ring-emerald-400/30">
+                  Zero AI Math
+                </span>
+              </div>
 
-          {/* Stage 3: Institutional Outputs */}
-          <div className="flex flex-col rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">03 · Workspace Surfaces</span>
-              <span className="text-[11px] font-medium text-emerald-700/70">Open live</span>
-            </div>
-            <div className="mt-3 grid flex-1 gap-2">
-              {[
-                { title: "Pipeline & Deals", desc: "Kanban triage, Grade A-G pills, IC Memo PDF", href: "/deals", stat: `${telemetry.dealsCount} live` },
-                { title: "Compare Matrix", desc: "Rank deals & portfolio by Conviction, Burn & ARR", href: "/compare", stat: "FX-ready" },
-                { title: "Data Room", desc: "Signed vault, missing checklist & founder links", href: "/dataroom", stat: "Encrypted" },
-                { title: "Portfolio Oversight", desc: "Direct MIS CSV ingestion & <9 mo Runway Radar", href: "/portfolio", stat: `${telemetry.portfolioCount} cos` },
-                { title: "Fund Analytics", desc: "Capital deployed, TVPI, dry powder & LP Pack PDF", href: "/fund", stat: "Real-time" },
-                { title: "Conviction Rule Book", desc: "Master equations, thresholds & Grade A-G tiers", href: "/method", stat: "Auditable" },
-              ].map((out) => (
-                <Link
-                  key={out.title}
-                  href={out.href}
-                  className="group flex items-center justify-between gap-2 rounded-lg border border-emerald-200/70 bg-white px-3 py-2 shadow-2xs transition hover:border-emerald-400 hover:shadow-xs"
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-900 group-hover:text-emerald-800">{out.title}</p>
-                    <p className="truncate text-[11px] text-slate-500">{out.desc}</p>
-                  </div>
-                  <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-700">
-                    {out.stat}
+              <div className="space-y-2 p-3">
+                {AGENTS.slice(0, 5).map((eng) => {
+                  const nodeKey = `eng:${eng.id}`;
+                  const isLit = connectedNodeIds ? connectedNodeIds.has(nodeKey) : trackMatches(eng.track);
+                  const isDirect = hoveredNode === nodeKey;
+                  const badgeTone =
+                    eng.badge === "Code"
+                      ? "bg-emerald-50 text-emerald-700 ring-emerald-200/80"
+                      : eng.badge === "AI + Code"
+                        ? "bg-indigo-50 text-indigo-700 ring-indigo-200/80"
+                        : "bg-blue-50 text-blue-700 ring-blue-200/80";
+                  return (
+                    <button
+                      key={eng.id}
+                      ref={registerNode(nodeKey)}
+                      type="button"
+                      onMouseEnter={() => setHoveredNode(nodeKey)}
+                      onFocus={() => setHoveredNode(nodeKey)}
+                      onClick={() => setInspector({ type: "engine", item: eng })}
+                      className={cx(
+                        "group block w-full cursor-pointer rounded-lg border px-3 py-2 text-left transition",
+                        isDirect
+                          ? "border-indigo-500 bg-indigo-50/30 ring-2 ring-indigo-500/15"
+                          : isLit
+                            ? "border-slate-200/80 bg-slate-50/60 hover:border-indigo-300 hover:bg-white"
+                            : "border-slate-200/50 bg-slate-50/40 opacity-35",
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-900 group-hover:text-indigo-700">
+                          <span className="shrink-0 font-mono text-[10px] font-bold text-slate-400">{eng.step}</span>
+                          <span className="truncate">{eng.shortName}</span>
+                        </span>
+                        <span className={cx("shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset", badgeTone)}>
+                          {eng.badge}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">{eng.job}</p>
+                    </button>
+                  );
+                })}
+
+                {/* Closed-Loop Promotion Bridge */}
+                <div className="flex items-center gap-2 py-0.5">
+                  <div className="h-px flex-1 bg-gradient-to-r from-indigo-200 via-emerald-300 to-emerald-200" />
+                  <span className="whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50/80 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-800">
+                    Mark Invested → Portfolio Loop
                   </span>
-                </Link>
-              ))}
+                  <div className="h-px flex-1 bg-gradient-to-r from-emerald-200 via-emerald-300 to-indigo-200" />
+                </div>
+
+                {/* Engine 06: Portfolio MIS & Runway Radar */}
+                {AGENTS.slice(5).map((eng) => {
+                  const nodeKey = `eng:${eng.id}`;
+                  const isLit = connectedNodeIds ? connectedNodeIds.has(nodeKey) : trackMatches(eng.track);
+                  const isDirect = hoveredNode === nodeKey;
+                  return (
+                    <button
+                      key={eng.id}
+                      ref={registerNode(nodeKey)}
+                      type="button"
+                      onMouseEnter={() => setHoveredNode(nodeKey)}
+                      onFocus={() => setHoveredNode(nodeKey)}
+                      onClick={() => setInspector({ type: "engine", item: eng })}
+                      className={cx(
+                        "group block w-full cursor-pointer rounded-lg border px-3 py-2 text-left transition",
+                        isDirect
+                          ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/15"
+                          : isLit
+                            ? "border-emerald-200/80 bg-emerald-50/30 hover:border-emerald-400 hover:bg-white"
+                            : "border-slate-200/50 bg-slate-50/40 opacity-35",
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-900 group-hover:text-emerald-800">
+                          <span className="shrink-0 font-mono text-[10px] font-bold text-emerald-600">{eng.step}</span>
+                          <span className="truncate">{eng.shortName}</span>
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/80">
+                          {eng.badge}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">{eng.job}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Stage 3: Live Workspace Surfaces */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  03 · Workspace Surfaces
+                </span>
+                <span className="font-mono text-[10px] font-medium text-slate-400">
+                  Open live
+                </span>
+              </div>
+              <div className="space-y-2">
+                {surfaces.map((out) => {
+                  const nodeKey = `out:${out.id}`;
+                  const isLit = connectedNodeIds ? connectedNodeIds.has(nodeKey) : trackMatches(out.track);
+                  const isDirect = hoveredNode === nodeKey;
+                  return (
+                    <Link
+                      key={out.id}
+                      ref={registerNode(nodeKey)}
+                      href={out.href}
+                      onMouseEnter={() => setHoveredNode(nodeKey)}
+                      onFocus={() => setHoveredNode(nodeKey)}
+                      className={cx(
+                        "group block rounded-xl border bg-white px-3.5 py-2.5 shadow-2xs transition",
+                        isDirect
+                          ? "border-emerald-500 ring-2 ring-emerald-500/15"
+                          : isLit
+                            ? "border-slate-200/90 hover:border-emerald-400"
+                            : "border-slate-200/60 opacity-35",
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-slate-900 group-hover:text-emerald-800">
+                          {out.title}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/70">
+                          {out.stat}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{out.desc}</p>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </div>
+        </div>
+
+        {/* Live Trace Footer Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 bg-white px-5 py-3 text-xs sm:px-6">
+          {hoveredSummary ? (
+            <div className="flex flex-wrap items-center gap-2 text-slate-700">
+              <span className="rounded bg-indigo-50 px-2 py-0.5 font-mono text-[10px] font-bold text-indigo-700">
+                {hoveredSummary.role}
+              </span>
+              <span className="font-semibold text-slate-900">{hoveredSummary.title}:</span>
+              <span className="text-slate-600">{hoveredSummary.detail}</span>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                {(["Connected", "Needs an API key", "Assisted", "Planned"] as SourceStatus[]).map((st) => (
+                  <span key={st} className="inline-flex items-center gap-1.5">
+                    <span className={cx("h-2 w-2 rounded-full", SOURCE_TONE[st].dot)} />
+                    {SOURCE_TONE[st].label}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                <strong className="font-semibold text-slate-700">Rule:</strong> AI extracts &amp; cites · TypeScript computes every ratio, &gt;10% gap &amp; Grade A-G · Partners decide.
+              </p>
+            </>
+          )}
         </div>
       </section>
 
@@ -903,16 +1342,6 @@ export default function SourcesPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function FlowArrow() {
-  return (
-    <div aria-hidden className="hidden items-center justify-center text-slate-300 lg:flex">
-      <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 10h12M12 6l4 4-4 4" />
-      </svg>
     </div>
   );
 }
