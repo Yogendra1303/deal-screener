@@ -15,11 +15,11 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "A structured workspace for startup pitches and investor review. Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
+    "A structured workspace for startup pitches and investor review. Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial cross-checks, and portfolio monitoring.",
   featureList: [
     "Startup pitch deck and monthly CSV financial sheet intake",
     "Source-cited slide claim extraction with verbatim page provenance",
-    "Deterministic arithmetic verification (ARR vs. MRR x 12, runway, compounded growth)",
+    "Deterministic arithmetic cross-checks (ARR vs. MRR x 12, runway, compounded growth)",
     "Cap table, SAFE, and priced round dilution modeling",
     "Portfolio MIS reporting health and fund analytics",
   ],
@@ -103,20 +103,16 @@ export function LandingPage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 shadow-2xs">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden="true" />
                 <span className="font-mono text-[11px] font-medium tracking-wide text-slate-700">
-                  SOURCE-CITED DILIGENCE · DETERMINISTIC MATH VERIFICATION
+                  SOURCE-CITED DILIGENCE · DETERMINISTIC FINANCIAL CHECKS
                 </span>
               </div>
 
               <h1 className="mt-5 font-serif text-[clamp(2rem,4vw+0.85rem,3.35rem)] font-normal leading-[1.08] tracking-[-0.025em] text-slate-950">
-                A Structured Workspace for Startup Pitches and Investor Review.
+                From Startup Pitch to Evidence-Backed Investment Review.
               </h1>
 
-              <p className="mx-auto mt-4 max-w-[60ch] text-[clamp(1rem,0.45vw+0.9rem,1.125rem)] font-medium leading-[1.55] text-slate-800">
-                Bring startup submissions and investment opportunities into a structured review process.
-              </p>
-
-              <p className="mx-auto mt-3 max-w-[62ch] text-[clamp(0.875rem,0.25vw+0.82rem,0.975rem)] leading-[1.65] text-slate-600">
-                Extract slide claims with verbatim page citations, verify stated ARR and runway against monthly CSV rows in plain code, model SAFE or priced round dilution, and monitor portfolio MIS cadence in one workspace.
+              <p className="mx-auto mt-4 max-w-[60ch] text-[clamp(0.95rem,0.3vw+0.88rem,1.0625rem)] leading-[1.6] text-slate-600">
+                Extract slide claims with verbatim page citations, cross-check stated ARR and runway against monthly CSVs, model dilution, and track portfolio MIS in one workspace.
               </p>
 
               {/* Dual-Track Primary CTAs */}
@@ -326,7 +322,7 @@ export function LandingPage() {
                 </div>
               </div>
               <p className="mt-2.5 text-center text-[11px] text-slate-600">
-                Synthetic demonstration data illustrating Aarka&apos;s source-cited extraction and deterministic verification engine.
+                Synthetic demonstration data illustrating Aarka&apos;s source-cited extraction and deterministic financial cross-checks.
               </p>
             </div>
           </div>
@@ -342,10 +338,10 @@ export function LandingPage() {
                 Structured Review Pipeline
               </p>
               <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.35rem)] font-normal leading-[1.15] tracking-[-0.02em] text-slate-950">
-                From founder pitch submission to verified partner review.
+                From founder pitch submission to corroborated partner review.
               </h2>
               <p className="mt-3 max-w-[62ch] text-[clamp(0.875rem,0.25vw+0.82rem,0.975rem)] leading-[1.65] text-slate-600">
-                Each submission moves through five concrete stages. Original founder files stay intact while code verifies arithmetic consistency and structures the record for investment review.
+                Each submission moves through five concrete stages. Original founder files stay intact while deterministic checks cross-check arithmetic consistency and structure the record for investment review.
               </p>
             </div>
 
@@ -396,11 +392,11 @@ export function LandingPage() {
               <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-semibold text-emerald-400">02 · Deterministic Code Layer</span>
-                  <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Verify &amp; Score</span>
+                  <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Cross-Check &amp; Score</span>
                 </div>
                 <h3 className="mt-3 text-sm font-semibold text-white">Auditable math and mandate checks</h3>
                 <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                  Plain TypeScript routines compute MRR x 12, compounded monthly CSV growth, cash divided by net burn, and SAFE or priced round dilution. Any gap greater than 10.0% is flagged automatically.
+                  Deterministic financial rules compute MRR x 12, compounded monthly CSV growth, cash divided by net burn, and SAFE or priced round dilution. Any gap greater than 10.0% is flagged automatically.
                 </p>
               </div>
 
@@ -411,7 +407,7 @@ export function LandingPage() {
                 </div>
                 <h3 className="mt-3 text-sm font-semibold text-white">Partner overrides with written trail</h3>
                 <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                  Partners and analysts can override any score, mark facts as verified, record IC votes, and set pass or hold reasons. Every manual change preserves the original code baseline alongside the written rationale.
+                  Partners and analysts can override any score, mark facts as corroborated, record IC votes, and set pass or hold reasons. Every manual change preserves the original baseline alongside the written rationale.
                 </p>
               </div>
             </div>
@@ -446,11 +442,11 @@ export function LandingPage() {
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-blue-400" aria-hidden="true" />
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
-                    Binary File Validation &amp; Direct Signed Uploads
+                    File Integrity Validation &amp; Direct Signed Uploads
                   </h3>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                  Uploaded pitch decks are verified against %PDF- magic bytes (up to 32 MB) and financial sheets against UTF-8 CSV/TSV or ZIP/XLSX signatures (up to 10 MB) before storage in isolated, non-public buckets.
+                  Uploaded pitch decks are checked against %PDF- file headers (up to 32 MB) and financial sheets against UTF-8 CSV/TSV or ZIP/XLSX signatures (up to 10 MB) before storage in isolated, non-public buckets.
                 </p>
               </div>
 

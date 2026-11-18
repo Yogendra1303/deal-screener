@@ -30,15 +30,15 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
     stage: "Pitch Submission & Intake",
     title: "Capture founder decks and financial sheets through one structured intake.",
     summary:
-      "Founders submit a PDF pitch deck (up to 32 MB) and an optional monthly CSV sheet through the public pitch form or inbound email webhook. Each submission receives a private, cryptographically signed tracking link.",
+      "Capture founder decks and monthly financial sheets through one structured intake. Every submission issues a private, trackable data room link.",
     inputs: "PDF pitch deck, optional monthly CSV sheet, stage, sector, and funding ask.",
-    verification: "Binary magic-byte file validation and mandate ceiling check (up to $4M).",
+    verification: "Automated file integrity check and mandate ceiling check (up to $4M).",
     output: "Isolated company record and private founder data room.",
-    routeLabel: "/pitch -> /founder/dataroom/[id]",
+    routeLabel: "Founder Intake",
     metrics: [
-      { label: "Deck Binary Check", value: "%PDF-1.7 Validated (4.2 MB)", status: "checked" },
+      { label: "Pitch Deck Check", value: "PDF Validated (4.2 MB)", status: "checked" },
       { label: "Monthly Financials", value: "12-Month CSV Attached", status: "checked" },
-      { label: "Founder Tracking Token", value: "HMAC-SHA256 Issued", status: "checked" },
+      { label: "Founder Tracking Link", value: "Private Token Issued", status: "checked" },
     ],
   },
   {
@@ -46,11 +46,11 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
     stage: "Source-Cited Structuring",
     title: "Extract deck claims into a standard schema with page and quote provenance.",
     summary:
-      "Unstructured slide text, tables, and charts are mapped into a typed company record covering traction, round terms, team background, and market sizing. Every extracted fact retains its source file, slide page number, and verbatim quote.",
+      "Map unstructured slide text, tables, and charts into a standardized deal record. Every extracted figure links back to its exact slide page and verbatim quote.",
     inputs: "Uploaded PDF slides and founder application form fields.",
-    verification: "Schema validation across 8 core diligence facts (revenue, growth, customers, team, round, founding year, burn, past roles).",
+    verification: "Structured coverage check across 8 core diligence facts (revenue, growth, customers, team, round, founding year, burn, past roles).",
     output: "Page-cited company record with missing-fact indicators.",
-    routeLabel: "/deals/[id] -> Summary & Numbers",
+    routeLabel: "Source Citations",
     metrics: [
       { label: "Stated ARR (Slide p. 4)", value: "$1.44M (Quote attached)", status: "claimed" },
       { label: "Stated MoM Growth (Slide p. 6)", value: "14.0% monthly", status: "claimed" },
@@ -59,14 +59,14 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
   },
   {
     num: "03",
-    stage: "Deterministic Math Verification",
-    title: "Cross-check stated deck numbers against monthly CSV rows in plain code.",
+    stage: "Deterministic Financial Checks",
+    title: "Cross-check stated deck numbers against monthly CSV rows automatically.",
     summary:
-      "Deterministic TypeScript routines compare stated ARR against MRR multiplied by 12, cash runway against cash divided by net burn, and slide growth claims against compounded monthly CSV rows. Variances above 10% are flagged without altering the founder's original numbers.",
+      "Cross-check stated ARR, runway, and growth rates against submitted monthly CSV rows. Variances above your fund's threshold are flagged automatically with exact formulas.",
     inputs: "Structured deck claims + founder monthly CSV rows + intake form.",
-    verification: "Exact arithmetic variance check with a 10.0% tolerance threshold.",
-    output: "Provenance labels: Checked, Reported, Claimed, Conflict, or Missing.",
-    routeLabel: "/deals/[id]?tab=numbers",
+    verification: "Exact arithmetic cross-check with a 10.0% default tolerance threshold.",
+    output: "Provenance labels: Arithmetic Checked, Reported, Claimed, Conflict, or Missing.",
+    routeLabel: "Financial Cross-Check",
     metrics: [
       { label: "ARR vs. MRR x 12", value: "$1.44M vs. $120K x 12 (0.0% gap)", status: "checked" },
       { label: "Deck vs. CSV Growth", value: "14.0% vs. 9.1% CSV (+53.8% gap)", status: "flagged" },
@@ -75,14 +75,14 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
   },
   {
     num: "04",
-    stage: "Structured Review & Dilution Modeling",
+    stage: "Investment Review & Dilution",
     title: "Evaluate mandate fit, model SAFE or priced dilution, and record partner votes.",
     summary:
-      "Code applies your fund's written rules (stage, sector, geography, check size) alongside an interactive Cap Table and Series A pro-rata dilution modeler, side-by-side PDF slide viewer, and partner investment committee voting.",
-    inputs: "Verified deal record + configurable fund rules + round terms.",
+      "Evaluate mandate fit, model SAFE or priced-round dilution with visible assumptions, and record partner IC votes in one place.",
+    inputs: "Corroborated deal record + configurable fund rules + round terms.",
     verification: "Automated mandate fit check + post-money ownership and pro-rata math.",
     output: "Triage band (Priority, Review, Outside focus) + printable IC diligence memo.",
-    routeLabel: "/deals -> /deals/[id]",
+    routeLabel: "IC Review",
     metrics: [
       { label: "Fund Mandate Fit", value: "Seed · B2B Software · $1.5M Ask", status: "checked" },
       { label: "Post-Round Ownership", value: "10.0% on $6.0M Post-Money SAFE", status: "checked" },
@@ -94,11 +94,11 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
     stage: "Portfolio MIS & Re-Engagement",
     title: "Monitor backed companies and track look-again triggers on passed deals.",
     summary:
-      "Track monthly MIS reporting deadlines, cash runway under 9 months, and revenue variance against the pitch deck forecast. For passed or held deals, log concrete re-engagement triggers so opportunities resurface when milestones are met.",
+      "Track monthly portfolio reporting cadence, runway alerts, and look-again triggers for passed deals.",
     inputs: "Monthly portfolio MIS reports + logged market and company signals.",
     verification: "Automated runway threshold (<9 months) and overdue report day counter.",
     output: "Portfolio health bands, weekly digest alerts, and quarterly LP report exports.",
-    routeLabel: "/portfolio & /fund",
+    routeLabel: "Portfolio MIS",
     metrics: [
       { label: "MIS Reporting Cadence", value: "6 of 6 reports on time", status: "checked" },
       { label: "Runway Watch Threshold", value: "Alert when < 9.0 months cash", status: "flagged" },
@@ -118,7 +118,7 @@ const BACKGROUND_OPTIONS = [
 
 const INTENT_OPTIONS = [
   "Evaluating for our fund's dealflow screening",
-  "Testing automated financial checks & ARR verification",
+  "Testing automated financial checks & ARR corroboration",
   "Looking to syndicate or co-invest with Aarka",
   "Evaluating internal tools for fund operations",
   "Exploring early-stage benchmarks & thesis extraction",
@@ -340,7 +340,7 @@ export function WorkflowInteractiveGrid() {
 
             <div className="rounded-lg border border-slate-200 bg-white p-3.5">
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
-                Verification Output Sample
+                Cross-Check Output Sample
               </div>
               <div className="divide-y divide-slate-100">
                 {currentStep.metrics.map((m) => (
@@ -402,7 +402,7 @@ export function CapabilitiesInteractiveTabs() {
             Workspace Modules
           </p>
           <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.35rem)] font-normal leading-[1.15] tracking-[-0.02em] text-slate-950">
-            Built for screening, verification, and portfolio oversight.
+            Built for screening, financial cross-checks, and portfolio oversight.
           </h2>
         </div>
 
@@ -546,7 +546,7 @@ export function CapabilitiesInteractiveTabs() {
               Track inbound volume and median ask across your fund&apos;s own deal flow.
             </h3>
             <p className="text-xs leading-relaxed text-slate-600 sm:text-sm">
-              Compare 3-month vs. prior 3-month pitch activity across sectors, inspect median round sizes and monthly growth rates, and log dated external market signals with verifiable links.
+              Compare 3-month vs. prior 3-month pitch activity across sectors, inspect median round sizes and monthly growth rates, and log dated external market signals with source-cited links.
             </p>
             <ul className="space-y-2.5 border-t border-slate-200 pt-4 text-xs text-slate-700">
               <li>
