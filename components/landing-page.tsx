@@ -540,9 +540,9 @@ export function LandingPage() {
         <section id="request-workspace" className="scroll-mt-20 border-b border-slate-200/80 bg-[#FAF9F6] py-14 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <ScrollReveal>
-              <div className="grid gap-8 lg:grid-cols-12 lg:items-start lg:gap-10">
-                {/* Left Column: Context & Founder Routing */}
-                <div className="space-y-5 lg:col-span-5 lg:space-y-6">
+              <div className="grid gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-10">
+                {/* Left Column: Context & Founder Routing (Equal-Height Baseline Alignment) */}
+                <div className="flex flex-col justify-between gap-5 lg:col-span-5">
                   <div>
                     <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
                       Workspace Onboarding
@@ -592,7 +592,7 @@ export function LandingPage() {
                 </div>
 
                 {/* Right Column: Live Conversion Form connected to POST /api/access-request */}
-                <div className="lg:col-span-7">
+                <div className="flex flex-col lg:col-span-7">
                   <WorkspaceRequestFormClient />
                 </div>
               </div>

@@ -1,5 +1,5 @@
 /**
- * Fund-Level Analytics, Deployment Pacing, TVPI/DPI & Sector Conversion Engine.
+ * Fund-Level Analytics, Deployment Pacing, TVPI/RVPI/DPI & Sector Conversion Engine.
  * Derived deterministically from live Portfolio + Deal Flow records (zero hardcoded results).
  */
 
@@ -11,6 +11,8 @@ export interface FundConfig {
   fundName: string;
   committedUsd: number;
   reserveTargetPct: number;
+  arrMultiple?: number;
+  realizedDistributionsUsd?: number;
 }
 
 export interface PipelineSlice {
@@ -25,10 +27,13 @@ export interface FundAnalytics {
   deployedUsd: number;
   reserveAllocatedUsd: number;
   remainingInitialDryPowderUsd: number;
+  overAllocatedUsd: number;
   deploymentPct: number;
+  arrMultiple: number;
   impliedFairValueUsd: number;
   realizedDpiUsd: number;
   grossTvpi: number;
+  rvpi: number;
   dpi: number;
   portfolioCount: number;
   avgCheckUsd: number;
@@ -54,10 +59,12 @@ export interface FundAnalytics {
     id: string;
     name: string;
     sector: string;
+    currency: string;
     investedUsd: number;
     ownershipPct: number;
     latestArrUsd: number | null;
     impliedValueUsd: number;
+    valuationBasis: "ARR Markup" | "1.0x Cost Floor";
     moic: number;
     runwayMonths: number | null;
     health: string;
@@ -68,15 +75,25 @@ export const DEFAULT_FUND_CONFIG: FundConfig = {
   fundName: "Aarka Fund I",
   committedUsd: 25_000_000,
   reserveTargetPct: 40,
+  arrMultiple: 8,
+  realizedDistributionsUsd: 0,
 };
 
-/** Converts INR Cr / USD investment amounts to USD conservatively (1 INR Cr ≈ $120K). */
-function toUsd(amount: number, currency: string): number {
+/**
+ * Deterministic multi-currency FX conversion to USD for fund-level aggregation.
+ * Covers INR (₹), AED, SAR, EUR (€), GBP (£), and USD ($).
+ */
+export function toUsd(amount: number, currency: string): number {
   if (!Number.isFinite(amount)) return 0;
-  if (currency.toUpperCase() === "INR" || currency === "₹") {
-    // Portfolio reports in INR may be in full INR (e.g. 5_000_000) or Cr
-    return amount > 100_000 ? amount / 84 : amount * 120_000;
+  const code = (currency || "USD").trim().toUpperCase();
+  if (code === "INR" || code === "₹") {
+    // Full INR values (e.g. 1,420,000) convert at ~84 INR/USD; values in Cr (<1000) convert at $120K/Cr
+    return amount > 10_000 ? amount / 84 : amount * 120_000;
   }
+  if (code === "AED") return amount / 3.67;
+  if (code === "SAR") return amount / 3.75;
+  if (code === "EUR" || code === "€") return amount * 1.08;
+  if (code === "GBP" || code === "£") return amount * 1.27;
   return amount;
 }
 
@@ -86,8 +103,12 @@ export function computeFundAnalytics(
   today: string,
   config: FundConfig = DEFAULT_FUND_CONFIG,
 ): FundAnalytics {
-  const committedUsd = Math.max(1_000_000, config.committedUsd);
-  const reserveAllocatedUsd = Math.round(committedUsd * (config.reserveTargetPct / 100));
+  const committedUsd = Math.max(1_000_000, Number(config.committedUsd) || DEFAULT_FUND_CONFIG.committedUsd);
+  const reserveTargetPct = Math.min(75, Math.max(0, Number(config.reserveTargetPct) || 0));
+  const arrMultiple = Math.min(25, Math.max(1, Number(config.arrMultiple ?? DEFAULT_FUND_CONFIG.arrMultiple) || 8));
+  const realizedDpiUsd = Math.max(0, Number(config.realizedDistributionsUsd ?? 0) || 0);
+
+  const reserveAllocatedUsd = Math.round(committedUsd * (reserveTargetPct / 100));
   const initialPoolUsd = committedUsd - reserveAllocatedUsd;
 
   let deployedUsd = 0;
@@ -109,12 +130,14 @@ export function computeFundAnalytics(
       : null;
     const latestArrUsd = latestMrrUsd != null ? Math.round(latestMrrUsd * 12) : null;
 
-    // Conservative 8x ARR valuation benchmark (floored at 1.0x cost for pre-revenue / early seed)
-    const impliedCompanyVal = latestArrUsd && latestArrUsd > 0 ? Math.max(investedUsd / Math.max(0.01, ownershipPct / 100), latestArrUsd * 8) : null;
-    const impliedValueUsd =
-      impliedCompanyVal && ownershipPct > 0
-        ? Math.round(impliedCompanyVal * (ownershipPct / 100))
-        : investedUsd;
+    // Conservative ARR valuation benchmark floored at 1.0x cost basis for early-stage holdings
+    const arrImpliedHoldingUsd =
+      latestArrUsd && latestArrUsd > 0 && ownershipPct > 0
+        ? Math.round(latestArrUsd * arrMultiple * (ownershipPct / 100))
+        : 0;
+    const isMarkedUp = arrImpliedHoldingUsd > investedUsd;
+    const impliedValueUsd = isMarkedUp ? arrImpliedHoldingUsd : investedUsd;
+    const valuationBasis: "ARR Markup" | "1.0x Cost Floor" = isMarkedUp ? "ARR Markup" : "1.0x Cost Floor";
 
     impliedFairValueUsd += impliedValueUsd;
     const moic = investedUsd > 0 ? Math.round((impliedValueUsd / investedUsd) * 100) / 100 : 1;
@@ -129,21 +152,24 @@ export function computeFundAnalytics(
       id: c.id,
       name: c.name,
       sector: c.sector,
+      currency: c.currency,
       investedUsd,
       ownershipPct,
       latestArrUsd,
       impliedValueUsd,
+      valuationBasis,
       moic,
       runwayMonths: rw ? Math.round(rw.months * 10) / 10 : null,
       health: h,
     };
   });
 
-  const realizedDpiUsd = 0;
-  const grossTvpi = deployedUsd > 0 ? Math.round((impliedFairValueUsd / deployedUsd) * 100) / 100 : 1;
+  const rvpi = deployedUsd > 0 ? Math.round((impliedFairValueUsd / deployedUsd) * 100) / 100 : 0;
   const dpi = deployedUsd > 0 ? Math.round((realizedDpiUsd / deployedUsd) * 100) / 100 : 0;
+  const grossTvpi = deployedUsd > 0 ? Math.round(((impliedFairValueUsd + realizedDpiUsd) / deployedUsd) * 100) / 100 : 1;
   const deploymentPct = Math.round((deployedUsd / committedUsd) * 1000) / 10;
   const remainingInitialDryPowderUsd = Math.max(0, initialPoolUsd - deployedUsd);
+  const overAllocatedUsd = Math.max(0, deployedUsd + reserveAllocatedUsd - committedUsd);
   const avgCheckUsd = companies.length > 0 ? Math.round(deployedUsd / companies.length) : 0;
   const avgRunwayMonths =
     runways.length > 0 ? Math.round((runways.reduce((a, b) => a + b, 0) / runways.length) * 10) / 10 : null;
@@ -184,10 +210,13 @@ export function computeFundAnalytics(
     deployedUsd,
     reserveAllocatedUsd,
     remainingInitialDryPowderUsd,
+    overAllocatedUsd,
     deploymentPct,
+    arrMultiple,
     impliedFairValueUsd,
     realizedDpiUsd,
     grossTvpi,
+    rvpi,
     dpi,
     portfolioCount: companies.length,
     avgCheckUsd,

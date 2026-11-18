@@ -29,19 +29,46 @@ function escapeHtml(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] || c);
 }
 
-export function openPrintableReport(title: string, subtitle: string, bodyHtml: string): void {
-  const win = window.open("", "_blank", "noopener,noreferrer");
-  if (!win) {
-    alert("Please allow pop-ups in your browser to export the PDF memo.");
-    return;
-  }
+function printViaHiddenIframe(html: string): void {
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.style.visibility = "hidden";
 
+  const cleanup = () => {
+    setTimeout(() => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }, 1500);
+  };
+
+  iframe.onload = () => {
+    try {
+      const frameWin = iframe.contentWindow;
+      if (frameWin) {
+        frameWin.focus();
+        frameWin.print();
+      }
+    } finally {
+      cleanup();
+    }
+  };
+
+  iframe.srcdoc = html;
+  document.body.appendChild(iframe);
+}
+
+export function openPrintableReport(title: string, subtitle: string, bodyHtml: string): boolean {
   const now = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const html = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>${escapeHtml(title)} — Aarka</title>
+  <title>${escapeHtml(title)} | Aarka</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; padding: 36px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; color: #0f172a; background: #ffffff; line-height: 1.5; }
@@ -65,6 +92,7 @@ export function openPrintableReport(title: string, subtitle: string, bodyHtml: s
     .badge-amber { background: #fffbeb; color: #b45309; }
     .toolbar { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; }
     .btn { background: #0f172a; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-sec { background: #fff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .footer { margin-top: 36px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
     @media print { .toolbar { display: none; } body { padding: 12px; } }
   </style>
@@ -72,6 +100,7 @@ export function openPrintableReport(title: string, subtitle: string, bodyHtml: s
 <body>
   <div class="toolbar">
     <button class="btn" onclick="window.print()">Save / Print PDF</button>
+    <button class="btn-sec" onclick="window.close()">Close</button>
   </div>
   <div class="container">
     <div class="header">
@@ -82,21 +111,42 @@ export function openPrintableReport(title: string, subtitle: string, bodyHtml: s
       </div>
       <div class="meta">
         <div><strong>Generated:</strong> ${escapeHtml(now)}</div>
-        <div>Confidential · Fund I</div>
+        <div>Confidential · Partner Report</div>
       </div>
     </div>
     ${bodyHtml}
     <div class="footer">
       <span>Aarka · Investment Committee &amp; LP Reporting</span>
-      <span>Confidential — Do Not Distribute Externally</span>
+      <span>Confidential · Do Not Distribute Externally</span>
     </div>
   </div>
+  <script>
+    if (window.self === window.top) {
+      window.addEventListener("load", function () {
+        setTimeout(function () { window.print(); }, 250);
+      });
+    }
+  </script>
 </body>
 </html>`;
 
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  // Open via Blob URL (never pass 'noopener' which forces window.open to return null and blocks document access).
+  // If a browser pop-up blocker still blocks the tab, fall back cleanly to a hidden print iframe.
+  try {
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(blobUrl, "_blank");
+    if (win) {
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      return true;
+    }
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    // Fall back to hidden iframe print below
+  }
+
+  printViaHiddenIframe(html);
+  return true;
 }
 
 export { escapeHtml };

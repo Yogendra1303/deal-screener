@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { driver, putFile } from "@/lib/db/repository";
+import { driver, insertAuditLog, patchDeal, putFile } from "@/lib/db/repository";
 import { validateFinancialBinary, validatePdfBinary } from "@/lib/file-security";
 import { authorizeFounderDealAccess } from "@/lib/founder-token";
 import { checkRateLimit, getRequestIp, rateLimitHeaders } from "@/lib/rate-limit";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
+import { parseSheet } from "@/lib/sheet";
+import { calculateVCMetrics } from "@/lib/vc-metrics";
 
 export const maxDuration = 60;
 
@@ -48,8 +50,36 @@ export async function POST(req: NextRequest) {
     const tokenSuffix = token ? `&token=${encodeURIComponent(token)}` : "";
     const fileUrl = `/api/founder/file?dealId=${encodeURIComponent(dealId)}&fileType=${encodeURIComponent(category)}${tokenSuffix}`;
 
+    let rescoredSummary: string | null = null;
     if (driver() !== "none") {
       await putFile(dealId, category, file.name, file.type || "application/octet-stream", bytes, "pitch_decks");
+
+      // Automatically parse newly uploaded CSVs and refresh financial cross-check status on the deal
+      if (/\.csv$/i.test(file.name) && (category === "monthly_csv" || category === "financial_sheet")) {
+        try {
+          const text = new TextDecoder("utf-8").decode(bytes);
+          const rows = parseSheet(text);
+          if (rows.length > 0) {
+            const vc = calculateVCMetrics(rows, null, gate.deal.ask_amount);
+            rescoredSummary = `CSV Updated (${rows.length} mo) · Runway: ${vc.runway.formatted}`;
+            await patchDeal(dealId, {
+              financial_file_url: `/api/files/${encodeURIComponent(dealId)}/${encodeURIComponent(category)}`,
+              checks_status: rescoredSummary,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        } catch {
+          // Non-standard CSV format still saved cleanly in data room
+        }
+      }
+
+      void insertAuditLog("FOUNDER_FILE_UPLOAD", gate.email || "founder", {
+        dealId,
+        companyName: gate.deal.company_name || dealId,
+        fileName: file.name,
+        category,
+        rescoredSummary,
+      }).catch(() => undefined);
     }
 
     try {
@@ -59,6 +89,7 @@ export async function POST(req: NextRequest) {
         fileName: file.name,
         category,
         fileUrl,
+        rescoredSummary,
         timestamp: new Date().toISOString(),
       });
     } catch {
@@ -71,7 +102,10 @@ export async function POST(req: NextRequest) {
       fileName: file.name,
       fileSize: file.size,
       category,
-      message: "Document uploaded to your data room.",
+      rescoredSummary,
+      message: rescoredSummary
+        ? `Document uploaded and financial metrics updated (${rescoredSummary}).`
+        : "Document uploaded to your data room.",
     });
   } catch (err) {
     console.error("[api/founder/upload] error:", err);

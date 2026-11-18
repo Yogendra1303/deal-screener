@@ -287,6 +287,24 @@ export async function patchDeal(id: string, patch: Partial<DealRow>): Promise<De
   return getDeal(id);
 }
 
+export async function deleteDeal(id: string): Promise<boolean> {
+  need();
+  const existing = await getDeal(id);
+  if (!existing) return false;
+  if (driver() === "supabase") {
+    await sb(`/rest/v1/deal_files?deal_id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
+    await sb(`/rest/v1/market_signals?deal_id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
+    await sb(`/rest/v1/deals?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+    return true;
+  }
+  await withDb((db) => {
+    delete db.deals[id];
+    db.files = db.files.filter((f) => f.deal_id !== id);
+    db.signals = db.signals.filter((s) => s.deal_id !== id);
+  });
+  return true;
+}
+
 // ---------- Files ----------
 
 const safe = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, "_").slice(0, 120);

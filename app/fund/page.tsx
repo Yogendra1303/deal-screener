@@ -7,7 +7,7 @@ import { usePortfolio } from "@/components/portfolio-store";
 import { Card, LABEL, SectionTitle, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { hydrate, persist } from "@/lib/db/client";
-import { escapeHtml, openPrintableReport } from "@/lib/export";
+import { downloadCsv, escapeHtml, openPrintableReport } from "@/lib/export";
 import { computeFundAnalytics, DEFAULT_FUND_CONFIG, type FundConfig } from "@/lib/fund-analytics";
 import { usd } from "@/lib/rules";
 
@@ -26,6 +26,7 @@ export default function FundAnalyticsPage() {
   const flow = useDealFlow(() => true);
   const [config, setConfig] = useState<FundConfig>(DEFAULT_FUND_CONFIG);
   const [saved, setSaved] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let local: FundConfig | null = null;
@@ -41,7 +42,7 @@ export default function FundAnalyticsPage() {
     void hydrate<FundConfig>(
       CONFIG_KEY,
       (remote) => {
-        if (remote) setConfig((prev) => ({ ...prev, ...remote }));
+        if (remote) setConfig((prev) => ({ ...DEFAULT_FUND_CONFIG, ...prev, ...remote }));
       },
       local,
     );
@@ -75,18 +76,57 @@ export default function FundAnalyticsPage() {
     }
   }
 
-  function exportLpPack() {
+  function showNotice(msg: string) {
+    setExportNotice(msg);
+    setTimeout(() => setExportNotice(null), 3000);
+  }
+
+  function exportLpCsv() {
+    const slug = (config.fundName || "aarka-fund").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    downloadCsv(
+      `${slug}-lp-quarterly-pack.csv`,
+      [
+        "Company",
+        "Sector",
+        "Reporting Currency",
+        "Cost Basis (USD)",
+        "Ownership (%)",
+        "Latest ARR (USD Est.)",
+        "Implied Holding Value (USD)",
+        "Valuation Basis",
+        "MOIC",
+        "Cash Runway (Months)",
+        "MIS Health",
+      ],
+      analytics.companyValuations.map((c) => [
+        c.name,
+        c.sector,
+        c.currency,
+        c.investedUsd,
+        c.ownershipPct.toFixed(1),
+        c.latestArrUsd ?? "",
+        c.impliedValueUsd,
+        c.valuationBasis,
+        `${c.moic.toFixed(2)}x`,
+        c.runwayMonths ?? "",
+        c.health,
+      ]),
+    );
+    showNotice("LP Quarterly CSV downloaded.");
+  }
+
+  function exportLpPackPdf() {
     const companyRows = analytics.companyValuations
       .map(
         (c) =>
           `<tr>
-            <td><strong>${escapeHtml(c.name)}</strong><br/><span style="color:#64748b">${escapeHtml(c.sector)}</span></td>
+            <td><strong>${escapeHtml(c.name)}</strong><br/><span style="color:#64748b">${escapeHtml(c.sector)} (${escapeHtml(c.currency)})</span></td>
             <td>${escapeHtml(fmtM(c.investedUsd))}</td>
             <td>${c.ownershipPct.toFixed(1)}%</td>
-            <td>${c.latestArrUsd != null ? escapeHtml(fmtM(c.latestArrUsd)) : "—"}</td>
-            <td><strong>${escapeHtml(fmtM(c.impliedValueUsd))}</strong></td>
+            <td>${c.latestArrUsd != null ? escapeHtml(fmtM(c.latestArrUsd)) : "-"}</td>
+            <td><strong>${escapeHtml(fmtM(c.impliedValueUsd))}</strong><br/><span style="color:#64748b;font-size:10px">${escapeHtml(c.valuationBasis)}</span></td>
             <td>${c.moic.toFixed(2)}x</td>
-            <td>${c.runwayMonths != null ? `${c.runwayMonths.toFixed(1)} mo` : "—"}</td>
+            <td>${c.runwayMonths != null ? `${c.runwayMonths.toFixed(1)} mo` : "-"}</td>
           </tr>`,
       )
       .join("");
@@ -110,12 +150,12 @@ export default function FundAnalyticsPage() {
       <div class="grid">
         <div class="kpi"><div class="kpi-label">Committed Capital</div><div class="kpi-val">${escapeHtml(fmtM(analytics.committedUsd))}</div></div>
         <div class="kpi"><div class="kpi-label">Deployed Capital</div><div class="kpi-val">${escapeHtml(fmtM(analytics.deployedUsd))} (${analytics.deploymentPct}%)</div></div>
-        <div class="kpi"><div class="kpi-label">Gross TVPI</div><div class="kpi-val">${analytics.grossTvpi.toFixed(2)}x</div></div>
-        <div class="kpi"><div class="kpi-label">Implied Fair Value</div><div class="kpi-val">${escapeHtml(fmtM(analytics.impliedFairValueUsd))}</div></div>
+        <div class="kpi"><div class="kpi-label">Gross TVPI (DPI + RVPI)</div><div class="kpi-val">${analytics.grossTvpi.toFixed(2)}x</div></div>
+        <div class="kpi"><div class="kpi-label">Implied NAV (RVPI ${analytics.rvpi.toFixed(2)}x)</div><div class="kpi-val">${escapeHtml(fmtM(analytics.impliedFairValueUsd))}</div></div>
       </div>
-      <h2>Portfolio Valuation &amp; MOIC Schedule</h2>
+      <h2>Portfolio Valuation &amp; MOIC Schedule (${analytics.arrMultiple}x ARR Floor at 1.0x Cost)</h2>
       <table>
-        <thead><tr><th>Company</th><th>Cost</th><th>Ownership</th><th>Latest ARR</th><th>Implied Value</th><th>MOIC</th><th>Runway</th></tr></thead>
+        <thead><tr><th>Company</th><th>Cost</th><th>Ownership</th><th>Latest ARR (USD)</th><th>Implied Value</th><th>MOIC</th><th>Runway</th></tr></thead>
         <tbody>${companyRows}</tbody>
       </table>
       <h2>Deal Flow Conversion &amp; Sector Allocation</h2>
@@ -126,10 +166,11 @@ export default function FundAnalyticsPage() {
     `;
 
     openPrintableReport(
-      `${config.fundName} — Quarterly LP Analytics Pack`,
-      `Committed: ${fmtM(analytics.committedUsd)} · Reserve Target: ${config.reserveTargetPct}% · Gross TVPI: ${analytics.grossTvpi.toFixed(2)}x`,
+      `${config.fundName}: Quarterly LP Analytics Pack`,
+      `Committed: ${fmtM(analytics.committedUsd)} · Reserve Target: ${config.reserveTargetPct}% · Gross TVPI: ${analytics.grossTvpi.toFixed(2)}x (DPI ${analytics.dpi.toFixed(2)}x + RVPI ${analytics.rvpi.toFixed(2)}x)`,
       body,
     );
+    showNotice("Printable LP Pack PDF opened.");
   }
 
   if (w.ready && w.role !== "Partner") {
@@ -165,6 +206,15 @@ export default function FundAnalyticsPage() {
     },
   ];
 
+  // Normalize pacing bar widths so segments never overflow 100% even if reserves + deployed exceed committed
+  const pacingDenominator = Math.max(
+    analytics.committedUsd,
+    analytics.deployedUsd + analytics.remainingInitialDryPowderUsd + analytics.reserveAllocatedUsd,
+  );
+  const deployedWidth = (analytics.deployedUsd / pacingDenominator) * 100;
+  const dryPowderWidth = (analytics.remainingInitialDryPowderUsd / pacingDenominator) * 100;
+  const reserveWidth = (analytics.reserveAllocatedUsd / pacingDenominator) * 100;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -173,7 +223,7 @@ export default function FundAnalyticsPage() {
           <p className={LABEL}>Partner Intelligence · LP Reporting</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{config.fundName} Analytics &amp; Pacing</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Live deployment pacing, reserve allocation, conservative 8x ARR markups, and sector hit-rate telemetry computed directly from your pipeline and portfolio.
+            Track fund deployment pacing, follow-on reserves, unrealized NAV (RVPI), realized returns (DPI), and sector conversion from live portfolio and deal records.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -185,7 +235,14 @@ export default function FundAnalyticsPage() {
           </Link>
           <button
             type="button"
-            onClick={exportLpPack}
+            onClick={exportLpCsv}
+            className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs hover:bg-slate-50"
+          >
+            Export LP CSV
+          </button>
+          <button
+            type="button"
+            onClick={exportLpPackPdf}
             className="cursor-pointer rounded-md bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-slate-800"
           >
             Export LP Pack PDF
@@ -193,10 +250,16 @@ export default function FundAnalyticsPage() {
         </div>
       </div>
 
+      {exportNotice && (
+        <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-medium text-emerald-800">
+          {exportNotice}
+        </div>
+      )}
+
       {/* Editable Fund Parameters */}
       <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <label className="block min-w-[180px]">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
+          <label className="block lg:col-span-2">
             <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">Fund Name</span>
             <input
               type="text"
@@ -205,8 +268,10 @@ export default function FundAnalyticsPage() {
               className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
             />
           </label>
-          <label className="block min-w-[180px]">
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">Committed Capital ($)</span>
+          <label className="block">
+            <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              Committed ($) · {fmtM(config.committedUsd)}
+            </span>
             <input
               type="number"
               step={1_000_000}
@@ -216,7 +281,7 @@ export default function FundAnalyticsPage() {
               className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
             />
           </label>
-          <label className="block min-w-[160px]">
+          <label className="block">
             <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">Follow-On Reserve (%)</span>
             <input
               type="number"
@@ -228,15 +293,46 @@ export default function FundAnalyticsPage() {
               className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
             />
           </label>
+          <label className="block">
+            <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">ARR Multiple (x)</span>
+            <input
+              type="number"
+              step={1}
+              min={1}
+              max={25}
+              value={config.arrMultiple ?? 8}
+              onChange={(e) => setConfig((c) => ({ ...c, arrMultiple: Math.min(25, Math.max(1, Number(e.target.value) || 8)) }))}
+              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
+            />
+          </label>
           <button
             type="button"
             onClick={() => saveConfig(config)}
-            className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+            className="h-[34px] cursor-pointer rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50"
           >
-            {saved ? "Saved ✓" : "Save Fund Parameters"}
+            {saved ? "Saved ✓" : "Save Parameters"}
           </button>
         </div>
+
+        {/* Clear Formula Legend */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-slate-100 pt-2.5 text-[11px] text-slate-500">
+          <span>
+            <strong className="font-semibold text-slate-700">Implied NAV:</strong> max(Cost Basis, {analytics.arrMultiple}x Latest USD ARR × Ownership %)
+          </span>
+          <span>
+            <strong className="font-semibold text-slate-700">FX Normalized:</strong> INR, AED &amp; SAR converted to USD
+          </span>
+          <span>
+            <strong className="font-semibold text-slate-700">Gross TVPI:</strong> DPI ({analytics.dpi.toFixed(2)}x) + RVPI ({analytics.rvpi.toFixed(2)}x)
+          </span>
+        </div>
       </Card>
+
+      {analytics.overAllocatedUsd > 0 && (
+        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-900">
+          Reserve target exceeds remaining fund capacity by {fmtM(analytics.overAllocatedUsd)}. Lower your Follow-On Reserve % or increase Committed Capital to rebalance pacing.
+        </div>
+      )}
 
       {/* Top Institutional KPI Strip */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -255,14 +351,14 @@ export default function FundAnalyticsPage() {
         <KpiCard
           label="Gross TVPI"
           value={`${analytics.grossTvpi.toFixed(2)}x`}
-          sub={`Implied NAV: ${fmtM(analytics.impliedFairValueUsd)}`}
+          sub={`RVPI ${analytics.rvpi.toFixed(2)}x · DPI ${analytics.dpi.toFixed(2)}x`}
           accent="text-emerald-700"
         />
-        <KpiCard label="Avg Initial Check" value={fmtM(analytics.avgCheckUsd)} sub={`DPI: ${analytics.dpi.toFixed(2)}x`} />
+        <KpiCard label="Implied NAV" value={fmtM(analytics.impliedFairValueUsd)} sub={`Avg check: ${fmtM(analytics.avgCheckUsd)}`} />
         <KpiCard
           label="Portfolio Runway"
-          value={analytics.avgRunwayMonths != null ? `${analytics.avgRunwayMonths} mo` : "—"}
-          sub={`${analytics.onTrackRatePct}% on track`}
+          value={analytics.avgRunwayMonths != null ? `${analytics.avgRunwayMonths} mo` : "-"}
+          sub={`${analytics.onTrackRatePct}% MIS on track`}
         />
       </div>
 
@@ -275,17 +371,17 @@ export default function FundAnalyticsPage() {
           </p>
           <div className="flex h-5 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              style={{ width: `${Math.min(100, (analytics.deployedUsd / analytics.committedUsd) * 100)}%` }}
+              style={{ width: `${deployedWidth}%` }}
               className="bg-blue-600"
               title={`Deployed: ${fmtM(analytics.deployedUsd)}`}
             />
             <div
-              style={{ width: `${Math.min(100, (analytics.remainingInitialDryPowderUsd / analytics.committedUsd) * 100)}%` }}
+              style={{ width: `${dryPowderWidth}%` }}
               className="bg-sky-300"
               title={`Initial Dry Powder: ${fmtM(analytics.remainingInitialDryPowderUsd)}`}
             />
             <div
-              style={{ width: `${Math.min(100, (analytics.reserveAllocatedUsd / analytics.committedUsd) * 100)}%` }}
+              style={{ width: `${reserveWidth}%` }}
               className="bg-slate-800"
               title={`Follow-On Reserves: ${fmtM(analytics.reserveAllocatedUsd)}`}
             />
@@ -337,18 +433,19 @@ export default function FundAnalyticsPage() {
 
       {/* Portfolio Fair Value & MOIC Schedule */}
       <Card className="overflow-hidden p-5">
-        <SectionTitle right={<span className="text-xs text-slate-500">Conservative 8x ARR valuation floor at 1.0x cost</span>}>
+        <SectionTitle right={<span className="text-xs text-slate-500">Conservative {analytics.arrMultiple}x ARR valuation floor at 1.0x cost</span>}>
           Portfolio Valuation &amp; MOIC Schedule
         </SectionTitle>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="border-b border-slate-100 text-left text-xs text-slate-500">
               <tr>
                 <th className="py-2 pr-3 font-medium">Company</th>
                 <th className="py-2 pr-3 text-right font-medium">Cost Basis</th>
                 <th className="py-2 pr-3 text-right font-medium">Ownership</th>
-                <th className="py-2 pr-3 text-right font-medium">Latest ARR</th>
+                <th className="py-2 pr-3 text-right font-medium">Latest ARR (USD)</th>
                 <th className="py-2 pr-3 text-right font-medium">Implied Value</th>
+                <th className="py-2 pr-3 text-right font-medium">Basis</th>
                 <th className="py-2 pr-3 text-right font-medium">MOIC</th>
                 <th className="py-2 pr-3 text-right font-medium">Runway</th>
                 <th className="py-2 text-right font-medium">Health</th>
@@ -361,21 +458,35 @@ export default function FundAnalyticsPage() {
                     <Link href={`/portfolio/${c.id}`} className="font-semibold text-slate-900 hover:text-blue-700 hover:underline">
                       {c.name}
                     </Link>
-                    <span className="block text-xs text-slate-500">{c.sector}</span>
+                    <span className="block text-xs text-slate-500">
+                      {c.sector} · {c.currency}
+                    </span>
                   </td>
                   <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-slate-700">{fmtM(c.investedUsd)}</td>
                   <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-slate-700">{c.ownershipPct.toFixed(1)}%</td>
                   <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-slate-700">
-                    {c.latestArrUsd != null ? fmtM(c.latestArrUsd) : "—"}
+                    {c.latestArrUsd != null ? fmtM(c.latestArrUsd) : "-"}
                   </td>
                   <td className="py-2.5 pr-3 text-right font-mono font-semibold tabular-nums text-slate-900">
                     {fmtM(c.impliedValueUsd)}
+                  </td>
+                  <td className="py-2.5 pr-3 text-right">
+                    <span
+                      className={cx(
+                        "inline-flex rounded px-1.5 py-0.5 font-mono text-[10px] font-medium",
+                        c.valuationBasis === "ARR Markup"
+                          ? "bg-blue-50 text-blue-700"
+                          : "bg-slate-100 text-slate-600",
+                      )}
+                    >
+                      {c.valuationBasis === "ARR Markup" ? `${analytics.arrMultiple}x ARR` : "Cost Floor"}
+                    </span>
                   </td>
                   <td className="py-2.5 pr-3 text-right font-mono font-semibold tabular-nums text-emerald-700">
                     {c.moic.toFixed(2)}x
                   </td>
                   <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-slate-700">
-                    {c.runwayMonths != null ? `${c.runwayMonths} mo` : "—"}
+                    {c.runwayMonths != null ? `${c.runwayMonths} mo` : "-"}
                   </td>
                   <td className="py-2.5 text-right">
                     <span
@@ -420,7 +531,7 @@ export default function FundAnalyticsPage() {
                   <td className="py-2 pr-3 text-right font-mono tabular-nums text-slate-700">{s.hitRatePct}%</td>
                   <td className="py-2 pr-3 text-right font-mono tabular-nums text-slate-700">{s.companies}</td>
                   <td className="py-2 text-right font-mono font-semibold tabular-nums text-slate-900">
-                    {s.deployedUsd > 0 ? fmtM(s.deployedUsd) : "—"}
+                    {s.deployedUsd > 0 ? fmtM(s.deployedUsd) : "-"}
                   </td>
                 </tr>
               ))}

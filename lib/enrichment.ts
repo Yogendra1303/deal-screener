@@ -66,20 +66,42 @@ function isSafePublicHost(urlStr: string): boolean {
 }
 
 async function probeWebsite(rawUrl?: string | null): Promise<WebsiteProbe | null> {
-  const url = normalizeHttpUrl(rawUrl);
-  if (!url || !isSafePublicHost(url)) return null;
+  let currentUrl = normalizeHttpUrl(rawUrl);
+  if (!currentUrl || !isSafePublicHost(currentUrl)) return null;
 
   const started = Date.now();
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), 5000);
 
   try {
-    const res = await fetch(url, {
-      method: "GET",
-      redirect: "follow",
-      signal: ctrl.signal,
-      headers: { "User-Agent": "AarkaDiligenceBot/1.0 (+https://www.aarkavc.xyz)" },
-    });
+    let res: Response | null = null;
+    // Manually validate redirect hops against SSRF private-IP / metadata hosts (max 2 redirects)
+    for (let hop = 0; hop < 3; hop++) {
+      res = await fetch(currentUrl, {
+        method: "GET",
+        redirect: "manual",
+        signal: ctrl.signal,
+        headers: { "User-Agent": "AarkaDiligenceBot/1.0 (+https://www.aarkavc.xyz)" },
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location");
+        if (!location) break;
+        const resolved = new URL(location, currentUrl).toString();
+        if (!isSafePublicHost(resolved)) {
+          return {
+            url: currentUrl,
+            reachable: false,
+            https: currentUrl.startsWith("https://"),
+            latencyMs: Date.now() - started,
+          };
+        }
+        currentUrl = resolved;
+        continue;
+      }
+      break;
+    }
+
+    if (!res) return null;
     const latencyMs = Date.now() - started;
     const html = (await res.text().catch(() => "")).slice(0, 32_000);
     const titleMatch = html.match(/<title[^>]*>([^<]{1,180})<\/title>/i);
@@ -88,19 +110,19 @@ async function probeWebsite(rawUrl?: string | null): Promise<WebsiteProbe | null
       html.match(/<meta[^>]+content=["']([^"']{1,260})["'][^>]+name=["']description["']/i);
 
     return {
-      url: res.url || url,
+      url: currentUrl,
       reachable: res.status >= 200 && res.status < 400,
       status: res.status,
-      https: (res.url || url).startsWith("https://"),
+      https: currentUrl.startsWith("https://"),
       title: titleMatch?.[1]?.replace(/\s+/g, " ").trim(),
       description: descMatch?.[1]?.replace(/\s+/g, " ").trim(),
       latencyMs,
     };
   } catch {
     return {
-      url,
+      url: currentUrl,
       reachable: false,
-      https: url.startsWith("https://"),
+      https: currentUrl.startsWith("https://"),
       latencyMs: Date.now() - started,
     };
   } finally {

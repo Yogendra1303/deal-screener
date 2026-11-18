@@ -538,8 +538,8 @@ export function CapabilitiesInteractiveTabs() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-2xl">
+      <div className="space-y-6">
+        <div className="max-w-3xl">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
             Workspace Modules
           </p>
@@ -548,35 +548,60 @@ export function CapabilitiesInteractiveTabs() {
           </h2>
         </div>
 
-        {/* Clean 2x2 Grid on Mobile (44px tap targets), Inline Tab Bar on Desktop */}
+        {/* Clean 4-Column Clickable Module Selector Directly Below Heading */}
         <div
-          className="grid w-full grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-100/80 p-1 sm:inline-flex sm:w-auto sm:flex-wrap"
+          className="grid w-full grid-cols-2 gap-2.5 lg:grid-cols-4"
           role="tablist"
           aria-label="Workspace modules"
         >
           {(
             [
-              ["diligence", "01 · Financial Diligence"],
-              ["pipeline", "02 · Deal Pipeline"],
-              ["market", "03 · Sector Momentum"],
-              ["portfolio", "04 · Portfolio Health"],
+              ["diligence", "01", "Financial Diligence", "Audit deck claims vs. CSVs"],
+              ["pipeline", "02", "Deal Pipeline", "Triage & stage boards"],
+              ["market", "03", "Sector Momentum", "Track inbound sector trends"],
+              ["portfolio", "04", "Portfolio Health", "MIS cadence & LP packs"],
             ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={capabilityTab === key}
-              onClick={() => setCapabilityTab(key)}
-              className={`flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-2.5 py-1.5 text-center text-xs font-semibold motion-safe:transition-all motion-safe:duration-200 sm:min-h-0 sm:px-3 ${
-                capabilityTab === key
-                  ? "bg-white text-slate-950 shadow-2xs"
-                  : "text-slate-600 hover:text-slate-950"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+          ).map(([key, num, title, sub]) => {
+            const active = capabilityTab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setCapabilityTab(key)}
+                className={`flex min-h-[68px] cursor-pointer flex-col items-start justify-between rounded-xl border px-4 py-3 text-left motion-safe:transition-all motion-safe:duration-200 ${
+                  active
+                    ? "border-blue-600 bg-white shadow-sm ring-1 ring-blue-600/15"
+                    : "border-slate-200/90 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
+                }`}
+              >
+                <div className="flex w-full items-center justify-between gap-2">
+                  <span
+                    className={`font-mono text-[11px] font-semibold ${
+                      active ? "text-blue-700" : "text-slate-500"
+                    }`}
+                  >
+                    {num}
+                  </span>
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full motion-safe:transition-colors ${
+                      active ? "bg-blue-600" : "bg-slate-300"
+                    }`}
+                    aria-hidden="true"
+                  />
+                </div>
+                <div className="mt-1.5">
+                  <div className={`text-xs font-semibold sm:text-[13px] ${active ? "text-slate-950" : "text-slate-700"}`}>
+                    {title}
+                  </div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                    {sub}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -880,17 +905,17 @@ export function WorkspaceRequestFormClient() {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
       {!reqSuccess ? (
-        <form onSubmit={handleWorkspaceRequest} className="space-y-4" noValidate>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+        <form onSubmit={handleWorkspaceRequest} className="flex flex-1 flex-col gap-4" noValidate>
+          <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <div className="min-w-0">
               <h3 className="text-base font-semibold text-slate-950">Request Fund Workspace Access</h3>
               <p className="mt-0.5 text-xs text-slate-600">
                 Requests are saved with PENDING status and reviewed manually by an Aarka partner.
               </p>
             </div>
-            <span className="shrink-0 rounded border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-blue-800">
+            <span className="w-fit shrink-0 whitespace-nowrap rounded border border-blue-200 bg-blue-50 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blue-800">
               Invite-Only Waitlist
             </span>
           </div>
@@ -1003,7 +1028,7 @@ export function WorkspaceRequestFormClient() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-relaxed text-slate-600 sm:text-[11px]">
               Submitting records a pending request. Access is granted after partner whitelist approval.
             </p>

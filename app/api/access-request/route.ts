@@ -195,6 +195,40 @@ export async function PATCH(req: NextRequest) {
       console.warn("[access-request][PATCH] permitted_users sync note:", permErr);
     }
 
+    // Send approval confirmation email so newly whitelisted partners know they can sign in immediately
+    if (action === "approve" && RESEND_API_KEY) {
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: RESEND_FROM,
+            to: [email],
+            reply_to: reviewer,
+            subject: "Your Aarka Fund Workspace Access Is Approved",
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; background: #faf9f6; color: #0f172a; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <h2 style="margin-top: 0; font-size: 18px; color: #0f172a;">Welcome to Aarka</h2>
+                <p style="font-size: 14px; line-height: 1.6; color: #334155;">
+                  Hi ${escapeHtml(target?.name ?? email.split("@")[0])}, your access request for the Aarka fund workspace has been approved. You can now sign in with your Google account (${escapeHtml(email)}).
+                </p>
+                <p style="margin-top: 20px;">
+                  <a href="https://www.aarkavc.xyz/login" style="display: inline-block; background: #0f172a; color: #ffffff; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600;">
+                    Sign In to Aarka Workspace →
+                  </a>
+                </p>
+              </div>
+            `,
+          }),
+        });
+      } catch (mailErr) {
+        console.warn("[access-request][PATCH] approval email warning:", mailErr);
+      }
+    }
+
     void insertAuditLog(action === "approve" ? "PARTNER_APPROVAL" : "PARTNER_REVOKE", reviewer, {
       targetEmail: email,
       targetName: target?.name,

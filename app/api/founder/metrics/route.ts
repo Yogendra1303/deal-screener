@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { driver, getState, patchDeal, putState } from "@/lib/db/repository";
+import { driver, getState, insertAuditLog, patchDeal, putState } from "@/lib/db/repository";
 import { authorizeFounderDealAccess } from "@/lib/founder-token";
 import { calculateVCMetrics } from "@/lib/vc-metrics";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
@@ -66,6 +66,16 @@ export async function POST(req: NextRequest) {
           updatedAt,
         },
       });
+
+      void insertAuditLog("FOUNDER_METRICS_UPDATE", gate.email || "founder", {
+        dealId,
+        companyName: gate.deal.company_name || dealId,
+        mrr: numMrr,
+        cash: numCash,
+        burn: numBurn,
+        headcount: numHead,
+        runway: vc.runway.formatted,
+      }).catch(() => undefined);
     }
 
     broadcastRealtimeEvent("metrics.updated", {
