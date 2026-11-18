@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePortfolio } from "@/components/portfolio-store";
 import { useStore } from "@/components/store";
+import { DropdownSelect } from "@/components/ui";
 import { calculateCapTable, type CapTableInput } from "@/lib/captable";
 import { dueDateFor } from "@/lib/portfolio/health";
 import type { MonthlyReport, PortfolioCompany } from "@/lib/portfolio/types";
@@ -259,30 +260,32 @@ export function PromoteToPortfolioModal({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700">Round</label>
-                <select
+                <DropdownSelect
+                  ariaLabel="Round"
                   value={round}
-                  onChange={(e) => setRound(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900"
-                >
-                  <option value="Pre-seed">Pre-seed</option>
-                  <option value="Seed">Seed</option>
-                  <option value="Series A">Series A</option>
-                </select>
+                  onChange={setRound}
+                  options={["Pre-seed", "Seed", "Series A"]}
+                  size="sm"
+                  className="mt-1 w-full"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700">Reporting Currency</label>
-                <select
+                <DropdownSelect
+                  ariaLabel="Reporting Currency"
                   value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900"
-                >
-                  <option value="USD">USD ($)</option>
-                  <option value="INR">INR (₹)</option>
-                  <option value="AED">AED</option>
-                  <option value="SAR">SAR</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                </select>
+                  onChange={setCurrency}
+                  options={[
+                    { value: "USD", label: "USD ($)" },
+                    { value: "INR", label: "INR (₹)" },
+                    { value: "AED", label: "AED" },
+                    { value: "SAR", label: "SAR" },
+                    { value: "EUR", label: "EUR (€)" },
+                    { value: "GBP", label: "GBP (£)" },
+                  ]}
+                  size="sm"
+                  className="mt-1 w-full"
+                />
               </div>
             </div>
 

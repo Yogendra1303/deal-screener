@@ -1,144 +1,537 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
-import { Tabs } from "@/components/company";
+import { use, useEffect, useMemo, useState } from "react";
 import { AskList, useFounderAsks } from "@/components/founder-links";
+import { useLinks } from "@/components/links-store";
+import { usePortfolio } from "@/components/portfolio-store";
 import { AnalystQueue, Dot, useAnalystLoad } from "@/components/queues";
 import { Avatar } from "@/components/shell";
-import { Card, cx } from "@/components/ui";
+import { useStore } from "@/components/store";
+import { Button, Card, DropdownSelect, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
-import { ANALYSTS } from "@/lib/team";
+import { addDays, fmtDay } from "@/lib/dates";
+import { usd } from "@/lib/rules";
+import { ANALYSTS, PARTNER } from "@/lib/team";
 
 const slug = (name: string) => name.split(" ")[0].toLowerCase();
 
 export default function TeamPage({ searchParams }: { searchParams: Promise<{ who?: string }> }) {
   const w = useWorkspace();
+  const p = usePortfolio();
+  const store = useStore();
+  const links = useLinks();
+
   const initial = use(searchParams).who;
   const [tab, setTab] = useState<string>(ANALYSTS.some((a) => slug(a.name) === initial) ? initial! : "all");
+  const [askModalAnalyst, setAskModalAnalyst] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
   useEffect(() => {
-    // The page is static, so read ?who= in the browser as well.
     const who = new URLSearchParams(window.location.search).get("who");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (who && ANALYSTS.some((a) => slug(a.name) === who)) setTab(who);
   }, []);
 
-  const picked = ANALYSTS.find((a) => slug(a.name) === tab);
-  const currentUserName = w.userName || w.me || "Fund Member";
+  const showToast = (msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 2600);
+  };
+
+  const currentUserName = w.userName || w.me || PARTNER.name;
   const pinnedTitle = w.role === "Partner" ? "Primary Partner" : "Lead Analyst";
   const remainingAnalysts = ANALYSTS.filter((a) => a.name.toLowerCase() !== currentUserName.toLowerCase());
+  const picked = ANALYSTS.find((a) => slug(a.name) === tab);
+
+  const riyaLoad = useAnalystLoad("Riya Menon");
+  const arjunLoad = useAnalystLoad("Arjun Bhat");
+
+  const unassignedPitches = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { id: string; name: string; stage: string; sector: string; country: string; ask: number | null; receivedAt: string }[] = [];
+
+    for (const d of store.deals) {
+      if (links.ownerOf(d.id) || seen.has(d.id)) continue;
+      seen.add(d.id);
+      list.push({
+        id: d.id,
+        name: d.form.companyName,
+        stage: d.form.stage,
+        sector: d.form.sector,
+        country: d.form.country,
+        ask: d.form.amountUsd,
+        receivedAt: d.receivedAt.slice(0, 10),
+      });
+    }
+    for (const u of store.unprocessed) {
+      if (links.ownerOf(u.id) || seen.has(u.id)) continue;
+      seen.add(u.id);
+      list.push({
+        id: u.id,
+        name: u.form.companyName,
+        stage: u.form.stage,
+        sector: u.form.sector,
+        country: u.form.country,
+        ask: u.form.amountUsd,
+        receivedAt: u.receivedAt.slice(0, 10),
+      });
+    }
+    for (const i of links.inbound) {
+      if (i.owner || links.ownerOf(i.id) || seen.has(i.id)) continue;
+      seen.add(i.id);
+      list.push({
+        id: i.id,
+        name: i.form.companyName,
+        stage: i.form.stage,
+        sector: i.form.sector,
+        country: i.form.country,
+        ask: i.form.amountUsd,
+        receivedAt: i.receivedAt.slice(0, 10),
+      });
+    }
+    return list.sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+  }, [store.deals, store.unprocessed, links]);
+
+  const totals = useMemo(() => {
+    const loads = [riyaLoad, arjunLoad];
+    const openQuestions = loads.reduce((s, l) => s + l.owed.length, 0);
+    const overdueQuestions = loads.reduce((s, l) => s + l.overdue, 0);
+    const unreadReports = loads.reduce((s, l) => s + l.toRead, 0);
+    const totalChase = loads.reduce((s, l) => s + l.chase, 0);
+    const totalConflicts = loads.reduce((s, l) => s + l.conflicts, 0);
+    return { openQuestions, overdueQuestions, unreadReports, totalChase, totalConflicts };
+  }, [riyaLoad, arjunLoad]);
+
+  const ownerChoices = useMemo(
+    () => [currentUserName, ...ANALYSTS.map((a) => a.name).filter((n) => n !== currentUserName)],
+    [currentUserName],
+  );
 
   return (
     <div className="space-y-6">
-      <div className="max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Team</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          What each analyst is carrying, worked out from the records: questions they owe you, reports they haven&apos;t read, founders
-          they need to chase, and numbers still in conflict. Open an analyst to see exactly what they see.
-        </p>
+      {/* Executive Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+            Fund Operations &amp; Workload Command
+          </p>
+          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">Team</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Track live analyst queues, assign incoming pitches, resolve math conflicts, and enforce MIS reporting SLAs across Aarka Fund I.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {w.role === "Partner" && (
+            <button
+              type="button"
+              onClick={() => setAskModalAnalyst(picked?.name ?? remainingAnalysts[0]?.name ?? "Riya Menon")}
+              className="cursor-pointer rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-slate-800"
+            >
+              + Ask Analyst Question
+            </button>
+          )}
+          <Link
+            href="/deals"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+          >
+            Open Pipeline →
+          </Link>
+        </div>
       </div>
 
-      {/* Pinned active Google-authenticated user */}
-      <Card className="border-blue-200/80 bg-gradient-to-r from-blue-50/50 via-white to-white p-5">
+      {toast && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-900">
+          <span>{toast}</span>
+          <button type="button" onClick={() => setToast(null)} className="cursor-pointer text-emerald-700 hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* 4 Live Interactive Team KPI Tiles */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => setTab("all")}
+          className={cx(
+            "group cursor-pointer rounded-xl border bg-white p-4 text-left shadow-2xs transition hover:-translate-y-0.5 hover:shadow-sm",
+            tab === "all" ? "border-indigo-400 ring-2 ring-indigo-500/15" : "border-slate-200 hover:border-indigo-300",
+          )}
+        >
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>Active Team</span>
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          </div>
+          <div className="mt-1.5 font-mono text-2xl font-bold text-slate-900">
+            {1 + remainingAnalysts.length}
+            <span className="text-sm font-normal text-slate-400"> members</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500 group-hover:text-indigo-700">
+            1 Partner · {remainingAnalysts.length} Analysts · {p.companies.length} cos
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTab(remainingAnalysts[0] ? slug(remainingAnalysts[0].name) : "all")}
+          className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-left shadow-2xs transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-sm"
+        >
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>Open Questions</span>
+            {totals.overdueQuestions > 0 && (
+              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                {totals.overdueQuestions} overdue
+              </span>
+            )}
+          </div>
+          <div className="mt-1.5 font-mono text-2xl font-bold text-slate-900">
+            {totals.openQuestions}
+            <span className="text-sm font-normal text-slate-400"> waiting</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500 group-hover:text-indigo-700">
+            Inspect analyst answers →
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTab(remainingAnalysts[0] ? slug(remainingAnalysts[0].name) : "all")}
+          className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-left shadow-2xs transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-sm"
+        >
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>MIS &amp; Conflicts</span>
+            {totals.totalConflicts > 0 && (
+              <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                {totals.totalConflicts} conflicts
+              </span>
+            )}
+          </div>
+          <div className="mt-1.5 font-mono text-2xl font-bold text-slate-900">
+            {totals.unreadReports}
+            <span className="text-sm font-normal text-slate-400"> unread</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500 group-hover:text-amber-700">
+            {totals.totalChase} founders to chase →
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTab("unassigned")}
+          className={cx(
+            "group cursor-pointer rounded-xl border bg-white p-4 text-left shadow-2xs transition hover:-translate-y-0.5 hover:shadow-sm",
+            tab === "unassigned" ? "border-indigo-400 ring-2 ring-indigo-500/15" : "border-slate-200 hover:border-indigo-300",
+          )}
+        >
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>Unassigned Pitches</span>
+            <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">Assign</span>
+          </div>
+          <div className="mt-1.5 font-mono text-2xl font-bold text-slate-900">
+            {unassignedPitches.length}
+            <span className="text-sm font-normal text-slate-400"> decks</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500 group-hover:text-indigo-700">
+            Assign owners in 1 click →
+          </p>
+        </button>
+      </div>
+
+      {/* Pinned Primary Partner Session Banner */}
+      <Card className="border-indigo-200/80 bg-gradient-to-r from-indigo-50/40 via-white to-white p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <Avatar name={currentUserName} size="md" image={w.userImage} />
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-semibold text-slate-900">{currentUserName}</h2>
-                <span className="inline-flex items-center rounded-sm bg-blue-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-800">
+                <h2 className="text-sm font-bold text-slate-900 sm:text-base">{currentUserName}</h2>
+                <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-800">
                   {pinnedTitle}
                 </span>
-                <span className="inline-flex items-center rounded-sm bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Active Session
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-slate-500">
-                {w.userEmail || "Authenticated workspace member"} · {w.role === "Partner" ? "Full fund pipeline, IC decisions & >10% math-gap audit" : "Assigned screening queue, deck verification & founder follow-ups"}
+                {w.userEmail || "Authenticated workspace member"} · Full fund oversight across {store.deals.length} screened pitches &amp; {p.companies.length} portfolio companies
               </p>
             </div>
           </div>
-          <Link
-            href="/deals"
-            className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-          >
-            Open pipeline →
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/fund"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              Fund Analytics
+            </Link>
+            <Link
+              href="/resources"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              Founder Support Desk →
+            </Link>
+          </div>
         </div>
       </Card>
 
-      <Tabs
-        label="Analysts"
-        value={tab}
-        onChange={setTab}
-        tabs={[{ key: "all", label: "Everyone" }, ...remainingAnalysts.map((a) => ({ key: slug(a.name), label: a.name }))]}
-      />
-      {picked ? (
-        <div className="space-y-4">
-          <p className="rounded-lg bg-slate-100 px-4 py-2.5 text-sm text-indigo-900 ring-1 ring-inset ring-slate-200">
-            You&apos;re seeing {picked.name}&apos;s queue as they see it. It&apos;s read only: they mark reports read and chase founders.
-          </p>
-          <AnalystQueue who={picked.name} readOnly />
+      {/* Segmented Navigation Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="inline-flex flex-wrap rounded-xl border border-slate-200 bg-slate-100/80 p-1 text-xs font-semibold" role="tablist">
+          {(
+            [
+              ["all", "Everyone"],
+              ...remainingAnalysts.map((a) => [slug(a.name), a.name] as [string, string]),
+              ["unassigned", `Unassigned Queue (${unassignedPitches.length})`],
+            ] as [string, string][]
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              onClick={() => setTab(k)}
+              className={cx(
+                "cursor-pointer rounded-lg px-3.5 py-1.5 transition",
+                tab === k ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* TAB CONTENT */}
+      {tab === "unassigned" ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Unassigned Pitch Queue</h2>
+              <p className="text-xs text-slate-500">
+                Assign any incoming pitch to an analyst or partner. Changes sync immediately across Pipeline, Home, and analyst queues.
+              </p>
+            </div>
+            <span className="font-mono text-xs font-semibold text-slate-500">
+              {unassignedPitches.length} unassigned
+            </span>
+          </div>
+
+          {unassignedPitches.length === 0 ? (
+            <p className="py-8 text-center text-xs text-slate-500">
+              Every pitch in the pipeline has an assigned owner.
+            </p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {unassignedPitches.map((item) => (
+                <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <Link href={`/deals/${item.id}`} className="text-sm font-semibold text-slate-900 hover:text-indigo-700">
+                      {item.name}
+                    </Link>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {item.stage} · {item.sector} · {item.country}
+                      {item.ask ? ` · ${usd(item.ask)}` : ""} · Received {fmtDay(item.receivedAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DropdownSelect
+                      ariaLabel={`Assign owner for ${item.name}`}
+                      value=""
+                      placeholder="Assign owner…"
+                      onChange={(owner) => {
+                        links.claim(item.id, owner);
+                        showToast(`Assigned ${item.name} to ${owner}.`);
+                      }}
+                      options={ownerChoices}
+                      size="sm"
+                      align="right"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : picked ? (
+        <div className="space-y-5">
+          {/* Partner Live Supervision Banner (NO LONGER READ-ONLY FOR PARTNERS!) */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50/50 px-4 py-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <Avatar name={picked.name} size="sm" />
+              <div>
+                <p className="font-semibold text-slate-900">
+                  {w.role === "Partner"
+                    ? `Managing ${picked.name}'s Queue (Partner Action Mode)`
+                    : `Viewing ${picked.name}'s Queue`}
+                </p>
+                <p className="text-slate-600">
+                  {w.role === "Partner"
+                    ? "You can directly mark MIS reports read, send founder reminders, inspect math conflicts, or assign new questions below."
+                    : "Showing active portfolio reports, open questions, and pending pitch reviews."}
+                </p>
+              </div>
+            </div>
+            {w.role === "Partner" && (
+              <button
+                type="button"
+                onClick={() => setAskModalAnalyst(picked.name)}
+                className="cursor-pointer rounded-lg bg-slate-900 px-3 py-1.5 font-semibold text-white hover:bg-slate-800"
+              >
+                + Ask {picked.name.split(" ")[0]} a Question
+              </button>
+            )}
+          </div>
+
+          <AnalystQueue who={picked.name} readOnly={w.role !== "Partner" && w.me !== picked.name} />
           <AskedFounders who={picked.name} />
         </div>
       ) : (
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Team members</h2>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {remainingAnalysts.map((a) => (
-              <AnalystCard key={a.name} name={a.name} onOpen={() => setTab(slug(a.name))} />
-            ))}
-          </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {remainingAnalysts.map((a) => (
+            <AnalystCard
+              key={a.name}
+              name={a.name}
+              canAsk={w.role === "Partner"}
+              onOpen={() => setTab(slug(a.name))}
+              onAsk={() => setAskModalAnalyst(a.name)}
+            />
+          ))}
         </div>
+      )}
+
+      {/* Ask Analyst Question Modal */}
+      {askModalAnalyst && (
+        <AskAnalystModal
+          defaultAnalyst={askModalAnalyst}
+          askedBy={currentUserName}
+          today={p.today}
+          onClose={() => setAskModalAnalyst(null)}
+          onSubmitted={(analystName, companyName) => {
+            setAskModalAnalyst(null);
+            showToast(`Question assigned to ${analystName} on ${companyName}.`);
+          }}
+        />
       )}
     </div>
   );
 }
 
-function AnalystCard({ name, onOpen }: { name: string; onOpen: () => void }) {
+function AnalystCard({
+  name,
+  canAsk,
+  onOpen,
+  onAsk,
+}: {
+  name: string;
+  canAsk: boolean;
+  onOpen: () => void;
+  onAsk: () => void;
+}) {
   const l = useAnalystLoad(name);
+  const needsAttention = l.overdue > 0 || l.oldestUnreadDays > 7 || l.conflicts > 0 || l.asksOld > 0;
   const rows: { label: string; value: string; bad?: boolean }[] = [
-    { label: "Questions they owe you", value: `${l.owed.length}${l.overdue ? `, ${l.overdue} overdue` : ""}`, bad: l.overdue > 0 },
-    { label: "Reports not read yet", value: l.toRead ? `${l.toRead}, oldest ${l.oldestUnreadDays} days` : "0", bad: l.oldestUnreadDays > 7 },
+    { label: "Questions waiting", value: `${l.owed.length}${l.overdue ? `, ${l.overdue} overdue` : ""}`, bad: l.overdue > 0 },
+    { label: "Unread MIS reports", value: l.toRead ? `${l.toRead} (oldest ${l.oldestUnreadDays}d)` : "0", bad: l.oldestUnreadDays > 7 },
     { label: "Founders to chase", value: String(l.chase) },
-    { label: "Founder asks open over 14 days", value: String(l.asksOld), bad: l.asksOld > 0 },
-    { label: "Numbers to fix", value: `${l.fixes}${l.conflicts ? `, ${l.conflicts} in conflict` : ""}`, bad: l.conflicts > 0 },
-    { label: "Pitches", value: `${l.pitches}${l.pitchesNew ? `, ${l.pitchesNew} not reviewed` : ""}` },
+    { label: "Founder asks >14d", value: String(l.asksOld), bad: l.asksOld > 0 },
+    { label: "Numbers to verify", value: `${l.fixes}${l.conflicts ? `, ${l.conflicts} in conflict` : ""}`, bad: l.conflicts > 0 },
+    { label: "Assigned pitches", value: `${l.pitches}${l.pitchesNew ? `, ${l.pitchesNew} new` : ""}` },
   ];
+
   return (
-    <Card className="flex flex-col p-5">
-      <div className="flex items-center gap-3">
-        <Avatar name={name} size="md" />
+    <Card className="flex flex-col p-5 shadow-2xs">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Avatar name={name} size="md" />
+          <div>
+            <h2 className="text-base font-bold text-slate-900">{name}</h2>
+            <p className="text-xs text-slate-500">
+              Analyst · {l.companies.length} portfolio cos · {l.pitches} pitches
+            </p>
+          </div>
+        </div>
+        <span
+          className={cx(
+            "rounded-full px-2.5 py-0.5 text-[10px] font-bold ring-1 ring-inset",
+            needsAttention
+              ? "bg-amber-50 text-amber-800 ring-amber-200"
+              : "bg-emerald-50 text-emerald-700 ring-emerald-200",
+          )}
+        >
+          {needsAttention ? "SLA Attention" : "On Track"}
+        </span>
+      </div>
+
+      {/* Compact 3-Metric Highlight Strip */}
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-center">
         <div>
-          <h2 className="font-semibold text-slate-900">{name}</h2>
-          <p className="text-xs text-slate-500">Analyst · {l.companies.length} portfolio companies</p>
+          <p className="text-[10px] font-semibold uppercase text-slate-400">Questions</p>
+          <p className={cx("mt-0.5 font-mono text-base font-bold", l.overdue > 0 ? "text-rose-700" : "text-slate-900")}>
+            {l.owed.length}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase text-slate-400">Unread MIS</p>
+          <p className={cx("mt-0.5 font-mono text-base font-bold", l.oldestUnreadDays > 7 ? "text-amber-700" : "text-slate-900")}>
+            {l.toRead}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase text-slate-400">Conflicts</p>
+          <p className={cx("mt-0.5 font-mono text-base font-bold", l.conflicts > 0 ? "text-rose-700" : "text-slate-900")}>
+            {l.conflicts}
+          </p>
         </div>
       </div>
-      <dl className="mt-4 divide-y divide-slate-100 text-sm">
+
+      <dl className="mt-3 divide-y divide-slate-100 text-xs">
         {rows.map((r) => (
           <div key={r.label} className="flex justify-between gap-3 py-1.5">
             <dt className="text-slate-600">{r.label}</dt>
-            <dd className={cx("font-medium tabular-nums", r.bad ? "text-red-700" : "text-slate-900")}>{r.value}</dd>
+            <dd className={cx("font-mono font-semibold tabular-nums", r.bad ? "text-rose-700" : "text-slate-900")}>
+              {r.value}
+            </dd>
           </div>
         ))}
       </dl>
-      <h3 className="mt-4 text-xs font-medium text-slate-500">Their companies</h3>
-      <ul className="mt-1.5 space-y-1.5">
-        {l.companies.map((c) => (
-          <li key={c.id} className="flex gap-2 text-sm">
-            {c.head ? <Dot level={c.head.level} small /> : <span className="w-1.5" />}
-            <span className="min-w-0">
-              <Link href={`/portfolio/${c.id}`} className="font-medium text-slate-900 hover:text-indigo-700">
-                {c.name}
-              </Link>
-              {c.head && <span className="text-slate-600">: {c.head.text}</span>}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <button onClick={onOpen} className="mt-4 self-start rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50">
-        Open {name.split(" ")[0]}&apos;s queue
-      </button>
+
+      <div className="mt-4 flex-1">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Assigned Portfolio</h3>
+        <ul className="mt-2 space-y-1.5">
+          {l.companies.map((c) => (
+            <li key={c.id} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5 text-xs">
+              {c.head ? <Dot level={c.head.level} small /> : <span className="w-1.5" />}
+              <span className="min-w-0">
+                <Link href={`/portfolio/${c.id}`} className="font-semibold text-slate-900 hover:text-indigo-700">
+                  {c.name}
+                </Link>
+                {c.head && <span className="text-slate-600">: {c.head.text}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="cursor-pointer rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+        >
+          Manage {name.split(" ")[0]}&apos;s Queue →
+        </button>
+        {canAsk && (
+          <button
+            type="button"
+            onClick={onAsk}
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Ask Question
+          </button>
+        )}
+      </div>
     </Card>
   );
 }
@@ -146,12 +539,162 @@ function AnalystCard({ name, onOpen }: { name: string; onOpen: () => void }) {
 function AskedFounders({ who }: { who: string }) {
   const lines = useFounderAsks(who);
   return (
-    <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-      <h2 className="font-semibold text-slate-900">What {who.split(" ")[0]} asked founders</h2>
-      <p className="text-xs text-slate-500">Document requests sent through founder links, and questions on monthly reports. Newest first.</p>
-      <div className="mt-2">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
+      <h2 className="text-sm font-bold text-slate-900">What {who.split(" ")[0]} asked founders</h2>
+      <p className="mt-0.5 text-xs text-slate-500">
+        Document requests sent through private founder links and questions logged on monthly MIS reports.
+      </p>
+      <div className="mt-3">
         <AskList lines={lines} showWho={false} limit={10} />
       </div>
     </section>
+  );
+}
+
+function AskAnalystModal({
+  defaultAnalyst,
+  askedBy,
+  today,
+  onClose,
+  onSubmitted,
+}: {
+  defaultAnalyst: string;
+  askedBy: string;
+  today: string;
+  onClose: () => void;
+  onSubmitted: (analyst: string, companyName: string) => void;
+}) {
+  const w = useWorkspace();
+  const p = usePortfolio();
+  const store = useStore();
+
+  const companyOptions = useMemo(() => {
+    const port = p.companies.map((c) => ({
+      value: `portfolio:${c.id}`,
+      label: `${c.name} (Portfolio)`,
+      id: c.id,
+      name: c.name,
+      side: "portfolio" as const,
+    }));
+    const deal = store.deals.map((d) => ({
+      value: `deal:${d.id}`,
+      label: `${d.form.companyName} (Pitch)`,
+      id: d.id,
+      name: d.form.companyName,
+      side: "deal" as const,
+    }));
+    return [...port, ...deal];
+  }, [p.companies, store.deals]);
+
+  const [owner, setOwner] = useState(defaultAnalyst);
+  const [companyKey, setCompanyKey] = useState(companyOptions[0]?.value ?? "");
+  const [dueDays, setDueDays] = useState("7");
+  const [text, setText] = useState("");
+
+  const pickedCompany = companyOptions.find((c) => c.value === companyKey);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Assign Question to Analyst</h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Adds a tracked, source-cited diligence question directly to the analyst&apos;s queue.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-slate-100">
+            ✕
+          </button>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!pickedCompany || !text.trim()) return;
+            w.ask({
+              companyId: pickedCompany.id,
+              companyName: pickedCompany.name,
+              side: pickedCompany.side,
+              text: text.trim(),
+              askedBy,
+              owner,
+              due: addDays(today, Number(dueDays) || 7),
+            });
+            onSubmitted(owner, pickedCompany.name);
+          }}
+          className="space-y-3 text-xs"
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="block space-y-1">
+              <span className="block font-semibold text-slate-700">Analyst</span>
+              <DropdownSelect
+                ariaLabel="Analyst"
+                value={owner}
+                onChange={setOwner}
+                options={ANALYSTS.map((a) => a.name)}
+                size="sm"
+                className="w-full"
+              />
+            </div>
+            <div className="block space-y-1">
+              <span className="block font-semibold text-slate-700">Due SLA</span>
+              <DropdownSelect
+                ariaLabel="Due SLA"
+                value={dueDays}
+                onChange={setDueDays}
+                options={[
+                  { value: "2", label: "In 2 days (Urgent)" },
+                  { value: "5", label: "In 5 days" },
+                  { value: "7", label: "In 7 days (Standard)" },
+                  { value: "14", label: "In 14 days" },
+                ]}
+                size="sm"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <div className="block space-y-1">
+            <span className="block font-semibold text-slate-700">Company</span>
+            <DropdownSelect
+              ariaLabel="Company"
+              value={companyKey}
+              onChange={setCompanyKey}
+              options={companyOptions.map((c) => ({ value: c.value, label: c.label }))}
+              size="sm"
+              className="w-full"
+            />
+          </div>
+
+          <label className="block space-y-1">
+            <span className="font-semibold text-slate-700">Question</span>
+            <textarea
+              rows={3}
+              required
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="e.g. Confirm whether Q3 revenue includes one-time setup fees before our partner call."
+              className="w-full rounded-lg border border-slate-300 p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+            />
+          </label>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">Assign Question</Button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

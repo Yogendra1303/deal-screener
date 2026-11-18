@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLinks } from "@/components/links-store";
 import { useStore } from "@/components/store";
-import { Button, cx } from "@/components/ui";
+import { Button, DropdownSelect, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { hydrate, loadState, persist, saveState } from "@/lib/db/client";
 import { escapeHtml, openPrintableReport } from "@/lib/export";
@@ -1771,18 +1771,21 @@ function QualityBarModal({
           <Field label="Target Threshold" value={value} onChange={setValue} placeholder="e.g. 110% or higher" />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1">
-            <span className="font-semibold text-slate-700">Category</span>
-            <select
+          <div className="block space-y-1">
+            <span className="block font-semibold text-slate-700">Category</span>
+            <DropdownSelect
+              ariaLabel="Quality bar category"
               value={category}
-              onChange={(e) => setCategory(e.target.value as NonNullable<QualityBar["category"]>)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
-            >
-              <option value="Unit Economics">Unit Economics</option>
-              <option value="Capital Efficiency">Capital Efficiency</option>
-              <option value="Risk & Ownership">Risk &amp; Ownership</option>
-            </select>
-          </label>
+              onChange={(v) => setCategory(v as NonNullable<QualityBar["category"]>)}
+              options={[
+                { value: "Unit Economics", label: "Unit Economics" },
+                { value: "Capital Efficiency", label: "Capital Efficiency" },
+                { value: "Risk & Ownership", label: "Risk & Ownership" },
+              ]}
+              size="sm"
+              className="w-full"
+            />
+          </div>
           <Field label="Checked Where" value={enforcedBy} onChange={setEnforcedBy} />
         </div>
         <Field label="Rationale (Why This Matters)" value={why} onChange={setWhy} />
@@ -1887,17 +1890,20 @@ function CovenantModal({
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Covenant Title" value={label} onChange={setLabel} placeholder="e.g. Quarterly Board Pack" />
-          <label className="block space-y-1">
-            <span className="font-semibold text-slate-700">Commitment Owner</span>
-            <select
+          <div className="block space-y-1">
+            <span className="block font-semibold text-slate-700">Commitment Owner</span>
+            <DropdownSelect
+              ariaLabel="Commitment Owner"
               value={party}
-              onChange={(e) => setParty(e.target.value as "Founder" | "Fund")}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
-            >
-              <option value="Founder">Founder SLA</option>
-              <option value="Fund">Fund Promise</option>
-            </select>
-          </label>
+              onChange={(v) => setParty(v as "Founder" | "Fund")}
+              options={[
+                { value: "Founder", label: "Founder SLA" },
+                { value: "Fund", label: "Fund Promise" },
+              ]}
+              size="sm"
+              className="w-full"
+            />
+          </div>
         </div>
         <Field label="Standard / Terms" value={value} onChange={setValue} placeholder="e.g. Delivered 5 days prior to board meeting" />
         <div className="flex items-center justify-between pt-2">

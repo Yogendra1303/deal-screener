@@ -78,15 +78,46 @@ function Greeting({ name, line }: { name: string; line: string }) {
 
   const rawName = session?.user?.name?.trim() || w.userName?.trim() || name?.trim() || "";
   const firstName = rawName ? rawName.split(/\s+/)[0] : "Partner";
+  const isPartner = w.role === "Partner";
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Q4 2026 · Active Pipeline</p>
+      <div className="max-w-2xl">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+            {isPartner ? "Aarka Fund I · Partner Command" : "Aarka Fund I · Analyst Queue"}
+          </p>
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Grade A-G Engine Live
+          </span>
+        </div>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl" suppressHydrationWarning>
           {greeting}, {firstName}
         </h1>
         <p className="mt-1 text-sm text-slate-600">{line}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Link
+          href="/resources"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50"
+        >
+          Founder Support
+        </Link>
+        {isPartner && (
+          <Link
+            href="/fund"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            Fund Analytics
+          </Link>
+        )}
+        <Link
+          href="/deals"
+          className="rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-slate-800"
+        >
+          Review Pitches →
+        </Link>
       </div>
     </div>
   );
@@ -789,8 +820,10 @@ function PartnerHome() {
   );
 }
 
-/** The partner's view adds up each analyst's pitch work. */
+/** The partner's view adds up each team member's pitch work. */
 function TeamPulse({ rows }: { rows: FlowRow[] }) {
+  const w = useWorkspace();
+  const partnerName = w.userName || PARTNER.name;
   const people = [...ANALYSTS.map((a) => a.name), PARTNER.name];
   return (
     <section className="flex h-full flex-col justify-between rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/70">
@@ -806,20 +839,25 @@ function TeamPulse({ rows }: { rows: FlowRow[] }) {
         </div>
         <ul className="space-y-2.5">
           {people.map((name) => {
-            const mine = rows.filter((r) => r.owner === name);
+            const isPartner = name === PARTNER.name;
+            const displayName = isPartner ? partnerName : name;
+            const mine = rows.filter((r) => r.owner === name || (isPartner && r.owner === partnerName));
             const open = mine.filter((r) => r.status === "New" || r.status === "Reviewing").length;
             const meet = mine.filter((r) => r.status === "Meeting set").length;
             const passed = mine.filter((r) => r.status === "Passed" || r.status === "On hold").length;
             const look = mine.filter((r) => r.look.now).length;
             return (
               <li key={name}>
-                <Link href={`/team?who=${name.split(" ")[0].toLowerCase()}`} className="block rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition hover:border-slate-200 hover:bg-slate-50">
+                <Link
+                  href={isPartner ? "/team" : `/team?who=${name.split(" ")[0].toLowerCase()}`}
+                  className="block rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition hover:border-slate-200 hover:bg-slate-50"
+                >
                   <span className="flex items-center gap-3">
-                    <Avatar name={name} size="sm" />
+                    <Avatar name={displayName} size="sm" image={isPartner ? w.userImage : undefined} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                        <span>{name}</span>
-                        {name === PARTNER.name ? (
+                        <span>{displayName}</span>
+                        {isPartner ? (
                           <span className="rounded bg-indigo-50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-indigo-700">Partner</span>
                         ) : (
                           <span className="rounded bg-slate-100 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-slate-600">Analyst</span>

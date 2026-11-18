@@ -6,7 +6,7 @@ import { usePortfolio, type RunningPlay } from "@/components/portfolio-store";
 import { useMyCompanies } from "@/components/scope";
 import { Avatar } from "@/components/shell";
 import { useStore } from "@/components/store";
-import { Button, Card, cx } from "@/components/ui";
+import { Button, Card, DropdownSelect, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { fmtDay } from "@/lib/dates";
 import { latestRunway } from "@/lib/portfolio/attention";
@@ -1613,40 +1613,36 @@ function ComposeTicketModal({
 
         <form onSubmit={submit} className="space-y-3 text-xs">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="font-semibold text-slate-700">Company (Portfolio or Pitch)</span>
-              <select
+            <div className="block space-y-1">
+              <span className="block font-semibold text-slate-700">Company (Portfolio or Pitch)</span>
+              <DropdownSelect
+                ariaLabel="Company"
                 value={companyId}
-                onChange={(e) => {
-                  const id = e.target.value;
+                onChange={(id) => {
                   setCompanyId(id);
                   const found = companies.find((c) => c.id === id);
                   if (found?.email) setFounderEmail(found.email);
                 }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
-              >
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.side === "portfolio" ? "Portfolio" : "Pitch"})
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={companies.map((c) => ({
+                  value: c.id,
+                  label: `${c.name} (${c.side === "portfolio" ? "Portfolio" : "Pitch"})`,
+                }))}
+                size="sm"
+                className="w-full"
+              />
+            </div>
 
-            <label className="block space-y-1">
-              <span className="font-semibold text-slate-700">Support Category</span>
-              <select
+            <div className="block space-y-1">
+              <span className="block font-semibold text-slate-700">Support Category</span>
+              <DropdownSelect
+                ariaLabel="Support Category"
                 value={category}
-                onChange={(e) => setCategory(e.target.value as SupportCategory)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
-              >
-                {SUPPORT_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={(v) => setCategory(v as SupportCategory)}
+                options={[...SUPPORT_CATEGORIES]}
+                size="sm"
+                className="w-full"
+              />
+            </div>
           </div>
 
           <div className="flex gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
@@ -1801,51 +1797,45 @@ function BookOfficeHoursModal({
         </div>
 
         <form onSubmit={submit} className="space-y-3 text-xs">
-          <label className="block space-y-1">
-            <span className="font-semibold text-slate-700">Company</span>
-            <select
+          <div className="block space-y-1">
+            <span className="block font-semibold text-slate-700">Company</span>
+            <DropdownSelect
+              ariaLabel="Company"
               value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900"
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.side === "portfolio" ? "Portfolio" : "Pitch"})
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={setCompanyId}
+              options={companies.map((c) => ({
+                value: c.id,
+                label: `${c.name} (${c.side === "portfolio" ? "Portfolio" : "Pitch"})`,
+              }))}
+              size="sm"
+              className="w-full"
+            />
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="font-semibold text-slate-700">Partner / Lead</span>
-              <select
+            <div className="block space-y-1">
+              <span className="block font-semibold text-slate-700">Partner / Lead</span>
+              <DropdownSelect
+                ariaLabel="Partner or Lead"
                 value={partnerName}
-                onChange={(e) => setPartnerName(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900"
-              >
-                {[defaultPartner, ...TEAM.map((m) => m.name).filter((n) => n !== defaultPartner)].map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={setPartnerName}
+                options={[defaultPartner, ...TEAM.map((m) => m.name).filter((n) => n !== defaultPartner)]}
+                size="sm"
+                className="w-full"
+              />
+            </div>
 
-            <label className="block space-y-1">
-              <span className="font-semibold text-slate-700">Time Slot</span>
-              <select
+            <div className="block space-y-1">
+              <span className="block font-semibold text-slate-700">Time Slot</span>
+              <DropdownSelect
+                ariaLabel="Time Slot"
                 value={slotLabel}
-                onChange={(e) => setSlotLabel(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900"
-              >
-                {OFFICE_HOUR_SLOTS.map((slot) => (
-                  <option key={slot} value={slot}>
-                    {slot}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={setSlotLabel}
+                options={[...OFFICE_HOUR_SLOTS]}
+                size="sm"
+                className="w-full"
+              />
+            </div>
           </div>
 
           <label className="block space-y-1">

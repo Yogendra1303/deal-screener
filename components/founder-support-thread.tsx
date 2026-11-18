@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { DropdownSelect } from "@/components/ui";
 import {
   SUPPORT_CATEGORIES,
   type OfficeHourBooking,
@@ -193,17 +194,14 @@ export function FounderSupportThread({ dealId, companyName, token, founderName }
           <h3 className="text-sm font-semibold text-slate-900">Start a New Request</h3>
           <div>
             <label className="mb-1 block font-medium text-slate-700">How can Aarka help?</label>
-            <select
+            <DropdownSelect
+              ariaLabel="Support category"
               value={category}
-              onChange={(e) => setCategory(e.target.value as SupportCategory)}
-              className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
-            >
-              {SUPPORT_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setCategory(v as SupportCategory)}
+              options={[...SUPPORT_CATEGORIES]}
+              size="sm"
+              className="w-full"
+            />
           </div>
           <div>
             <label className="mb-1 block font-medium text-slate-700">Subject</label>

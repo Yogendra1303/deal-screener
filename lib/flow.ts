@@ -284,7 +284,7 @@ export function generate(): FlowCompany[] {
       const fit: FitLevel = weighted(r, tenPlus ? { Strong: 50, Mixed: 40, Weak: 10 } : { Strong: 20, Mixed: 46, Weak: 34 });
       const first = pickOne(r, FIRST);
       const founder = `${first} ${pickOne(r, LAST)}`;
-      const warm = via === "Intro" || r() < 0.04 ? pickOne(r, ["Kabir Shah", "Riya Menon", "Arjun Bhat"]) : undefined;
+      const warm = via === "Intro" || r() < 0.04 ? pickOne(r, ["Yogendra Kapkoti", "Riya Menon", "Arjun Bhat"]) : undefined;
       out.push({
         id: `h-${String(out.length + 1).padStart(4, "0")}`,
         name,
@@ -332,7 +332,7 @@ function decide(c: FlowCompany, r: () => number) {
     c.owner = pickOne(r, ["Riya Menon", "Arjun Bhat"]);
     return;
   }
-  c.owner = r() < 0.1 ? "Kabir Shah" : pickOne(r, ["Riya Menon", "Arjun Bhat"]);
+  c.owner = r() < 0.14 ? "Yogendra Kapkoti" : pickOne(r, ["Riya Menon", "Arjun Bhat"]);
   const decidedAt = addDays(d.at, 3 + Math.floor(r() * 18));
   const at = decidedAt > DEMO_DATE ? DEMO_DATE : decidedAt;
   const fits = fitsRules(d, c.sector, c.country, DEFAULT_RULES);

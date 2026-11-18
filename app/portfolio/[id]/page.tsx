@@ -580,17 +580,14 @@ function PartnerMisIngestion({ c }: { c: PortfolioCompany }) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className="block text-xs font-semibold text-slate-700">Reporting Month</label>
-            <select
+            <DropdownSelect
+              ariaLabel="Reporting Month"
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xs"
-            >
-              {availableMonths.map((m) => (
-                <option key={m} value={m}>
-                  {fmtMonth(m)}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedMonth}
+              options={availableMonths.map((m) => ({ value: m, label: fmtMonth(m) }))}
+              size="sm"
+              className="mt-1 w-full"
+            />
           </div>
 
           <div className="sm:col-span-2">
