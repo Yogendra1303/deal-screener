@@ -1,27 +1,30 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
+import { Geist, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 import { ScrollManager } from "@/components/scroll-manager";
 
-const inter = Inter({
+const geistSans = Geist({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-geist-sans",
   display: "swap",
+  adjustFontFallback: true,
 });
 
-const newsreader = Newsreader({
+const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
-  variable: "--font-newsreader",
+  variable: "--font-instrument-serif",
   display: "swap",
+  adjustFontFallback: true,
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  weight: ["400", "600"],
+  weight: ["400", "500"],
   variable: "--font-jetbrains-mono",
   display: "swap",
+  adjustFontFallback: true,
 });
 
 export const metadata: Metadata = {
@@ -31,7 +34,7 @@ export const metadata: Metadata = {
     template: "%s | Aarka",
   },
   description:
-    "A structured workspace for startup pitches and investor review. Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
+    "A structured workspace for startup pitches and investor review. Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial cross-checks, and portfolio monitoring.",
   applicationName: "Aarka",
   icons: {
     icon: "/aarka-logo.png",
@@ -44,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Aarka | Structured Workspace for Startup Pitches and Investor Review",
     description:
-      "Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
+      "Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial cross-checks, and portfolio monitoring.",
     url: "https://www.aarkavc.xyz",
     siteName: "Aarka: Investment Review Workspace",
     locale: "en_US",
@@ -70,7 +73,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Aarka | Structured Workspace for Startup Pitches and Investor Review",
     description:
-      "Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial verification, and portfolio monitoring.",
+      "Bring startup submissions and investment opportunities into a structured review process with source-cited extraction, deterministic financial cross-checks, and portfolio monitoring.",
     images: ["https://www.aarkavc.xyz/og-card.png"],
   },
 };
@@ -79,7 +82,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${newsreader.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="h-full bg-slate-50 text-slate-900">
         <ScrollManager />

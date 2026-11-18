@@ -23,6 +23,8 @@ export function TrafficTracker() {
     const isPublic =
       pathname === "/" ||
       pathname.startsWith("/pitch") ||
+      pathname === "/privacy" ||
+      pathname === "/terms" ||
       pathname.startsWith("/login") ||
       pathname.startsWith("/pending") ||
       pathname.startsWith("/unauthorized");

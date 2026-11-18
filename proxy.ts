@@ -6,7 +6,14 @@ import { NextResponse } from "next/server";
 import { auth, authEnabled } from "@/lib/nextauth";
 
 function isPublicPage(pathname: string, hasPitchToken: boolean): boolean {
-  if (pathname === "/" || pathname === "/robots.txt" || pathname === "/sitemap.xml") return true;
+  if (
+    pathname === "/" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/privacy" ||
+    pathname === "/terms"
+  )
+    return true;
   if (pathname === "/pitch" || pathname.startsWith("/pitch/")) return true;
   if (pathname === "/founder/pitch") return true; // redirects cleanly to /pitch
   if (pathname === "/login" || pathname === "/pending" || pathname === "/unauthorized") return true;

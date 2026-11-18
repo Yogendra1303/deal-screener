@@ -57,6 +57,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   const isStandalonePublic =
     pathname === "/pitch" ||
     pathname.startsWith("/pitch/") ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/pending") ||
     pathname.startsWith("/unauthorized") ||

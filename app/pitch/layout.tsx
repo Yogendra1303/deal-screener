@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Submit Your Pitch Deck",
   description:
-    "Submit your early-stage pitch deck (up to $4M mandate) directly to the Aarka investment review queue. Confidential review with structured metric verification.",
+    "Submit your early-stage pitch deck (up to $4M mandate) directly to the Aarka investment review queue. Confidential review with source-cited extraction and deterministic financial cross-checks.",
   openGraph: {
     title: "Submit Your Pitch Deck | Aarka",
     description:
