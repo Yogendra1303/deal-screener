@@ -8,7 +8,7 @@ import { signInCheck, type Session } from "@/lib/auth";
 import type { Role } from "@/lib/team";
 import { hydrate, persist } from "@/lib/db/client";
 
-const DEMO_DATE = "2026-10-29";
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export const ROLE_STORAGE_KEY = "ds.role.v1";
 const KEYS = { session: "ds.session.v1", questions: "ds.questions.v1" };
@@ -257,9 +257,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       ask: (q) =>
         update((l) => ({
           ...l,
-          added: [...l.added, { ...q, id: `q-local-${Date.now().toString(36)}-${l.added.length + 1}`, askedAt: DEMO_DATE }],
+          added: [...l.added, { ...q, id: `q-local-${Date.now().toString(36)}-${l.added.length + 1}`, askedAt: todayIso() }],
         })),
-      answer: (id, a) => update((l) => ({ ...l, answers: { ...l.answers, [id]: { ...a, at: DEMO_DATE } } })),
+      answer: (id, a) => update((l) => ({ ...l, answers: { ...l.answers, [id]: { ...a, at: todayIso() } } })),
       questionsChanged: local.added.length > 0 || Object.keys(local.answers).length > 0,
       resetQuestions: () => update(() => EMPTY),
     }),

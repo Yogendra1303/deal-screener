@@ -16,6 +16,7 @@ import { COLUMNS, FX_NOTE, dealRow, portfolioRow, type Cell, type ColKey, type C
 import type { KeyFact } from "@/lib/provenance";
 
 const METRICS: { key: ColKey; label: string; plain: string; bar?: number; barText?: string; unit: (n: number) => string }[] = [
+  { key: "conviction", label: "Conviction", plain: "5-pillar institutional conviction rating (0 to 100, Grade A to G)", bar: 75, barText: "Grade B bar: 75+", unit: (n) => `${Math.round(n)}/100` },
   { key: "revenue", label: "Revenue", plain: "Money coming in each month, in US dollars", unit: (n) => (n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${(n / 1e3).toFixed(1)}K`) },
   { key: "growth", label: "Growth", plain: "How fast revenue grows a month, over 3 months", bar: 10, barText: "Seed bar: 10% a month", unit: (n) => `${n.toFixed(1)}%` },
   { key: "burnMultiple", label: "Burn multiple", plain: "Cash burned for each $1 of new yearly revenue. Lower is better", bar: 2, barText: "Fund bar: 2× or less", unit: (n) => `${n.toFixed(1)}×` },

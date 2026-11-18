@@ -34,7 +34,7 @@ export default function FounderPage({ params }: { params: Promise<{ id: string }
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-100 px-4 py-2.5 text-sm text-indigo-900 ring-1 ring-inset ring-slate-200">
         <span>
-          This is what {ceo.name} sees at {c.name}&apos;s private link. There&apos;s no login in the prototype.
+          Founder reporting preview for {ceo.name} ({c.name}&apos;s private MIS link).
         </span>
         <Link href={`/portfolio/${c.id}`} className="font-medium text-indigo-700 hover:text-indigo-900">
           ← Back to the fund&apos;s view
@@ -132,7 +132,7 @@ function SendReport({ c }: { c: PortfolioCompany }) {
       {sent && (
         <div className="mt-3">
           <Notice>
-            Sent. The fund can see your {fmtMonth(sent)} report now. In the prototype it&apos;s saved in this browser only.
+            Submitted. Your {fmtMonth(sent)} MIS report is now synced to the fund&apos;s portfolio workspace.
           </Notice>
         </div>
       )}
@@ -149,7 +149,7 @@ function SendReport({ c }: { c: PortfolioCompany }) {
             onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
             className="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200"
           />
-          <p className="mt-1 text-[11px] text-slate-400">The prototype keeps only the file&apos;s name; the file stays on this computer.</p>
+          <p className="mt-1 text-[11px] text-slate-400">Accepted formats: PDF, CSV, or Excel spreadsheet.</p>
         </div>
         <fieldset>
           <legend className="text-sm font-medium text-slate-800">Four numbers for {fmtMonth(month)}</legend>

@@ -150,6 +150,7 @@ export function openPrintableReport(title: string, subtitle: string, bodyHtml: s
 }
 
 import type { DealResult } from "./types";
+import { calculateVCMetrics } from "./vc-metrics";
 
 export interface ICMemoArgs {
   deal: DealResult;
@@ -162,6 +163,17 @@ export function exportICMemoPdf({ deal, status = "Under Review", leadPartner = "
   const askStr = f.amountUsd ? `$${(f.amountUsd / 1_000_000).toFixed(2)}M` : "Not stated";
   const founderNames = f.founders?.map((x) => x.name).join(", ") || "Founders on file";
   const conflictCount = deal.flags.filter((x) => x.kind === "conflict").length;
+  const vc = calculateVCMetrics(deal.sheet, deal.record, deal.form.amountUsd, { deal });
+  const pillarRows = Object.values(vc.conviction.dimensions)
+    .map(
+      (dim) => `<tr>
+        <td style="font-weight:600;">${escapeHtml(dim.name)} <span style="color:#64748b;font-weight:400;">(${dim.weightPct}%)</span></td>
+        <td style="font-family:monospace;font-weight:700;">${dim.score} / 100</td>
+        <td><span class="badge ${dim.score >= 75 ? "badge-green" : dim.score >= 45 ? "badge-amber" : "badge-red"}">${escapeHtml(dim.rating)}</span></td>
+        <td style="color:#475569;">${escapeHtml(dim.summary)}</td>
+      </tr>`,
+    )
+    .join("");
 
   const scoreRows = deal.scores
     .map((s) => {
@@ -204,10 +216,10 @@ export function exportICMemoPdf({ deal, status = "Under Review", leadPartner = "
           </div>
         </div>
         <div style="text-align:right;">
-          <span class="badge ${deal.band === "Priority" ? "badge-green" : deal.band === "Review" ? "badge-amber" : "badge-red"}" style="font-size:12px;padding:4px 10px;">
-            Band: ${escapeHtml(deal.band)}
+          <span class="badge ${vc.grade === "A" || vc.grade === "B" ? "badge-green" : vc.grade === "C" || vc.grade === "D" ? "badge-amber" : "badge-red"}" style="font-size:12px;padding:4px 10px;">
+            Grade ${escapeHtml(vc.grade)} &middot; ${vc.overallScore}/100
           </span>
-          <div style="font-size:11px;color:#64748b;margin-top:4px;">Workflow Status: <strong>${escapeHtml(status)}</strong></div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">Band: <strong>${escapeHtml(deal.band)}</strong> &middot; Status: <strong>${escapeHtml(status)}</strong></div>
         </div>
       </div>
     </div>
@@ -223,8 +235,8 @@ export function exportICMemoPdf({ deal, status = "Under Review", leadPartner = "
         <div class="kpi-val">${escapeHtml(askStr)}</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">Screener Recommendation</div>
-        <div class="kpi-val" style="color:${deal.band === "Priority" ? "#047857" : deal.band === "Review" ? "#b45309" : "#b91c1c"};">${escapeHtml(deal.band)}</div>
+        <div class="kpi-label">VC Conviction Score</div>
+        <div class="kpi-val" style="color:${vc.grade === "A" || vc.grade === "B" ? "#047857" : vc.grade === "C" || vc.grade === "D" ? "#b45309" : "#b91c1c"};">Grade ${escapeHtml(vc.grade)} (${vc.overallScore}/100)</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">Math Gap Flags</div>
@@ -236,7 +248,23 @@ export function exportICMemoPdf({ deal, status = "Under Review", leadPartner = "
       </div>
     </div>
 
-    <h2>2. Deterministic Financial Cross-Check &amp; Math Gap Audit</h2>
+    <h2>2. Institutional 5-Pillar Conviction Matrix</h2>
+    <p style="font-size:12px;color:#64748b;margin:0 0 8px;">
+      Raw Weighted Score: <strong>${vc.conviction.rawWeightedScore}/100</strong> &middot; Disclosure Completeness Multiplier: <strong>${vc.conviction.completenessMultiplier}x</strong> (${vc.conviction.disclosedCount}/${vc.conviction.totalCoreFacts} core facts) &middot; Final: <strong>${vc.overallScore}/100 (Grade ${escapeHtml(vc.grade)})</strong>.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:200px;">Pillar (Weight)</th>
+          <th style="width:85px;">Score</th>
+          <th style="width:120px;">Rating</th>
+          <th>Audit Summary</th>
+        </tr>
+      </thead>
+      <tbody>${pillarRows}</tbody>
+    </table>
+
+    <h2>3. Deterministic Financial Cross-Check &amp; Math Gap Audit</h2>
     <p style="font-size:12px;color:#64748b;margin:0 0 8px;">
       Cross-checks compare founder pitch deck slide statements against raw monthly CSV rows. Discrepancies exceeding 10% are flagged deterministically.
     </p>
@@ -251,7 +279,7 @@ export function exportICMemoPdf({ deal, status = "Under Review", leadPartner = "
       <tbody>${flagRows}</tbody>
     </table>` : `<p style="font-size:13px;color:#047857;">All stated slide claims corroborate with the provided monthly numbers sheet without math discrepancies.</p>`}
 
-    <h2>3. Institutional Scorecard &amp; Rubric Assessment</h2>
+    <h2>4. Institutional Scorecard &amp; Rubric Assessment</h2>
     <table>
       <thead>
         <tr>
@@ -263,7 +291,7 @@ export function exportICMemoPdf({ deal, status = "Under Review", leadPartner = "
       <tbody>${scoreRows}</tbody>
     </table>
 
-    <h2>4. Investment Committee Sign-off &amp; Decision Record</h2>
+    <h2>5. Investment Committee Sign-off &amp; Decision Record</h2>
     <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#ffffff;margin-top:8px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;">
         <div>

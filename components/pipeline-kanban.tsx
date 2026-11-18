@@ -10,6 +10,7 @@ import { DropdownSelect, cx } from "@/components/ui";
 import { fmtDay } from "@/lib/dates";
 import { usd } from "@/lib/rules";
 import type { DealStatus } from "@/lib/types";
+import { calculateVCMetrics, GRADE_BADGE_STYLE } from "@/lib/vc-metrics";
 
 interface LaneConfig {
   status: DealStatus;
@@ -301,13 +302,21 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
               <div className="p-3.5">
                 {laneRows.length === 0 ? (
                   <div className="flex items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 text-xs text-slate-400">
-                    No pitches in {lane.label.toLowerCase()} — drag any pitch card here to move it.
+                    No pitches in {lane.label.toLowerCase()} - drag any pitch card here to move it.
                   </div>
                 ) : (
                   <>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       {visibleRows.map((r) => {
+                        const dealObj = store.deals.find((d) => d.id === r.id);
+                        const vc = dealObj
+                          ? calculateVCMetrics(dealObj.sheet, dealObj.record, dealObj.form.amountUsd, { deal: dealObj })
+                          : null;
                         const hasGap = Boolean(r.cover?.flags.some((f) => f.kind === "conflict"));
+                        const nonDeck = Boolean(
+                          dealObj?.flags?.some((f) => f.checkId === "non_pitch_deck") ||
+                            (dealObj?.deckValidation && !dealObj.deckValidation.isPitchDeck),
+                        );
                         return (
                           <article
                             key={r.id}
@@ -371,6 +380,17 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                               </p>
 
                               <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                {vc && (
+                                  <span
+                                    title={`VC Conviction Score: ${vc.overallScore}/100 (${vc.conviction.tierLabel})`}
+                                    className={cx(
+                                      "rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ring-1 ring-inset",
+                                      GRADE_BADGE_STYLE[vc.grade],
+                                    )}
+                                  >
+                                    Grade {vc.grade} · {vc.overallScore}
+                                  </span>
+                                )}
                                 {r.askUsd ? (
                                   <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-700">
                                     {usd(r.askUsd)}
@@ -379,6 +399,11 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                                 {r.fit === "Strong" && (
                                   <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
                                     Strong Fit
+                                  </span>
+                                )}
+                                {nonDeck && (
+                                  <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800">
+                                    Incomplete Deck
                                   </span>
                                 )}
                                 {hasGap && (

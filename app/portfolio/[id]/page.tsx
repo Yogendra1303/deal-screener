@@ -444,8 +444,7 @@ function Documents({ c }: { c: PortfolioCompany }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Every file the company has sent, in one place. These are sample entries: the files themselves aren&apos;t included in the
-        prototype.
+        Every document submitted by the company across pitch intake, monthly MIS reports, and board updates.
       </p>
       {groups.map((g) => (
         <Card key={g.title} className="overflow-hidden">

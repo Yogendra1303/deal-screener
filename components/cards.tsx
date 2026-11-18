@@ -19,6 +19,7 @@ import { usd } from "@/lib/rules";
 import { useLinks } from "./links-store";
 import { SEED_INBOUND, viaText } from "@/lib/links";
 import { SAMPLES, SEED_RESULTS } from "@/lib/data";
+import { calculateVCMetrics, GRADE_BADGE_STYLE, type ConvictionGrade } from "@/lib/vc-metrics";
 import { Avatar } from "./shell";
 
 const SEED_PITCH_IDS = new Set<string>([
@@ -445,6 +446,8 @@ export interface PitchCardData {
   isNew: boolean;
   screened: boolean;
   band?: string;
+  convictionGrade?: ConvictionGrade;
+  convictionScore?: number;
   conflicts: number;
   owner?: string;
   isLiveSubmission?: boolean;
@@ -463,6 +466,7 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
     for (const d of store.deals) {
       const isLive = !SEED_PITCH_IDS.has(d.id);
       if (!isLive && !filter(own(d.id))) continue;
+      const vc = calculateVCMetrics(d.sheet, d.record, d.form.amountUsd, { deal: d });
       out.push({
         id: d.id,
         href: `/deals/${d.id}`,
@@ -476,6 +480,8 @@ export function usePitches(filter: (owner?: string) => boolean): PitchCardData[]
         isNew: store.statusOf(d.id) === "New",
         screened: true,
         band: store.bandOf(d),
+        convictionGrade: vc.grade,
+        convictionScore: vc.overallScore,
         conflicts: d.flags.filter((f) => f.kind === "conflict").length,
         owner: own(d.id),
         isLiveSubmission: isLive,
@@ -568,7 +574,17 @@ export function PitchCard({ d, signals }: { d: PitchCardData; signals?: React.Re
           </p>
         </div>
         {d.screened && d.band ? (
-          <span className={cx("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset", BAND_PILL[d.band])}>{d.band}</span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {d.convictionGrade && d.convictionScore != null && (
+              <span
+                title={`VC Conviction Score: ${d.convictionScore}/100`}
+                className={cx("rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ring-1 ring-inset", GRADE_BADGE_STYLE[d.convictionGrade])}
+              >
+                {d.convictionGrade} · {d.convictionScore}
+              </span>
+            )}
+            <span className={cx("rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset", BAND_PILL[d.band])}>{d.band}</span>
+          </div>
         ) : (
           <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-200">Not read yet</span>
         )}

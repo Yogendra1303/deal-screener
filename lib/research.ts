@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { ResearchSchema, type DealRecord, type Research } from "./schema";
-import { EFFORT, MODEL, assertFinished, costUsd, getClient } from "./ai";
+import { EFFORT, MODEL, assertFinished, costUsd, getClient, modelCapabilities } from "./ai";
 import type { FormInput, RunStep } from "./types";
 import { RESEARCH_SYSTEM, researchBrief } from "./prompts";
 
@@ -35,12 +35,13 @@ export async function runResearch(args: {
   ];
   const usage = { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, server_tool_use: { web_search_requests: 0 } };
 
+  const caps = modelCapabilities(MODEL);
   for (let turn = 0; turn < 5; turn++) {
     const stream = client.messages.stream({
       model: MODEL,
-      max_tokens: 16000,
+      max_tokens: caps.maxTokens,
       system: RESEARCH_SYSTEM,
-      output_config: { effort: EFFORT },
+      ...(caps.supportsEffort ? { output_config: { effort: EFFORT } } : {}),
       tools,
       messages,
     });

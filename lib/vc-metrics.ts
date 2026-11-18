@@ -5,6 +5,15 @@ import type { DealRecord } from "./schema";
 
 export type ConvictionGrade = "A" | "B" | "C" | "D" | "E" | "G";
 
+export const GRADE_BADGE_STYLE: Record<ConvictionGrade, string> = {
+  A: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  B: "bg-blue-50 text-blue-700 ring-blue-200",
+  C: "bg-indigo-50 text-indigo-700 ring-indigo-200",
+  D: "bg-amber-50 text-amber-800 ring-amber-200",
+  E: "bg-rose-50 text-rose-700 ring-rose-200",
+  G: "bg-slate-100 text-slate-700 ring-slate-300",
+};
+
 export interface ConvictionDimension {
   id: string;
   name: string;
@@ -287,8 +296,15 @@ export function calculateVCMetrics(
   const disclosureScore = Math.round(completenessRatio * 100);
 
   const disclosurePenalties: string[] = [];
+  const deckValidation = deal?.deckValidation ?? null;
+  const isNonStandardDeck = Boolean((deckValidation && !deckValidation.isPitchDeck) || flags.some((f) => f.checkId === "non_pitch_deck"));
+  if (isNonStandardDeck) {
+    disclosurePenalties.push(
+      `Document Structure Alert: Uploaded PDF classified as "${deckValidation?.documentType || "Incomplete / Non-Deck Document"}" (missing core VC pitch sections).`,
+    );
+  }
   if (missingFacts.length > 0) {
-    disclosurePenalties.push(`-${missingFacts.length * 10} pts: Missing ${missingFacts.length} core institutional disclosures (${missingFacts.slice(0, 3).join(", ")}${missingFacts.length > 3 ? "…" : ""})`);
+    disclosurePenalties.push(`-${missingFacts.length * 10} pts: Missing ${missingFacts.length} core institutional disclosures (${missingFacts.slice(0, 3).join(", ")}${missingFacts.length > 3 ? "..." : ""})`);
   }
 
   // Pillar 2: Financial Integrity & Math Veracity (Weight: 25%)
@@ -439,8 +455,10 @@ export function calculateVCMetrics(
   const completenessMultiplier = Math.max(0.15, Math.pow(completenessRatio, 0.6));
   let calculatedScore = Math.round(rawWeightedScore * completenessMultiplier);
 
-  // Hard safety constraint: If 6 or more core facts are missing, score CANNOT exceed 15 (Grade G)
-  if (missingFacts.length >= 6) {
+  // Hard safety constraint: Non-standard / non-pitch documents or submissions with 6+ missing facts are clamped to Grade G
+  if (isNonStandardDeck) {
+    calculatedScore = Math.min(12, Math.max(5, calculatedScore));
+  } else if (missingFacts.length >= 6) {
     calculatedScore = Math.min(15, Math.max(5, calculatedScore));
   } else {
     calculatedScore = Math.min(96, Math.max(5, calculatedScore));

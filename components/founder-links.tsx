@@ -235,8 +235,7 @@ export function RequestBuilder({ target, onClose }: { target: BuilderTarget; onC
             </div>
             <pre className="whitespace-pre-wrap rounded-xl bg-white p-3 font-sans text-sm text-slate-700 ring-1 ring-slate-200">{email}</pre>
             <p className="text-xs text-slate-500">
-              What comes back shows in the Data room and on this company, marked new until someone checks it. Prototype: the founder page has to be
-              opened in this browser.
+              Uploaded files arrive directly in the Data room and on this company record, flagged as new until reviewed.
             </p>
           </div>
         )}
@@ -291,7 +290,7 @@ export function FileName({ f, href, name: label, className }: { f?: LinkFile; hr
         {name}
       </a>
     );
-  if (!f?.key) return <span className={cx("truncate text-slate-700", className)} title="Sample file name. The file itself isn't included in the prototype.">{name}</span>;
+  if (!f?.key) return <span className={cx("truncate text-slate-700", className)} title="Document reference on file in archive">{name}</span>;
   return (
     <button
       onClick={async () => setNone(!(await links.openFile(f)))}

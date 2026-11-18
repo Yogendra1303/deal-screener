@@ -195,8 +195,8 @@ function SourceCard({ e }: { e: Evidence }) {
       Open source{e.page ? ` · p.${e.page}` : ""}
     </a>
   ) : (
-    <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-600" title="This prototype holds the sample file by name only, so it cannot be opened here.">
-      {e.page ? `p.${e.page} · ` : ""}Sample file: preview unavailable
+    <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-600" title="Document citation archived in workspace">
+      {e.page ? `p.${e.page} · ` : ""}Archived citation
     </span>
   );
   return (
@@ -342,7 +342,8 @@ export function AskForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!text.trim()) return;
-        w.ask({ companyId, companyName, side, about, text: text.trim(), askedBy: w.me, owner: ownerValue, due: addDays(DEMO_DATE, 7) });
+        const todayIso = new Date().toISOString().slice(0, 10);
+        w.ask({ companyId, companyName, side, about, text: text.trim(), askedBy: w.me, owner: ownerValue, due: addDays(todayIso, 7) });
         setText("");
         setSent(true);
       }}

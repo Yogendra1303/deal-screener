@@ -7,17 +7,19 @@ import { addMonths, companyHealth, reportStatus, runwayMonths, type CompanyBand 
 import type { PortfolioCompany } from "./portfolio/types";
 import { burnMultiple, dealFacts, growth3, misEvidence, portfolioFacts, type Evidence, type FactStatus } from "./provenance";
 import type { DealResult, SheetRow } from "./types";
+import { calculateVCMetrics } from "./vc-metrics";
 
-/** Sample exchange rates, fixed for the demo so the grid always reads the same. Units per US dollar. */
+/** Reference exchange rates (units per US dollar). */
 export const FX: Record<string, number> = { USD: 1, INR: 84, AED: 3.6725, SAR: 3.75 };
-export const FX_NOTE = "Sample rates fixed for the demo: ₹84, AED 3.6725 and SAR 3.75 to one US dollar.";
+export const FX_NOTE = "Reference FX rates: ₹84, AED 3.6725 and SAR 3.75 to one US dollar.";
 
 /** Reporting health as a number so the column sorts: higher is healthier. "Too early" has no rank and sorts last. */
 export const REPORTING_RANK: Record<string, number> = { "On track": 3, Slipping: 2, "Gone quiet": 1 };
 
-export type ColKey = "revenue" | "growth" | "burnMultiple" | "runway" | "plan" | "customers" | "round" | "reporting";
+export type ColKey = "conviction" | "revenue" | "growth" | "burnMultiple" | "runway" | "plan" | "customers" | "round" | "reporting";
 
 export const COLUMNS: { key: ColKey; label: string; hint: string; better: "high" | "low" | null }[] = [
+  { key: "conviction", label: "Conviction", hint: "5-pillar institutional conviction score (0-100, Grade A to G)", better: "high" },
   { key: "revenue", label: "Revenue a month", hint: "Latest month, in US dollars", better: "high" },
   { key: "growth", label: "Growth", hint: "Average a month over the last 3 months, compounded", better: "high" },
   { key: "burnMultiple", label: "Burn multiple", hint: "Net burn over 3 months ÷ new annual revenue in them. Lower is better", better: "low" },
@@ -153,6 +155,7 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
     currency: c.currency,
     band,
     cells: {
+      conviction: empty("Portfolio", "Active portfolio investment; tracked under reporting health."),
       revenue,
       growth,
       burnMultiple: bm,
@@ -223,6 +226,25 @@ export function dealRow(d: DealResult): CompareRow {
   const customers: Cell = cf.status === "Missing" ? empty() : { sort: parseFloat(cf.value.replace(/,/g, "")), text: cf.value, sub: cf.sub, status: cf.status, evidence: cf.evidence, working: [] };
 
   const rd = fact("round");
+  const vc = calculateVCMetrics(d.sheet, d.record, d.form.amountUsd, { deal: d });
+  const conviction: Cell = {
+    sort: vc.overallScore,
+    text: `Grade ${vc.grade} · ${vc.overallScore}`,
+    sub: vc.conviction.tierLabel.split(" · ")[0],
+    status: vc.grade === "A" || vc.grade === "B" ? "Checked" : vc.grade === "G" ? "Missing" : "Reported",
+    evidence: [
+      {
+        source: "5-Pillar Conviction Engine",
+        value: `Grade ${vc.grade} (${vc.overallScore}/100) · ${vc.conviction.disclosedCount}/${vc.conviction.totalCoreFacts} core facts disclosed`,
+      },
+    ],
+    working: [
+      `Raw weighted score: ${vc.conviction.rawWeightedScore}/100 (Disclosure ${vc.conviction.dimensions.disclosure.score}, Veracity ${vc.conviction.dimensions.veracity.score}, Founder ${vc.conviction.dimensions.founder.score}, Economics ${vc.conviction.dimensions.economics.score}, Mandate ${vc.conviction.dimensions.mandate.score})`,
+      `Completeness multiplier: ${vc.conviction.completenessMultiplier}x (${Math.round(vc.conviction.completenessRatio * 100)}% core disclosures)`,
+      `Final conviction: ${vc.overallScore}/100 (Grade ${vc.grade})`,
+    ],
+    why: vc.conviction.suggestedAction,
+  };
   return {
     id: d.id,
     name: d.form.companyName,
@@ -231,6 +253,7 @@ export function dealRow(d: DealResult): CompareRow {
     sector: d.form.sector,
     currency: cur,
     cells: {
+      conviction,
       revenue,
       growth,
       burnMultiple: bm,

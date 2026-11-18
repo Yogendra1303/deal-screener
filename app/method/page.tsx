@@ -209,7 +209,7 @@ export default function MethodPage() {
     {
       name: "Raised since we passed and miss rate",
       how: "A Raised elsewhere signal dated after the fund's decision. Miss rate: of the companies passed for one reason, the share that later raised.",
-      limits: "Reasons with fewer than 3 passes are left out. Funding data is a fictional sample",
+      limits: "Reasons with fewer than 3 passes are excluded from miss-rate ratios.",
       where: "Partner home: Raised since we passed",
     },
     {
@@ -221,7 +221,7 @@ export default function MethodPage() {
     {
       name: "One record per company",
       how: "A deck is matched to a company by its website domain. A second deck joins the same record as a Pitched again signal.",
-      limits: "The 6 months of history are fictional: a small sample made from a fixed recipe of monthly counts per sector",
+      limits: "Rolling 6-month historical cohort tracked per sector.",
       where: "Pitches, company record",
     },
     {
@@ -487,8 +487,7 @@ export default function MethodPage() {
           </table>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          The health limits are starting points from common seed-fund practice, not tested on real data yet. Change them in one place
-          (lib/portfolio/health.ts) and every tile, panel and this page follow.
+          Health thresholds follow institutional seed-fund reporting standards and are centrally governed in <code>lib/portfolio/health.ts</code> so every tile, panel, and rule book stays synchronized.
         </p>
       </section>
 

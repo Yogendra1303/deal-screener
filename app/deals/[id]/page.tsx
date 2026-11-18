@@ -20,6 +20,7 @@ import { ICVotingPanel } from "@/components/ic-voting-panel";
 import { PdfSlideViewer } from "@/components/pdf-slide-viewer";
 import { VCMetricsPanel } from "@/components/vc-metrics-panel";
 import { escapeHtml, exportICMemoPdf, openPrintableReport } from "@/lib/export";
+import { calculateVCMetrics, GRADE_BADGE_STYLE } from "@/lib/vc-metrics";
 import { useStore } from "@/components/store";
 import { useWorkspace } from "@/components/workspace";
 import {
@@ -74,6 +75,10 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
     }
   }, [initial]);
   const facts = useMemo(() => (deal ? dealFacts(deal, deckUrl) : []), [deal, deckUrl]);
+  const vcMetrics = useMemo(
+    () => (deal ? calculateVCMetrics(deal.sheet, deal.record, deal.form.amountUsd, { deal }) : null),
+    [deal],
+  );
   const links = useLinks();
   const w = useWorkspace();
   const view = useDiligenceView(deal);
@@ -96,7 +101,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
   if (!deal || !view)
     return (
       <Card className="p-8 text-center">
-        <p className="text-sm text-slate-600">This pitch isn&apos;t in this browser. It may have been screened somewhere else.</p>
+        <p className="text-sm text-slate-600">This pitch could not be found in the active workspace.</p>
         <div className="mt-3">
           <BackLink href="/deals" label="Back to pitches" />
         </div>
@@ -139,6 +144,17 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{f.companyName}</h1>
             <Tag className="uppercase">Live pitch</Tag>
+            {vcMetrics && (
+              <span
+                title={`VC Conviction Score: ${vcMetrics.overallScore}/100 (${vcMetrics.conviction.tierLabel})`}
+                className={cx(
+                  "rounded px-2 py-0.5 font-mono text-[11px] font-bold ring-1 ring-inset",
+                  GRADE_BADGE_STYLE[vcMetrics.grade],
+                )}
+              >
+                Grade {vcMetrics.grade} · {vcMetrics.overallScore}/100
+              </span>
+            )}
             <IssuesChip deal={deal} />
           </div>
           <p className="mt-1 text-slate-600">{deal.record.oneLiner}</p>
@@ -235,7 +251,12 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
             <QuestionsPanel company={company} />
           </div>
           <aside className="space-y-4">
-            <ICVotingPanel dealId={deal.id} companyName={f.companyName} />
+            <ICVotingPanel
+              dealId={deal.id}
+              companyName={f.companyName}
+              engineGrade={vcMetrics?.grade}
+              engineScore={vcMetrics?.overallScore}
+            />
             <OverrulePanel deal={deal} band={band} />
             <SignalsPanel id={deal.id} name={deal.form.companyName} className="rounded-xl p-5" />
             <WhoKnows contacts={DEAL_CONTACTS[deal.id] ?? []} note="Warm intro paths across the fund's relationship graph." />

@@ -15,6 +15,7 @@ export type CheckId =
   | "founded_vs_registry"
   | "founder_vs_profile"
   | "missing_core_facts"
+  | "non_pitch_deck"
   | "vc_high_burn_multiple"
   | "vc_critical_runway";
 
@@ -29,6 +30,7 @@ export const CHECK_LABELS: Record<CheckId, string> = {
   founded_vs_registry: "Founding date: deck vs registry",
   founder_vs_profile: "Founder roles: deck vs profile",
   missing_core_facts: "Missing core facts",
+  non_pitch_deck: "Pitch deck structural validation",
   vc_high_burn_multiple: "VC metrics: high burn multiple",
   vc_critical_runway: "VC metrics: critical runway alert",
 };
@@ -115,6 +117,18 @@ export interface RunStep {
   costUsd?: number;
 }
 
+export interface DeckValidationSummary {
+  isPitchDeck: boolean;
+  documentType: "Pitch Deck" | "Teaser / One-Pager" | "Incomplete / Non-Deck Document" | "Scanned / Image-Only PDF";
+  pageCount: number;
+  wordCount: number;
+  confidence: number;
+  detectedSections: string[];
+  missingSections: string[];
+  warnings: string[];
+  nonDeckSignals: string[];
+}
+
 export interface DealResult {
   id: string;
   source: "sample" | "upload";
@@ -125,6 +139,7 @@ export interface DealResult {
   processedBy?: "api" | "chat";
   form: FormInput;
   deck: { fileName: string; url: string | null };
+  deckValidation?: DeckValidationSummary | null;
   record: DealRecord;
   sheet: SheetRow[] | null;
   registry: RegistryRecord | null;
@@ -138,7 +153,7 @@ export interface DealResult {
   runLog: RunStep[];
 }
 
-/** Where the team is with a request. Kept in this browser only. */
+/** Where the team is with a pitch in the active pipeline. */
 export type DealStatus = "New" | "Reviewing" | "Meeting set" | "On hold" | "Passed";
 export const STATUSES: DealStatus[] = ["New", "Reviewing", "Meeting set", "On hold", "Passed"];
 

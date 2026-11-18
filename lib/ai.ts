@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-export const MODEL = process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
+// Default to Claude Sonnet 4.5 which supports native PDF vision, structured output_config, and 16k output tokens.
+export const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5-20250929";
 
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export const EFFORT: Effort = (["low", "medium", "high", "xhigh", "max"] as const).includes(
@@ -8,6 +9,15 @@ export const EFFORT: Effort = (["low", "medium", "high", "xhigh", "max"] as cons
 )
   ? (process.env.AI_EFFORT as Effort)
   : "medium";
+
+/** Model capability bounds so older env overrides (e.g. claude-3-5-sonnet) never fail with 400 errors. */
+export function modelCapabilities(model: string = MODEL): { maxTokens: number; supportsEffort: boolean } {
+  const m = model.toLowerCase();
+  if (m.includes("claude-3-5") || m.includes("claude-3-opus") || m.includes("claude-3-haiku")) {
+    return { maxTokens: 8192, supportsEffort: false };
+  }
+  return { maxTokens: 16000, supportsEffort: true };
+}
 
 export class MissingKeyError extends Error {
   constructor() {
@@ -28,8 +38,11 @@ export function getClient(): Anthropic {
 
 // List prices in USD per million tokens. Used only for the cost estimate shown in the app.
 const PRICES: Record<string, { input: number; output: number }> = {
-  "claude-3-5-sonnet-20241022": { input: 3, output: 15 },
+  "claude-sonnet-4-5-20250929": { input: 3, output: 15 },
+  "claude-sonnet-4-20250514": { input: 3, output: 15 },
+  "claude-opus-4-20250514": { input: 15, output: 75 },
   "claude-3-7-sonnet-20250219": { input: 3, output: 15 },
+  "claude-3-5-sonnet-20241022": { input: 3, output: 15 },
   "claude-3-5-haiku-20241022": { input: 0.8, output: 4 },
   "claude-3-opus-20240229": { input: 15, output: 75 },
   "claude-opus-5-5": { input: 4, output: 20 },
@@ -46,7 +59,7 @@ type UsageLike = {
 };
 
 export function costUsd(model: string, usage: UsageLike): number {
-  const p = PRICES[model] ?? PRICES["claude-opus-5-5"];
+  const p = PRICES[model] ?? PRICES["claude-sonnet-4-5-20250929"];
   const input =
     usage.input_tokens +
     (usage.cache_creation_input_tokens ?? 0) * 1.25 +

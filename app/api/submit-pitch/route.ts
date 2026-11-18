@@ -1,7 +1,14 @@
 import { revalidatePath } from "next/cache";
 import { after, NextResponse } from "next/server";
 import { hasKey } from "@/lib/ai";
+import { runChecks } from "@/lib/checks";
 import { summariseSheet } from "@/lib/csv-parser";
+import {
+  applyLocalPdfFactsToRecord,
+  buildDeckValidationFlag,
+  extractFactsFromPdfBytes,
+  validatePitchDeck,
+} from "@/lib/deck-validator";
 import { STATE_KEYS } from "@/lib/db/project";
 import {
   driver,
@@ -370,46 +377,86 @@ export async function POST(req: Request) {
             }
           }
 
-          if (hasKey() && pdfBuffer && pdfBuffer.subarray(0, 5).toString() === "%PDF-") {
-            const deal = await processDeal({
-              id,
-              source: "upload",
-              receivedAt,
-              form,
-              pdfBase64: pdfBuffer.toString("base64"),
-              fileName: deckFileName,
-              deckUrl: fileUrl,
-              sheet,
-            });
-            const checksSummary = summarizeChecks(deal.flags);
-            const teamScore = deal.scores.find((s) => s.key === "team")?.level ?? null;
+          const isValidPdfBuf = Boolean(pdfBuffer && pdfBuffer.subarray(0, 5).toString() === "%PDF-");
+          const deckValidation = isValidPdfBuf && pdfBuffer ? validatePitchDeck(pdfBuffer, deckFileName) : null;
+          const validationFlag = deckValidation ? buildDeckValidationFlag(deckValidation, deckFileName) : null;
 
-            await patchDeal(id, {
-              record_json: deal,
-              band: deal.band,
-              founder_fit: teamScore,
-              summary: deal.ai.summary,
-              checks_json: deal.flags,
-              checks_status: checksSummary,
-              ai_status: "Complete",
-            });
+          let aiSucceeded = false;
+          if (hasKey() && isValidPdfBuf && pdfBuffer) {
+            try {
+              const deal = await processDeal({
+                id,
+                source: "upload",
+                receivedAt,
+                form,
+                pdfBase64: pdfBuffer.toString("base64"),
+                fileName: deckFileName,
+                deckUrl: fileUrl,
+                sheet,
+              });
+              const mergedFlags = validationFlag ? [validationFlag, ...deal.flags] : deal.flags;
+              const enrichedDeal: DealResult = {
+                ...deal,
+                deckValidation,
+                flags: mergedFlags,
+              };
+              const checksSummary = summarizeChecks(enrichedDeal.flags);
+              const teamScore = enrichedDeal.scores.find((s) => s.key === "team")?.level ?? null;
 
-            const existingDeals = (await getState<Record<string, DealResult>>(STATE_KEYS.deals)) ?? {};
-            await putState(STATE_KEYS.deals, { ...existingDeals, [id]: deal });
-          } else {
-            // Deterministic code checks when ANTHROPIC_API_KEY is not configured
+              await patchDeal(id, {
+                record_json: enrichedDeal,
+                band: enrichedDeal.band,
+                founder_fit: teamScore,
+                summary: enrichedDeal.ai.summary,
+                checks_json: enrichedDeal.flags,
+                checks_status: checksSummary,
+                ai_status: "Complete",
+              });
+
+              const existingDeals = (await getState<Record<string, DealResult>>(STATE_KEYS.deals)) ?? {};
+              await putState(STATE_KEYS.deals, { ...existingDeals, [id]: enrichedDeal });
+              aiSucceeded = true;
+            } catch (aiErr) {
+              console.error("[submit-pitch][ai-fallback]", aiErr);
+            }
+          }
+
+          if (!aiSucceeded) {
+            // Deterministic PDF text + CSV extraction fallback (runs when ANTHROPIC_API_KEY is unset or AI call fails)
             const sheetSum = sheet && sheet.length ? summariseSheet(sheet) : null;
+            const localFacts = isValidPdfBuf && pdfBuffer ? extractFactsFromPdfBytes(pdfBuffer) : null;
+
             const gold = {
-              mrr: sheetSum?.mrr != null ? { amount: sheetSum.mrr, currency: sheetSum.currency || "USD" } : null,
-              arr: sheetSum?.impliedArr != null ? { amount: sheetSum.impliedArr, currency: sheetSum.currency || "USD" } : null,
-              growth: sheetSum?.avgGrowthPct ?? null,
-              customers: sheetSum?.customers ?? null,
-              team: sheetSum?.headcount ?? null,
-              burn: sheetSum?.burn != null ? { amount: sheetSum.burn, currency: sheetSum.currency || "USD" } : null,
-              cash: sheetSum?.cash != null ? { amount: sheetSum.cash, currency: sheetSum.currency || "USD" } : null,
-              runway: sheetSum?.runwayMonths ?? null,
+              mrr:
+                localFacts?.mrr != null
+                  ? { amount: localFacts.mrr.amount, currency: localFacts.mrr.currency }
+                  : sheetSum?.mrr != null
+                    ? { amount: sheetSum.mrr, currency: sheetSum.currency || "USD" }
+                    : null,
+              arr:
+                localFacts?.arr != null
+                  ? { amount: localFacts.arr.amount, currency: localFacts.arr.currency }
+                  : sheetSum?.impliedArr != null
+                    ? { amount: sheetSum.impliedArr, currency: sheetSum.currency || "USD" }
+                    : null,
+              growth: localFacts?.growthPct?.value ?? sheetSum?.avgGrowthPct ?? null,
+              customers: localFacts?.customers?.value ?? sheetSum?.customers ?? null,
+              team: localFacts?.teamSize?.value ?? sheetSum?.headcount ?? null,
+              burn:
+                localFacts?.burn != null
+                  ? { amount: localFacts.burn.amount, currency: localFacts.burn.currency }
+                  : sheetSum?.burn != null
+                    ? { amount: sheetSum.burn, currency: sheetSum.currency || "USD" }
+                    : null,
+              cash:
+                localFacts?.cash != null
+                  ? { amount: localFacts.cash.amount, currency: localFacts.cash.currency }
+                  : sheetSum?.cash != null
+                    ? { amount: sheetSum.cash, currency: sheetSum.currency || "USD" }
+                    : null,
+              runway: localFacts?.runwayMonths?.value ?? sheetSum?.runwayMonths ?? null,
               round: askAmount,
-              founded: null,
+              founded: localFacts?.foundedYear?.value ?? null,
             };
             const preview = checkUpload(form, {
               gold,
@@ -423,38 +470,65 @@ export async function POST(req: Request) {
               by: "System",
             });
 
-            const dealObj = finishDeal({
-              id,
-              source: "upload",
-              receivedAt,
+            const enrichedRecord = localFacts ? applyLocalPdfFactsToRecord(preview.record, localFacts) : preview.record;
+            const deterministicFlags = runChecks({
+              record: enrichedRecord,
               form,
-              fileName: deckFileName,
-              deckUrl: fileUrl,
-              record: preview.record,
               sheet,
               registry: null,
-              profiles: [],
-              flags: preview.flags,
-              assessment: {
-                summary: oneLinePitch || `${companyName} (${sector}, ${stage}) submitted for review.`,
-                founderChecks: [],
-                traction: {
-                  level: sheetSum?.mrr ? "Mixed" : "Weak",
-                  reason: sheetSum?.mrr ? `Monthly revenue of $${sheetSum.mrr.toLocaleString()} reported in financials.` : "Early stage metrics without revenue history.",
-                  evidence: sheetSum?.mrr ? [`Latest MRR: $${sheetSum.mrr.toLocaleString()}`, `Average growth: ${sheetSum.avgGrowthPct ?? 0}%`] : ["No revenue history in submission."],
-                },
-                team: {
-                  level: "Mixed",
-                  reason: `${founderName} (${linkedinUrl || "LinkedIn profile submitted"})`,
-                  evidence: [`Founder: ${founderName}`],
-                },
-                strengths: [hasFin ? "Financial spreadsheet provided" : "Pitch deck attached"],
-                concerns: preview.flags.filter((f) => f.kind === "conflict").map((f) => f.title),
-                founderQuestions: [],
-              },
-              model: "deterministic-v2",
-              runLog: [{ step: "Deterministic financial parsing & math checks", ms: 45 }],
             });
+            const allFlags = validationFlag ? [validationFlag, ...deterministicFlags] : deterministicFlags;
+
+            const hasRevenue = Boolean(enrichedRecord.traction.mrr.amount || enrichedRecord.traction.arr.amount || sheetSum?.mrr);
+            const dealObj: DealResult = {
+              ...finishDeal({
+                id,
+                source: "upload",
+                receivedAt,
+                form,
+                fileName: deckFileName,
+                deckUrl: fileUrl,
+                record: enrichedRecord,
+                sheet,
+                registry: null,
+                profiles: [],
+                flags: allFlags,
+                assessment: {
+                  summary:
+                    deckValidation && !deckValidation.isPitchDeck
+                      ? `${companyName} uploaded a ${deckValidation.documentType} (${deckValidation.pageCount} page${deckValidation.pageCount === 1 ? "" : "s"}) missing core pitch deck sections. Request a complete deck and monthly CSV before IC review.`
+                      : oneLinePitch || `${companyName} (${sector}, ${stage}) submitted for review.`,
+                  founderChecks: [],
+                  traction: {
+                    level: hasRevenue ? "Mixed" : "Weak",
+                    reason: sheetSum?.mrr
+                      ? `Monthly revenue of $${sheetSum.mrr.toLocaleString()} corroborated in financial sheet.`
+                      : localFacts?.arr || localFacts?.mrr
+                        ? "Revenue figures extracted from pitch slides; request monthly CSV to corroborate."
+                        : "Early stage submission without verified revenue history.",
+                    evidence: sheetSum?.mrr
+                      ? [`Latest MRR: $${sheetSum.mrr.toLocaleString()}`, `Average growth: ${sheetSum.avgGrowthPct ?? 0}%`]
+                      : localFacts?.arr
+                        ? [`Deck p.${localFacts.arr.page}: ${localFacts.arr.quote}`]
+                        : ["No revenue history in submission."],
+                  },
+                  team: {
+                    level: "Weak",
+                    reason: `${founderName} (${linkedinUrl || "Founder profile submitted without past role history in deck"})`,
+                    evidence: [`Founder: ${founderName}`],
+                  },
+                  strengths: [
+                    ...(hasFin ? ["Financial spreadsheet provided"] : []),
+                    ...(deckValidation?.isPitchDeck ? [`Structured ${deckValidation.pageCount}-slide pitch deck validated`] : []),
+                  ],
+                  concerns: allFlags.filter((f) => f.kind === "conflict" || f.kind === "warning").map((f) => f.title),
+                  founderQuestions: [],
+                },
+                model: "deterministic-v3-pdf",
+                runLog: [{ step: "Deterministic PDF validation, text extraction & math checks", ms: 48 }],
+              }),
+              deckValidation,
+            };
 
             const checksSummary = summarizeChecks(dealObj.flags);
             await patchDeal(id, {
@@ -462,7 +536,7 @@ export async function POST(req: Request) {
               checks_json: dealObj.flags,
               checks_status: checksSummary,
               band: dealObj.band,
-              founder_fit: dealObj.scores.find((s) => s.key === "team")?.level ?? "Mixed",
+              founder_fit: dealObj.scores.find((s) => s.key === "team")?.level ?? "Weak",
               summary: dealObj.ai.summary,
               ai_status: "Complete",
             });

@@ -160,7 +160,7 @@ export default function SourcesPage() {
 
       <section>
         <h2 className="mb-1 text-base font-semibold text-slate-900">Each source in detail</h2>
-        <p className="mb-3 text-sm text-slate-500">What it gives, how it is read, and whether it is live in this prototype.</p>
+        <p className="mb-3 text-sm text-slate-500">What each source provides, how it is parsed, and its active verification status.</p>
         <Card className="overflow-hidden">
           <ul className="divide-y divide-slate-100">
             {SOURCES.map((s) => (

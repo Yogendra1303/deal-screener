@@ -6,6 +6,7 @@ import { useStore } from "@/components/store";
 import { Button, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { useLinks } from "@/components/links-store";
+import { loadState, saveState } from "@/lib/db/client";
 import { DEFAULT_RULES, fitScore, usd } from "@/lib/rules";
 import { DEFAULT_THESIS, type Thesis } from "@/lib/thesis";
 import { COUNTRIES, SECTORS, STAGES, type Band } from "@/lib/types";
@@ -18,21 +19,37 @@ export default function RulesPage() {
   const canEdit = w.role === "Partner";
   const [thesis, setThesisState] = useState<Thesis>(DEFAULT_THESIS);
   useEffect(() => {
+    let alive = true;
     try {
       const raw = window.localStorage.getItem(KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setThesisState({ ...DEFAULT_THESIS, ...(JSON.parse(raw) as Thesis) });
     } catch {
-      // Use the sample thesis.
+      // Use default thesis.
     }
+    void loadState<Thesis>(KEY).then((res) => {
+      if (alive && res.found && res.value) {
+        const merged = { ...DEFAULT_THESIS, ...res.value };
+        setThesisState(merged);
+        try {
+          window.localStorage.setItem(KEY, JSON.stringify(merged));
+        } catch {
+          // ignore
+        }
+      }
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
   const setThesis = (t: Thesis) => {
     setThesisState(t);
     try {
       window.localStorage.setItem(KEY, JSON.stringify(t));
     } catch {
-      // Kept until reload.
+      // ignore
     }
+    saveState(KEY, t);
   };
   const toggle = (key: "stages" | "countries" | "sectors", value: string) => {
     if (!canEdit) return;
@@ -51,12 +68,12 @@ export default function RulesPage() {
         </p>
         {!canEdit && (
           <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
-            Read only. Only partners can change the fund rules. Ask Kabir Shah if a rule looks wrong.
+            Read only. Only partners can modify fund mandate rules.
           </p>
         )}
       </div>
 
-      <Block n="1" title="The fund" hint="Sample fund">
+      <Block n="1" title="The fund" hint="Aarka Fund I">
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(
             [
@@ -201,9 +218,9 @@ export default function RulesPage() {
               setThesis(DEFAULT_THESIS);
             }}
           >
-            Reset to sample settings
+            Reset to default mandate
           </Button>
-          <span className="text-xs text-slate-500">Saved in this browser only. Sections 1 and 3 to 7 are sample text; editing them comes later.</span>
+          <span className="text-xs text-slate-500">Synced to the shared workspace. Changing mandate filters re-bands all deals immediately.</span>
         </div>
       )}
     </div>

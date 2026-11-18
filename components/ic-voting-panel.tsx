@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, cx } from "@/components/ui";
 import type { PartnerVote, VoteChoice } from "@/app/api/deals/[id]/votes/route";
+import { GRADE_BADGE_STYLE, type ConvictionGrade } from "@/lib/vc-metrics";
 
 const CHOICES: { value: VoteChoice; label: string; activeCls: string; idleCls: string }[] = [
   {
@@ -38,7 +39,17 @@ function voteBadge(vote: VoteChoice): string {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
-export function ICVotingPanel({ dealId, companyName }: { dealId: string; companyName: string }) {
+export function ICVotingPanel({
+  dealId,
+  companyName,
+  engineGrade,
+  engineScore,
+}: {
+  dealId: string;
+  companyName: string;
+  engineGrade?: ConvictionGrade;
+  engineScore?: number;
+}) {
   const [votes, setVotes] = useState<PartnerVote[]>([]);
   const [selectedVote, setSelectedVote] = useState<VoteChoice>("Take Call");
   const [conviction, setConviction] = useState<number>(4);
@@ -108,6 +119,15 @@ export function ICVotingPanel({ dealId, companyName }: { dealId: string; company
         )}
       </div>
 
+      {engineGrade && engineScore != null && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-1.5 text-[11px]">
+          <span className="font-medium text-slate-600">Engine Conviction</span>
+          <span className={cx("rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ring-1 ring-inset", GRADE_BADGE_STYLE[engineGrade])}>
+            Grade {engineGrade} · {engineScore}/100
+          </span>
+        </div>
+      )}
+
       <form onSubmit={submitVote} className="space-y-3">
         <div className="grid grid-cols-2 gap-1.5">
           {CHOICES.map((c) => (
@@ -126,7 +146,7 @@ export function ICVotingPanel({ dealId, companyName }: { dealId: string; company
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-medium text-slate-600">Conviction</span>
+          <span className="text-[11px] font-medium text-slate-600">Partner Rating (1-5)</span>
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
               <button

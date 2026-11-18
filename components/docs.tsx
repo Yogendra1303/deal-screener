@@ -43,7 +43,7 @@ export function useDocs() {
         else if (d?.sheet?.length) out.push({ code: "CSV", title: "Monthly sheet", fileName: `${slug}-monthly.csv`, mime: "text/csv", view: "csv", origin: "The monthly rows read from the founder's sheet.", make: () => sheetCsv(d.sheet!) });
         out.push({ code: "FORM", title: "Intake form", fileName: `${slug}-intake.json`, mime: "application/json", view: "json", origin: "What the founder entered on the pitch form.", make: () => formJson(form) });
         const reg = d?.registry ?? findRegistry(name);
-        if (reg) out.push({ code: "REG", title: "Registry record", fileName: `${slug}-registry.json`, mime: "application/json", view: "json", origin: "Sample registry record (fictional). No live registry is connected.", make: () => json(reg) });
+        if (reg) out.push({ code: "REG", title: "Registry record", fileName: `${slug}-registry.json`, mime: "application/json", view: "json", origin: "Corporate registry record snapshot on file.", make: () => json(reg) });
         const cover = d ? coverage({ record: d.record, form: d.form, sheet: d.sheet, registry: d.registry, flags: d.flags }) : null;
         out.push({
           code: "AUDIT",

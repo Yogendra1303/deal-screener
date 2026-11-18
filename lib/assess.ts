@@ -1,6 +1,6 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { AssessmentSchema, type Assessment } from "./schema";
-import { EFFORT, MODEL, assertFinished, getClient, stepFrom } from "./ai";
+import { EFFORT, MODEL, assertFinished, getClient, modelCapabilities, stepFrom } from "./ai";
 import type { RunStep } from "./types";
 import { ASSESS_SYSTEM, assessContext, type AssessArgs } from "./prompts";
 
@@ -9,11 +9,15 @@ export async function assessDeal(args: AssessArgs): Promise<{ assessment: Assess
 
   const client = getClient();
   const startedAt = Date.now();
+  const caps = modelCapabilities(MODEL);
   const stream = client.messages.stream({
     model: MODEL,
-    max_tokens: 16000,
+    max_tokens: caps.maxTokens,
     system: ASSESS_SYSTEM,
-    output_config: { effort: EFFORT, format: zodOutputFormat(AssessmentSchema) },
+    output_config: {
+      ...(caps.supportsEffort ? { effort: EFFORT } : {}),
+      format: zodOutputFormat(AssessmentSchema),
+    },
     messages: [
       {
         role: "user",

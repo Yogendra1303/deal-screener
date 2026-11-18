@@ -70,6 +70,26 @@ export function VCMetricsPanel({
         </div>
       </div>
 
+      {/* Pitch Deck Structural Validation Alert */}
+      {((deal?.deckValidation && !deal.deckValidation.isPitchDeck) ||
+        deal?.flags?.some((f) => f.checkId === "non_pitch_deck")) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-900">
+          <span>
+            <strong>Pitch Deck Structural Alert:</strong>{" "}
+            {deal?.deckValidation
+              ? `Uploaded file classified as "${deal.deckValidation.documentType}" (${deal.deckValidation.pageCount} page${deal.deckValidation.pageCount === 1 ? "" : "s"}, ${deal.deckValidation.detectedSections.length}/7 standard pitch sections). Missing: ${deal.deckValidation.missingSections.slice(0, 4).join(", ")}.`
+              : "Uploaded file does not match standard VC pitch deck structure. Conviction is clamped to Grade G."}
+          </span>
+          <button
+            type="button"
+            onClick={() => setActiveInspector({ title: "Data Completeness & Disclosures", dimension: vc.conviction.dimensions.disclosure })}
+            className="cursor-pointer font-semibold underline hover:text-rose-950"
+          >
+            Inspect Deck Audit
+          </button>
+        </div>
+      )}
+
       {/* Subtitle / Risk Alert */}
       {vc.conviction.missingFacts.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3.5 py-2 text-xs text-amber-900">
