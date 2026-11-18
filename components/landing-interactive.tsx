@@ -539,11 +539,11 @@ export function CapabilitiesInteractiveTabs() {
   return (
     <>
       <div className="space-y-6">
-        <div className="max-w-3xl">
+        <div className="w-full">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
             Workspace Modules
           </p>
-          <h2 className="mt-2 font-serif text-[clamp(1.65rem,2.5vw+0.75rem,2.35rem)] font-normal leading-[1.15] tracking-[-0.02em] text-slate-950">
+          <h2 className="mt-2 font-serif text-[clamp(1.5rem,1.75vw+0.5rem,2.2rem)] font-normal leading-[1.2] tracking-[-0.02em] text-slate-950 lg:whitespace-nowrap">
             Built for screening, financial cross-checks, and portfolio oversight.
           </h2>
         </div>
