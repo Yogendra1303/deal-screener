@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LABEL, cx } from "@/components/ui";
+import { DropdownSelect, LABEL, cx } from "@/components/ui";
 
 interface TrafficEvent {
   ts: string;
@@ -609,43 +609,57 @@ export default function LiveTrafficPage() {
 
               {(tab === "external" || tab === "owner") && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    aria-label="Filter by page"
+                  <DropdownSelect
+                    ariaLabel="Filter by page"
+                    size="sm"
+                    prefix="Page:"
+                    align="right"
                     value={pageFilter}
-                    onChange={(e) => setPageFilter(e.target.value)}
-                    className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
-                  >
-                    <option value="">All pages</option>
-                    {uniquePages.map((p) => (
-                      <option key={p} value={p}>
-                        {pageBadge(p).label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Filter by source"
+                    onChange={setPageFilter}
+                    options={[
+                      { value: "", label: "All pages" },
+                      ...uniquePages.map((p) => ({ value: p, label: pageBadge(p).label })),
+                    ]}
+                  />
+                  <DropdownSelect
+                    ariaLabel="Filter by source"
+                    size="sm"
+                    prefix="Source:"
+                    align="right"
                     value={sourceFilter}
-                    onChange={(e) => setSourceFilter(e.target.value)}
-                    className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
-                  >
-                    <option value="">All sources</option>
-                    {uniqueSources.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Filter by device"
+                    onChange={setSourceFilter}
+                    options={[
+                      { value: "", label: "All sources" },
+                      ...uniqueSources.map((s) => ({ value: s, label: s })),
+                    ]}
+                  />
+                  <DropdownSelect
+                    ariaLabel="Filter by device"
+                    size="sm"
+                    prefix="Device:"
+                    align="right"
                     value={deviceFilter}
-                    onChange={(e) => setDeviceFilter(e.target.value)}
-                    className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
-                  >
-                    <option value="">All devices</option>
-                    <option value="desktop">Desktop</option>
-                    <option value="mobile">Mobile</option>
-                    <option value="tablet">Tablet</option>
-                  </select>
+                    onChange={setDeviceFilter}
+                    options={[
+                      { value: "", label: "All devices" },
+                      { value: "desktop", label: "Desktop" },
+                      { value: "mobile", label: "Mobile" },
+                      { value: "tablet", label: "Tablet" },
+                    ]}
+                  />
+                  {(pageFilter || sourceFilter || deviceFilter) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPageFilter("");
+                        setSourceFilter("");
+                        setDeviceFilter("");
+                      }}
+                      className="cursor-pointer px-1 text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline"
+                    >
+                      Reset
+                    </button>
+                  )}
                 </div>
               )}
             </div>
