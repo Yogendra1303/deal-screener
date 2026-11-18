@@ -2,9 +2,10 @@
 
 // How every number in Aarka is worked out, and how one action moves the others. The thresholds on
 // this page are read from the same constants the code uses, so the page can't drift from the app.
+import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/components/store";
-import { cx } from "@/components/ui";
+import { Card, cx } from "@/components/ui";
 import { GAP_TOLERANCE } from "@/lib/checks";
 import { FX } from "@/lib/compare";
 import { FOLDERS } from "@/lib/dataroom";
@@ -17,6 +18,86 @@ import { WATCH_RUNWAY_MONTHS } from "@/lib/portfolio/attention";
 import { HEALTH_RULES } from "@/lib/portfolio/health";
 import { STATUS_MEANING } from "@/lib/provenance";
 import { MISSING_FLAG_THRESHOLD, usd } from "@/lib/rules";
+
+const PILLARS = [
+  {
+    id: "disclosure",
+    title: "1. Data Completeness & The 10 Core Facts",
+    weight: "20% Weight",
+    metric: "R_comp = DisclosedFacts / 10",
+    summary: "Evaluates disclosure across 10 vital facts: revenue, growth, customers, net burn, runway, gross margin, retention, round ask, year founded, and founder roles.",
+    formula: "Score = (Disclosed Facts / 10) * 100\nMultiplier = max(0.15, R_comp^0.6)",
+    penalties: [
+      "-10 pts per missing core fact from submission",
+      "If 6 or more core facts are missing, final conviction is capped at Grade G (5 to 15 / 100) regardless of sector or stage fit",
+    ],
+    benchmark: "Institutional Standard: Decks with fewer than 5 disclosed facts represent uncorroborated leads, not investment-ready pipelines.",
+  },
+  {
+    id: "veracity",
+    title: "2. Financial Integrity & The Strict 10% Gap Rule",
+    weight: "25% Weight",
+    metric: "Tolerance = strictly <= 10%",
+    summary: "Cross-checks slide claims against monthly CSV sheets. Any variance exceeding 10% generates an auditable Conflict flag.",
+    formula: "Variance = |DeckClaim - SheetActual| / SheetActual\nScore = BaseCorroboration - (20 * ConflictCount)",
+    penalties: [
+      "-20 pts for each conflict > 10% variance",
+      "0 points for zero corroboration data (e.g. no sheet uploaded)",
+      "Maximum score of 40/100 if any unaddressed conflict exists",
+    ],
+    benchmark: "Aarka Standard: Uncorroborated slide ARR without sheet support cannot substantiate conviction.",
+  },
+  {
+    id: "founder",
+    title: "3. Founder Pedigree & Background Signal Rubric",
+    weight: "20% Weight",
+    metric: "Point accumulator: 0 to 100",
+    summary: "Evaluates operator background, serial exits, technical pedigree, and corporate registry verification.",
+    formula: "Score = min(100, SerialFounder(+35) + DomainOverlap(+30) + TechnicalPedigree(+20) + RegistryMatched(+15))",
+    penalties: [
+      "0 pts if no founder background or past roles stated in submission",
+      "20 pts cap for first-time founders without documented domain depth or technical pedigree",
+    ],
+    benchmark: "Sequoia & Benchmark pattern: Repeat founders with >3 years in the problem space dramatically de-risk early-stage execution.",
+  },
+  {
+    id: "economics",
+    title: "4. Unit Economics & Capital Efficiency Curve",
+    weight: "20% Weight",
+    metric: "Burn Multiple + Runway + Magic No.",
+    summary: "Combines Burn Multiple (Net Burn / Net New ARR), Runway cushion, and SaaS Magic Number.",
+    formula: "Score = 0.40(BurnPts) + 0.40(RunwayPts) + 0.20(MagicPts)",
+    penalties: [
+      "Burn Multiple > 2.2x: High Burn Alarm (-30 pts)",
+      "Runway < 6 months: Critical cash warning (-30 pts)",
+      "Magic Number < 0.7x: GTM friction indicator",
+    ],
+    benchmark: "Craft Ventures & Founders Fund: Burn Multiple <1.5x and runway >12 months required for institutional seed pacing.",
+  },
+  {
+    id: "mandate",
+    title: "5. Fund Mandate & Target Ownership Feasibility",
+    weight: "15% Weight",
+    metric: "Target 10% to 20% equity",
+    summary: "Verifies stage fit, sector focus, check size limits, and target equity ownership at implied post-money valuation.",
+    formula: "Score = StageFit(30) + SectorFit(30) + OwnershipFit(40)",
+    penalties: [
+      "Sub-target (<10% ownership): -30 pts (dilutes fund return potential)",
+      "High dilution (>20% in Seed): -20 pts (cap table motivation risk)",
+      "Outside focus sector: -35 pts",
+    ],
+    benchmark: "Aarka Fund I Mandate: Seed-stage B2B software & Fintech across India, UAE, and Saudi Arabia with 10-20% target equity.",
+  },
+];
+
+const GRADES = [
+  { grade: "Grade A", score: "90 - 100", label: "Elite Conviction", color: "bg-emerald-100 text-emerald-800", action: "Fast-track Lead Partner deep-dive; schedule immediate IC Review." },
+  { grade: "Grade B", score: "75 - 89", label: "Strong Conviction", color: "bg-blue-100 text-blue-800", action: "Proceed to initial partner call and verified model diligence." },
+  { grade: "Grade C", score: "60 - 74", label: "Investigate Further", color: "bg-indigo-100 text-indigo-800", action: "Request customer references and verify unit economics on Numbers tab." },
+  { grade: "Grade D", score: "45 - 59", label: "High Diligence Friction", color: "bg-amber-100 text-amber-800", action: "Audit math gap flags on deck vs monthly sheet; resolve discrepancies." },
+  { grade: "Grade E", score: "25 - 44", label: "Capital Efficiency Alarm", color: "bg-rose-100 text-rose-800", action: "Significant burn or mandate friction. Issue partner inquiry." },
+  { grade: "Grade G", score: "0 - 24", label: "Unsubstantiated Intake", color: "bg-slate-200 text-slate-800", action: "Intake registered with zero corroborating data. Request monthly financial CSV." },
+];
 
 const FLOW: { step: string; who: string; what: string; href?: string; tone: string }[] = [
   { step: "1. Founder sends", who: "Founder", what: `Pitch link, ${PITCH_INBOX}, a request link, email to the company's address, the founder portal, or the monthly report link.`, href: "/founder", tone: "bg-slate-100 ring-slate-200" },
@@ -45,6 +126,7 @@ const LINKS: [string, string][] = [
 export default function MethodPage() {
   const store = useStore();
   const rules = store.rules;
+  const [selectedPillar, setSelectedPillar] = useState<string>("disclosure");
   const calcs: { name: string; how: string; limits: string; where: string }[] = [
     {
       name: "Months of cash",
@@ -174,6 +256,172 @@ export default function MethodPage() {
           counts the tiles, so they always match. Any tile&apos;s panel also says how its own number is counted.
         </p>
       </div>
+
+      {/* 0. Dedicated Institutional VC Conviction Matrix Section */}
+      <section className="space-y-6 rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/40 via-white to-white p-6 shadow-xs">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-indigo-100/80 pb-4">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700">
+              Institutional Venture Capital Diligence Standard
+            </span>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+              The Aarka Conviction Matrix &amp; Rating Engine
+            </h2>
+            <p className="mt-1 max-w-2xl text-xs text-slate-600">
+              Deterministic, multi-pillar evaluation engine based on benchmarks from Sequoia, Benchmark, Founders Fund, and Craft Ventures. Unlike arbitrary AI text ratings, every point is grounded in verified disclosures, cross-source math veracity, and unit economics.
+            </p>
+          </div>
+          <span className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-800">
+            5 Governed Pillars · Grade A to G
+          </span>
+        </div>
+
+        {/* Master Formula Card */}
+        <div className="rounded-xl bg-slate-900 p-4 text-slate-100 font-mono text-xs space-y-2">
+          <div className="flex items-center justify-between text-[11px] text-slate-400">
+            <span>MASTER MATHEMATICAL CONVICTION EQUATION</span>
+            <span className="text-emerald-400">Deterministic TS Implementation</span>
+          </div>
+          <div className="text-sm font-bold text-emerald-400">
+            Conviction = round( RawWeightedScore * CompletenessMultiplier )
+          </div>
+          <div className="text-[11px] text-slate-300">
+            RawWeightedScore = 0.20(Disclosure) + 0.25(Veracity) + 0.20(Founder) + 0.20(Economics) + 0.15(Mandate)
+          </div>
+          <div className="text-[11px] text-slate-300">
+            CompletenessMultiplier = max(0.15, (DisclosedFacts / 10)^0.6)
+          </div>
+          <div className="text-[10px] text-slate-400 border-t border-slate-800 pt-1.5">
+            * Strict Rule: If 6 or more core institutional facts are missing, the score is capped at Grade G (5 to 15 / 100), ensuring uncorroborated pitch decks cannot yield false-positive investment conviction.
+          </div>
+        </div>
+
+        {/* 5 Interactive Clickable Pillar Tiles */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">
+              Governed Conviction Pillars (Click any tile to inspect formula &amp; benchmarks)
+            </h3>
+            <span className="text-xs text-slate-500">Click to expand</span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {PILLARS.map((p) => {
+              const active = selectedPillar === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelectedPillar(active ? "" : p.id)}
+                  className={cx(
+                    "cursor-pointer rounded-xl border p-3.5 text-left transition shadow-2xs",
+                    active
+                      ? "border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                  )}
+                >
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold text-slate-600">{p.weight}</span>
+                    <span className={cx("text-[10px] font-bold px-1.5 py-0.2 rounded", active ? "bg-indigo-200 text-indigo-900" : "bg-slate-100 text-slate-600")}>
+                      {active ? "Active" : "Inspect"}
+                    </span>
+                  </div>
+                  <h4 className="mt-1 text-xs font-bold text-slate-900 line-clamp-2">
+                    {p.title}
+                  </h4>
+                  <p className="mt-1 font-mono text-[10px] text-slate-500">
+                    {p.metric}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Pillar Inspector Box */}
+          {selectedPillar && (
+            <div className="rounded-xl border border-indigo-200 bg-white p-4 shadow-sm space-y-3 text-xs animate-in fade-in duration-150">
+              {(() => {
+                const p = PILLARS.find((x) => x.id === selectedPillar);
+                if (!p) return null;
+                return (
+                  <>
+                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2.5">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">{p.weight} Pillar Audit</span>
+                        <h4 className="text-sm font-bold text-slate-900">{p.title}</h4>
+                        <p className="text-xs text-slate-600 mt-0.5">{p.summary}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPillar("")}
+                        className="cursor-pointer text-xs font-semibold text-slate-400 hover:text-slate-700"
+                      >
+                        ✕ Close
+                      </button>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg bg-slate-900 p-3 text-slate-100 font-mono text-[11px] space-y-1">
+                        <span className="text-slate-400">// Mathematical Formulation</span>
+                        <pre className="whitespace-pre-wrap text-emerald-400 font-bold">{p.formula}</pre>
+                      </div>
+
+                      <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <span className="font-semibold text-slate-800">Active Friction &amp; Penalties Applied:</span>
+                        <ul className="space-y-1 text-slate-600">
+                          {p.penalties.map((pen, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="text-rose-500 font-bold">•</span>
+                              <span>{pen}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-2.5 text-slate-700 text-[11px]">
+                      <strong className="text-indigo-900">Tier-1 Institutional Benchmark:</strong> {p.benchmark}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+
+        {/* Grade A through Grade G Institutional Scale Table */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-bold text-slate-900">
+            Institutional Conviction Grading Tiers (Grade A to Grade G)
+          </h3>
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <table className="w-full min-w-[680px] text-xs">
+              <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium">Grade</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Score Range</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Institutional Definition</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Investment Committee Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {GRADES.map((g) => (
+                  <tr key={g.grade} className="hover:bg-slate-50/60">
+                    <td className="px-4 py-2.5">
+                      <span className={cx("rounded px-2 py-0.5 font-bold text-[10px]", g.color)}>
+                        {g.grade}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 font-mono font-semibold text-slate-800">{g.score}</td>
+                    <td className="px-4 py-2.5 font-medium text-slate-900">{g.label}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{g.action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       <section>
         <h2 className="text-lg font-semibold tracking-tight text-slate-900">From a founder&apos;s file to a decision</h2>

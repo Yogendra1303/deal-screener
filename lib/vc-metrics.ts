@@ -1,7 +1,43 @@
 // Tier-1 Venture Capital Financial Metrics & Diligence Scorecard
 // Implements standard benchmarks from Sequoia, Benchmark, Founders Fund, and Craft Ventures.
-import type { SheetRow } from "./types";
+import type { DealResult, Flag, FormInput, Profile, RegistryRecord, Score, SheetRow } from "./types";
 import type { DealRecord } from "./schema";
+
+export type ConvictionGrade = "A" | "B" | "C" | "D" | "E" | "G";
+
+export interface ConvictionDimension {
+  id: string;
+  name: string;
+  weightPct: number;
+  score: number; // 0 to 100
+  rating: string;
+  summary: string;
+  formula: string;
+  inputs: Record<string, string | number>;
+  benchmark: string;
+  penalties: string[];
+}
+
+export interface ConvictionBreakdown {
+  score: number; // 0 to 100
+  grade: ConvictionGrade;
+  tierLabel: string;
+  completenessRatio: number; // 0.0 to 1.0
+  completenessMultiplier: number;
+  rawWeightedScore: number;
+  disclosedCount: number;
+  totalCoreFacts: number;
+  missingFacts: string[];
+  dimensions: {
+    disclosure: ConvictionDimension;
+    veracity: ConvictionDimension;
+    founder: ConvictionDimension;
+    economics: ConvictionDimension;
+    mandate: ConvictionDimension;
+  };
+  keyRisks: string[];
+  suggestedAction: string;
+}
 
 export interface VCMetricsResult {
   // 1. Capital Efficiency & Burn Multiple
@@ -55,23 +91,42 @@ export interface VCMetricsResult {
     tier: "High Productivity" | "Standard" | "Early Stage" | "N/A";
   };
 
-  // 7. Overall VC Diligence Score (0 to 100)
+  // 7. Overall VC Diligence Score & Conviction Matrix
   overallScore: number;
-  verdict: "Strong Conviction" | "Investigate Further" | "Capital Efficiency Concern" | "Outside Mandate";
+  grade: ConvictionGrade;
+  verdict: string;
+  conviction: ConvictionBreakdown;
+}
+
+export interface VCDiligenceContext {
+  deal?: DealResult | null;
+  flags?: Flag[] | null;
+  scores?: Score[] | null;
+  form?: FormInput | null;
+  profiles?: Profile[] | null;
+  registry?: RegistryRecord | null;
 }
 
 /**
- * Computes institutional venture capital metrics from financial sheet data and deal parameters.
+ * Computes institutional venture capital metrics and mathematical conviction matrix
+ * from financial sheet data, deal parameters, and cross-source evidence.
  */
 export function calculateVCMetrics(
   sheet: SheetRow[] | null,
   record?: Partial<DealRecord> | null,
-  askAmount?: number | null
+  askAmount?: number | null,
+  context?: VCDiligenceContext | null
 ): VCMetricsResult {
   const rows = (sheet || []).filter((r) => r.revenue != null && r.revenue >= 0);
   const latestRow = rows.length ? rows[rows.length - 1] : null;
   const prevRow = rows.length >= 2 ? rows[rows.length - 2] : null;
-  const firstRow = rows.length >= 4 ? rows[rows.length - 4] : rows[0]; // trailing 3-month or available window
+  const firstRow = rows.length >= 4 ? rows[rows.length - 4] : rows[0];
+
+  const deal = context?.deal ?? null;
+  const flags = context?.flags ?? deal?.flags ?? [];
+  const form = context?.form ?? deal?.form ?? null;
+  const profiles = context?.profiles ?? deal?.profiles ?? [];
+  const registry = context?.registry ?? deal?.registry ?? null;
 
   // Base numbers
   const currentRevenue = latestRow?.revenue ?? (record?.traction?.mrr?.amount ?? null);
@@ -84,15 +139,12 @@ export function calculateVCMetrics(
   const headcount = latestRow?.headcount ?? null;
 
   // 1. Burn Multiple: Net Burn / Net New ARR
-  // In VC: < 1.0x is elite, 1.0 - 1.5x is good, 1.5 - 2.0x is watch, > 2.0x is poor capital efficiency
   let burnMultipleVal: number | null = null;
   let netNewARR: number | null = null;
 
   if (currentARR != null && prevARR != null && currentBurn != null) {
-    const periodMonths = 1; // month-on-month annualized
-    netNewARR = (currentARR - prevARR);
+    netNewARR = currentARR - prevARR;
     if (netNewARR > 0 && currentBurn > 0) {
-      // Annualized burn / Annualized net new ARR (equivalent to monthly burn / monthly net new ARR)
       burnMultipleVal = Math.round(((currentBurn * 12) / netNewARR) * 10) / 10;
     }
   }
@@ -120,12 +172,10 @@ export function calculateVCMetrics(
   let runwayMonths: number | null = null;
   let zeroCashDate: string | null = null;
   let runwayStatus: VCMetricsResult["runway"]["status"] = "Adequate";
-  let runwayExplanation = "No cash balance or burn provided.";
+  let runwayExplanation = "No cash balance or burn provided in submission.";
 
   if (currentCash != null && currentBurn != null && currentBurn > 0) {
     runwayMonths = Math.round((currentCash / currentBurn) * 10) / 10;
-    
-    // Compute Zero Cash Date
     const now = new Date();
     const zcd = new Date(now.getFullYear(), now.getMonth() + Math.floor(runwayMonths), 1);
     zeroCashDate = zcd.toLocaleDateString("en-US", { month: "short", year: "numeric" });
@@ -143,9 +193,11 @@ export function calculateVCMetrics(
       runwayStatus = "Critical";
       runwayExplanation = `CRITICAL: Only ${runwayMonths.toFixed(1)} months cash left (${zeroCashDate}). Imminent bridge or close needed.`;
     }
+  } else {
+    runwayStatus = "Low";
   }
 
-  // 3. SaaS Magic Number: (Quarterly ARR Growth * 4) / S&M Spend (or Net Burn proxy)
+  // 3. SaaS Magic Number: (Quarterly ARR Growth * 4) / S&M Spend
   let magicNumVal: number | null = null;
   let magicRating: VCMetricsResult["magicNumber"]["rating"] = "N/A";
   let magicExplanation = "Requires quarterly revenue change to assess sales efficiency.";
@@ -167,7 +219,7 @@ export function calculateVCMetrics(
     }
   }
 
-  // 4. Rule of 40: YoY Revenue Growth (%) + Operating Margin (%)
+  // 4. Rule of 40
   let ruleOf40Score: number | null = null;
   let passesRuleOf40 = false;
   let ruleExplanation = "Requires YoY revenue history to calculate Rule of 40.";
@@ -187,8 +239,6 @@ export function calculateVCMetrics(
   let ownershipStatus: VCMetricsResult["ownership"]["status"] = "N/A";
 
   if (ask != null && ask > 0) {
-    // Typical Seed / Pre-seed valuation heuristic based on ARR & Stage
-    // Pre-seed/Seed standard post-money: $6M - $18M
     const baselinePost = currentARR && currentARR > 200_000 ? Math.max(ask * 4, currentARR * 15) : ask * 5;
     impliedPost = Math.round(baselinePost);
     ownershipPct = Math.round((ask / impliedPost) * 1000) / 10;
@@ -212,25 +262,347 @@ export function calculateVCMetrics(
     else headTier = "Early Stage";
   }
 
-  // 7. Overall Diligence Score (0 to 100)
-  let score = 50;
-  if (runwayStatus === "Healthy") score += 15;
-  else if (runwayStatus === "Low") score -= 10;
-  else if (runwayStatus === "Critical") score -= 25;
+  // ==========================================
+  // MATHEMATICAL CONVICTION MATRIX (5 PILLARS)
+  // ==========================================
 
-  if (burnTier === "Exceptional") score += 20;
-  else if (burnTier === "Good") score += 10;
-  else if (burnTier === "High Burn Alarm") score -= 20;
+  // Pillar 1: Data Completeness & Disclosure (Weight: 20%)
+  const coreFactsChecks = [
+    { key: "revenue", name: "Monthly Revenue / MRR", ok: currentRevenue != null },
+    { key: "growth", name: "Verified Growth Rate", ok: (record?.traction?.monthlyGrowthPct?.value != null) || rows.length >= 2 },
+    { key: "customers", name: "Paying Customers", ok: (record?.traction?.customers?.value != null) || (latestRow?.customers != null) },
+    { key: "burn", name: "Monthly Net Burn", ok: currentBurn != null },
+    { key: "runway", name: "Runway (Months of Cash)", ok: runwayMonths != null || record?.traction?.runwayMonths?.value != null },
+    { key: "margin", name: "Gross Margin", ok: record?.traction?.grossMarginPct?.value != null },
+    { key: "retention", name: "Retention / Churn", ok: Boolean(record?.traction?.retention?.value) },
+    { key: "round", name: "Round Ask & Valuation", ok: ask != null },
+    { key: "founded", name: "Year Founded & Entity", ok: record?.company?.foundedYear?.value != null || Boolean(registry?.incorporated) },
+    { key: "pedigree", name: "Founders' Track Record", ok: Boolean(record?.team?.some((t) => t.pastRoles.length > 0) || profiles.length > 0) },
+  ];
 
-  if (passesRuleOf40) score += 15;
-  if (ownershipStatus === "Within Mandate (10-20%)") score += 10;
+  const totalCoreFacts = coreFactsChecks.length;
+  const disclosedFacts = coreFactsChecks.filter((f) => f.ok);
+  const missingFacts = coreFactsChecks.filter((f) => !f.ok).map((f) => f.name);
+  const completenessRatio = disclosedFacts.length / totalCoreFacts;
+  const disclosureScore = Math.round(completenessRatio * 100);
 
-  score = Math.max(10, Math.min(95, score));
+  const disclosurePenalties: string[] = [];
+  if (missingFacts.length > 0) {
+    disclosurePenalties.push(`-${missingFacts.length * 10} pts: Missing ${missingFacts.length} core institutional disclosures (${missingFacts.slice(0, 3).join(", ")}${missingFacts.length > 3 ? "…" : ""})`);
+  }
 
-  let verdict: VCMetricsResult["verdict"] = "Investigate Further";
-  if (score >= 75) verdict = "Strong Conviction";
-  else if (runwayStatus === "Critical" || burnTier === "High Burn Alarm") verdict = "Capital Efficiency Concern";
-  else if (ownershipStatus === "Sub-target (<10%)") verdict = "Outside Mandate";
+  // Pillar 2: Financial Integrity & Math Veracity (Weight: 25%)
+  const conflictFlags = flags.filter((f) => f.kind === "conflict");
+  let veracityScore = 15;
+  const veracityPenalties: string[] = [];
+
+  if (rows.length === 0 && flags.length === 0) {
+    veracityScore = 10;
+    veracityPenalties.push("No monthly sheet or cross-source corroboration files provided (unverified).");
+  } else if (conflictFlags.length > 0) {
+    veracityScore = Math.max(10, 45 - conflictFlags.length * 20);
+    conflictFlags.forEach((c) => veracityPenalties.push(`-20 pts: Discrepancy > 10% in ${c.title}`));
+  } else {
+    // 0 conflicts
+    if (rows.length >= 3) {
+      veracityScore = 95;
+    } else if (rows.length >= 1) {
+      veracityScore = 75;
+    } else {
+      veracityScore = 25; // only 1 check ran (e.g. form vs deck round ask)
+      veracityPenalties.push("Only intake form cross-checked. No granular monthly sheets to corroborate claims.");
+    }
+  }
+
+  // Pillar 3: Founder Signal & Pedigree (Weight: 20%)
+  let founderScore = 0;
+  const founderPenalties: string[] = [];
+  const teamRoles = record?.team ?? [];
+  const allRolesText = [
+    ...teamRoles.flatMap((t) => t.pastRoles.map((r) => `${r.title} ${r.company}`)),
+    ...profiles.flatMap((p) => p.roles.map((r) => `${r.title} ${r.company}`)),
+    ...profiles.map((p) => p.headline),
+  ].join(" ").toLowerCase();
+
+  const isSerial =
+    allRolesText.includes("founder") ||
+    allRolesText.includes("co-founder") ||
+    allRolesText.includes("founded") ||
+    allRolesText.includes("ceo") ||
+    allRolesText.includes("acquired") ||
+    allRolesText.includes("exit");
+
+  const sectorText = (form?.sector || record?.company?.sector?.value || "").toLowerCase();
+  const hasDomainMatch =
+    sectorText.length > 2 &&
+    (allRolesText.includes(sectorText) ||
+      allRolesText.includes("fintech") ||
+      allRolesText.includes("software") ||
+      allRolesText.includes("saas") ||
+      allRolesText.includes("product") ||
+      allRolesText.includes("growth"));
+
+  const hasTechPedigree =
+    allRolesText.includes("cto") ||
+    allRolesText.includes("engineer") ||
+    allRolesText.includes("architect") ||
+    allRolesText.includes("developer") ||
+    allRolesText.includes("technical");
+
+  const hasRegistry = Boolean(registry);
+
+  if (teamRoles.length === 0 && profiles.length === 0) {
+    founderScore = 5;
+    founderPenalties.push("No founder professional background or employment history stated in submission.");
+  } else {
+    if (isSerial) founderScore += 35;
+    if (hasDomainMatch) founderScore += 30;
+    if (hasTechPedigree) founderScore += 20;
+    if (hasRegistry) founderScore += 15;
+    if (founderScore === 0) {
+      founderScore = 20;
+      founderPenalties.push("First-time founders without documented domain depth or technical pedigree.");
+    }
+  }
+  founderScore = Math.min(100, Math.max(0, founderScore));
+
+  // Pillar 4: Unit Economics & Capital Efficiency (Weight: 20%)
+  let economicsScore = 10;
+  const economicsPenalties: string[] = [];
+
+  if (rows.length === 0) {
+    economicsScore = 10;
+    economicsPenalties.push("No monthly numbers sheet provided to assess burn multiple, margin, or sales efficiency.");
+  } else {
+    let burnPts = 50;
+    if (burnTier === "Exceptional") burnPts = 100;
+    else if (burnTier === "Good") burnPts = 80;
+    else if (burnTier === "Elevated") {
+      burnPts = 45;
+      economicsPenalties.push("Burn Multiple elevated (1.5x - 2.2x). Monitor CAC payback.");
+    } else if (burnTier === "High Burn Alarm") {
+      burnPts = 10;
+      economicsPenalties.push("-30 pts: High Burn Alarm (>2.2x net burn per net new ARR).");
+    }
+
+    let runwayPts = 50;
+    if (runwayStatus === "Healthy") runwayPts = 100;
+    else if (runwayStatus === "Adequate") runwayPts = 75;
+    else if (runwayStatus === "Low") {
+      runwayPts = 35;
+      economicsPenalties.push("Runway under 10 months requires immediate raise buffer.");
+    } else {
+      runwayPts = 10;
+      economicsPenalties.push("-30 pts: Critical runway (<6 months cash balance).");
+    }
+
+    let magicPts = 50;
+    if (magicRating === "High Scaling Efficiency") magicPts = 100;
+    else if (magicRating === "Solid Expansion") magicPts = 75;
+    else if (magicRating === "CAC Friction") {
+      magicPts = 30;
+      economicsPenalties.push("Magic Number under 0.7x reflects sales friction.");
+    }
+
+    economicsScore = Math.round(burnPts * 0.4 + runwayPts * 0.4 + magicPts * 0.2);
+  }
+
+  // Pillar 5: Fund Mandate & Ownership Feasibility (Weight: 15%)
+  let mandateScore = 80;
+  const mandatePenalties: string[] = [];
+
+  if (ownershipStatus === "Within Mandate (10-20%)") {
+    mandateScore = 95;
+  } else if (ownershipStatus === "Sub-target (<10%)") {
+    mandateScore = 40;
+    mandatePenalties.push("Check size yields <10% ownership, below institutional target.");
+  } else if (ownershipStatus === "High Dilution (>20%)") {
+    mandateScore = 55;
+    mandatePenalties.push("Implies >20% dilution in Seed stage, risking founder cap table motivation.");
+  } else if (!ask) {
+    mandateScore = 30;
+    mandatePenalties.push("No round size or valuation specified.");
+  }
+
+  // ==========================================
+  // MASTER CONVICTION EQUATION & DISCOUNTING
+  // ==========================================
+  const rawWeightedScore =
+    0.2 * disclosureScore +
+    0.25 * veracityScore +
+    0.2 * founderScore +
+    0.2 * economicsScore +
+    0.15 * mandateScore;
+
+  // The Completeness Multiplier:
+  // If data completeness is deficient (e.g. 1/10 facts stated), conviction cannot mathematically exceed 15.
+  const completenessMultiplier = Math.max(0.15, Math.pow(completenessRatio, 0.6));
+  let calculatedScore = Math.round(rawWeightedScore * completenessMultiplier);
+
+  // Hard safety constraint: If 6 or more core facts are missing, score CANNOT exceed 15 (Grade G)
+  if (missingFacts.length >= 6) {
+    calculatedScore = Math.min(15, Math.max(5, calculatedScore));
+  } else {
+    calculatedScore = Math.min(96, Math.max(5, calculatedScore));
+  }
+
+  // Conviction Grade Tier
+  let grade: ConvictionGrade = "G";
+  let tierLabel = "Unsubstantiated Intake · Evidence Deficient";
+  let verdict = "Unsubstantiated Intake (Grade G)";
+
+  if (calculatedScore >= 90) {
+    grade = "A";
+    tierLabel = "Elite Conviction · Top 1% Institutional Fit";
+    verdict = "Strong Conviction";
+  } else if (calculatedScore >= 75) {
+    grade = "B";
+    tierLabel = "Strong Conviction · Verified Traction & Mandate";
+    verdict = "Strong Conviction";
+  } else if (calculatedScore >= 60) {
+    grade = "C";
+    tierLabel = "Moderate Conviction · Deep Diligence Recommended";
+    verdict = "Investigate Further";
+  } else if (calculatedScore >= 45) {
+    grade = "D";
+    tierLabel = "High Diligence Friction · Math Gaps or High Burn";
+    verdict = "Investigate Further";
+  } else if (calculatedScore >= 25) {
+    grade = "E";
+    tierLabel = "Capital Efficiency or Mandate Concern";
+    verdict = "Capital Efficiency Concern";
+  } else {
+    grade = "G";
+    tierLabel = "Unsubstantiated Intake · Evidence Deficient";
+    verdict = "Unsubstantiated Intake (Grade G)";
+  }
+
+  const keyRisks: string[] = [
+    ...disclosurePenalties,
+    ...veracityPenalties,
+    ...founderPenalties,
+    ...economicsPenalties,
+    ...mandatePenalties,
+  ];
+
+  let suggestedAction = "Request monthly financial CSV and founder employment history before scheduling an IC review.";
+  if (grade === "A" || grade === "B") {
+    suggestedAction = "Proceed to Lead Partner deep-dive call and schedule IC Review.";
+  } else if (grade === "C") {
+    suggestedAction = "Request customer references and verify unit economics on Numbers tab.";
+  } else if (grade === "D" || grade === "E") {
+    suggestedAction = "Audit math gap flags on deck vs monthly sheet; resolve discrepancies before term sheet.";
+  }
+
+  const conviction: ConvictionBreakdown = {
+    score: calculatedScore,
+    grade,
+    tierLabel,
+    completenessRatio,
+    completenessMultiplier: Math.round(completenessMultiplier * 100) / 100,
+    rawWeightedScore: Math.round(rawWeightedScore * 10) / 10,
+    disclosedCount: disclosedFacts.length,
+    totalCoreFacts,
+    missingFacts,
+    dimensions: {
+      disclosure: {
+        id: "disclosure",
+        name: "Data Completeness & Disclosures",
+        weightPct: 20,
+        score: disclosureScore,
+        rating: completenessRatio >= 0.8 ? "Comprehensive" : completenessRatio >= 0.5 ? "Partial" : "Critical Deficit",
+        summary: `${disclosedFacts.length} of ${totalCoreFacts} core institutional facts disclosed (${Math.round(completenessRatio * 100)}%).`,
+        formula: "Score = (Disclosed Facts ÷ 10) × 100",
+        inputs: {
+          "Disclosed Facts": disclosedFacts.length,
+          "Missing Facts": missingFacts.length,
+          "Completeness Ratio": `${Math.round(completenessRatio * 100)}%`,
+        },
+        benchmark: "Institutional VC standard: Minimum 7 of 10 verified facts required before first partner review.",
+        penalties: disclosurePenalties,
+      },
+      veracity: {
+        id: "veracity",
+        name: "Financial Integrity & Math Veracity",
+        weightPct: 25,
+        score: veracityScore,
+        rating: conflictFlags.length === 0 && rows.length >= 2 ? "Corroborated" : conflictFlags.length > 0 ? "Variance Conflict" : "Unverified",
+        summary: conflictFlags.length > 0
+          ? `${conflictFlags.length} math gap(s) over 10% tolerance detected between slide claims and sheet.`
+          : rows.length > 0
+          ? "All slide statements corroborate with submitted CSV sheets within 10% tolerance."
+          : "No monthly CSV sheet submitted to corroborate deck claims.",
+        formula: "Score = BaseCorroboration − (20 × ConflictsCount)",
+        inputs: {
+          "Checks Ran": flags.length + (rows.length ? 3 : 0),
+          "Conflicts (>10% gap)": conflictFlags.length,
+          "Monthly Rows Evaluated": rows.length,
+        },
+        benchmark: "Aarka strict 10% gap tolerance rule: Any variance >10% creates an auditable conflict flag.",
+        penalties: veracityPenalties,
+      },
+      founder: {
+        id: "founder",
+        name: "Founder Pedigree & Background Signal",
+        weightPct: 20,
+        score: founderScore,
+        rating: founderScore >= 75 ? "Tier-1 Operator" : founderScore >= 40 ? "Domain Relevant" : "Unsubstantiated",
+        summary: isSerial
+          ? "Serial founder or prior tech executive track record identified."
+          : hasDomainMatch
+          ? "Demonstrated operator background in relevant industry space."
+          : "First-time founders or unverified prior company roles.",
+        formula: "Score = SerialBonus(35) + DomainMatch(30) + TechPedigree(20) + RegistryMatch(15)",
+        inputs: {
+          "Serial Founder Signal": isSerial ? "Yes (+35)" : "No",
+          "Domain Space Overlap": hasDomainMatch ? "Matched (+30)" : "Unverified",
+          "Technical Pedigree": hasTechPedigree ? "Verified (+20)" : "No",
+          "Registry Entity Check": hasRegistry ? "Incorporated (+15)" : "Pending",
+        },
+        benchmark: "Sequoia / Benchmark pattern: Repeat founders with domain depth de-risk early-stage execution.",
+        penalties: founderPenalties,
+      },
+      economics: {
+        id: "economics",
+        name: "Unit Economics & Capital Efficiency",
+        weightPct: 20,
+        score: economicsScore,
+        rating: burnTier === "Exceptional" || runwayStatus === "Healthy" ? "Top-Quartile" : burnTier === "High Burn Alarm" ? "Alarm" : "Early Stage / N/A",
+        summary: burnMultipleVal != null
+          ? `Burn Multiple ${burnMultipleVal.toFixed(1)}x · Runway ${runwayMonths ? runwayMonths.toFixed(1) : "N/A"} months.`
+          : "Insufficient monthly numbers to establish verified capital efficiency curve.",
+        formula: "Score = 0.40(BurnMultiplePts) + 0.40(RunwayPts) + 0.20(MagicNumberPts)",
+        inputs: {
+          "Burn Multiple": burnMultipleVal != null ? `${burnMultipleVal.toFixed(1)}x (${burnTier})` : "N/A",
+          "Runway Cash Lasts": runwayMonths != null ? `${runwayMonths.toFixed(1)} mo (${runwayStatus})` : "N/A",
+          "SaaS Magic Number": magicNumVal != null ? `${magicNumVal.toFixed(2)}x` : "N/A",
+        },
+        benchmark: "Craft Ventures / Founders Fund: Burn Multiple <1.5x and runway >12 months are mandatory for institutional seed pacing.",
+        penalties: economicsPenalties,
+      },
+      mandate: {
+        id: "mandate",
+        name: "Fund Mandate & Ownership Feasibility",
+        weightPct: 15,
+        score: mandateScore,
+        rating: ownershipStatus.includes("Within Mandate") ? "Mandate Fit" : "Review Check",
+        summary: ask
+          ? `Round $${(ask / 1000).toFixed(0)}K · Target Ownership ${ownershipPct ? ownershipPct.toFixed(1) : "N/A"}% · ${ownershipStatus}.`
+          : "Round size or valuation cap not provided in intake.",
+        formula: "Score = StageFit(30) + SectorFit(30) + OwnershipFit(40)",
+        inputs: {
+          "Round Ask": ask ? `$${(ask / 1000).toFixed(0)}K` : "Not stated",
+          "Implied Valuation": impliedPost ? `$${(impliedPost / 1_000_000).toFixed(1)}M` : "N/A",
+          "Fund Target Equity": ownershipPct ? `${ownershipPct.toFixed(1)}%` : "N/A",
+          "Ownership Status": ownershipStatus,
+        },
+        benchmark: "Aarka Fund I Mandate: Target 10% to 20% equity stake in Seed-stage B2B / Fintech companies.",
+        penalties: mandatePenalties,
+      },
+    },
+    keyRisks,
+    suggestedAction,
+  };
 
   return {
     burnMultiple: {
@@ -272,7 +644,9 @@ export function calculateVCMetrics(
       formatted: arrPerHead != null ? `$${(arrPerHead / 1000).toFixed(0)}k / FTE` : "N/A",
       tier: headTier,
     },
-    overallScore: score,
+    overallScore: calculatedScore,
+    grade,
     verdict,
+    conviction,
   };
 }

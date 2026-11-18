@@ -231,7 +231,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
               note="Written by code from the record; lines marked AI are the model's reading"
             />
             <KeyNumbers facts={facts.filter((x) => x.headline)} company={company} />
-            <VCMetricsPanel sheet={deal.sheet} record={deal.record} askAmount={deal.form.amountUsd} />
+            <VCMetricsPanel deal={deal} sheet={deal.sheet} record={deal.record} askAmount={deal.form.amountUsd} />
             <QuestionsPanel company={company} />
           </div>
           <aside className="space-y-4">
@@ -256,7 +256,7 @@ export default function DealPage({ params, searchParams }: { params: Promise<{ i
       )}
       {tab === "numbers" && (
         <div className="space-y-6">
-          <VCMetricsPanel sheet={deal.sheet} record={deal.record} askAmount={deal.form.amountUsd} />
+          <VCMetricsPanel deal={deal} sheet={deal.sheet} record={deal.record} askAmount={deal.form.amountUsd} />
           <CapTableModeler
             dealId={deal.id}
             companyName={f.companyName}
