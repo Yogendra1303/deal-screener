@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import type { FlowRow } from "@/components/flow";
 import { Avatar } from "@/components/shell";
 import { useStore } from "@/components/store";
@@ -16,7 +17,6 @@ interface LaneConfig {
   dot: string;
   bar: string;
   badge: string;
-  defaultCollapsed?: boolean;
 }
 
 const LANES: LaneConfig[] = [
@@ -24,12 +24,20 @@ const LANES: LaneConfig[] = [
   { status: "Reviewing", label: "Reviewing", dot: "bg-indigo-500", bar: "border-l-indigo-500", badge: "bg-indigo-50 text-indigo-700" },
   { status: "Meeting set", label: "Meeting Set", dot: "bg-emerald-500", bar: "border-l-emerald-500", badge: "bg-emerald-50 text-emerald-700" },
   { status: "On hold", label: "On Hold", dot: "bg-amber-500", bar: "border-l-amber-500", badge: "bg-amber-50 text-amber-700" },
-  { status: "Passed", label: "Passed", dot: "bg-slate-400", bar: "border-l-slate-400", badge: "bg-slate-100 text-slate-600", defaultCollapsed: true },
+  { status: "Passed", label: "Passed", dot: "bg-slate-400", bar: "border-l-slate-400", badge: "bg-slate-100 text-slate-600" },
 ];
 
 const PREVIEW_LIMIT = 4;
+const BOARD_STATE_KEY = "ds.board.ui.v1";
+
+interface SavedBoardState {
+  focusedLane: DealStatus | null;
+  expanded: Partial<Record<DealStatus, boolean>>;
+  collapsed: Partial<Record<DealStatus, boolean>>;
+}
 
 export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; showOwners?: boolean }) {
+  const router = useRouter();
   const store = useStore();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [hoverLane, setHoverLane] = useState<DealStatus | null>(null);
@@ -37,11 +45,34 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
   const [focusedLane, setFocusedLane] = useState<DealStatus | null>(null);
   const [expanded, setExpanded] = useState<Partial<Record<DealStatus, boolean>>>({});
   const [collapsed, setCollapsed] = useState<Partial<Record<DealStatus, boolean>>>({ Passed: true });
+  const justDraggedRef = useRef(false);
+
+  // Restore expanded/collapsed/focused board lanes across Back navigation
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(BOARD_STATE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Partial<SavedBoardState>;
+      if (saved.focusedLane !== undefined) setFocusedLane(saved.focusedLane);
+      if (saved.expanded) setExpanded(saved.expanded);
+      if (saved.collapsed) setCollapsed(saved.collapsed);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const payload: SavedBoardState = { focusedLane, expanded, collapsed };
+      window.sessionStorage.setItem(BOARD_STATE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore
+    }
+  }, [focusedLane, expanded, collapsed]);
 
   async function moveDeal(id: string, target: DealStatus) {
     setSavingId(id);
     store.setStatus(id, target);
-    // Ensure destination lane is visible so the user immediately sees the moved pitch
     setCollapsed((prev) => ({ ...prev, [target]: false }));
     try {
       await fetch(`/api/deals/${encodeURIComponent(id)}`, {
@@ -67,6 +98,11 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
       if (next) setExpanded((e) => ({ ...e, [status]: false }));
       return { ...prev, [status]: next };
     });
+  }
+
+  function openCard(href: string) {
+    if (justDraggedRef.current) return;
+    router.push(href);
   }
 
   const orderedLanes = focusedLane
@@ -112,11 +148,11 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                   }
                 }}
                 className={cx(
-                  "inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-all",
+                  "inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0",
                   isDrop
                     ? "border-blue-500 bg-blue-50 text-blue-800 ring-2 ring-blue-500/20"
                     : isFocused
-                      ? "border-slate-900 bg-slate-900 text-white"
+                      ? "border-slate-900 bg-slate-900 text-white shadow-xs"
                       : "border-slate-200 bg-slate-50/70 text-slate-700 hover:bg-slate-100",
                 )}
                 title={`Click to open ${lane.label} at the top, or drop a pitch card here`}
@@ -170,9 +206,9 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
               }
             }}
             className={cx(
-              "overflow-hidden rounded-xl border border-slate-200/90 border-l-[3px] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all",
+              "overflow-hidden rounded-xl border border-slate-200/90 border-l-[3px] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200",
               lane.bar,
-              isDropTarget && "ring-2 ring-blue-500 bg-blue-50/30",
+              isDropTarget && "ring-2 ring-blue-500 bg-blue-50/30 shadow-md",
             )}
           >
             {/* Swimlane Header */}
@@ -184,7 +220,7 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
               >
                 <svg
                   viewBox="0 0 24 24"
-                  className={cx("h-3.5 w-3.5 text-slate-400 transition-transform", !isCollapsed && "rotate-90")}
+                  className={cx("h-3.5 w-3.5 text-slate-400 transition-transform duration-200", !isCollapsed && "rotate-90")}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={2.2}
@@ -237,9 +273,9 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
               </div>
             </header>
 
-            {/* Horizontal 4-Card Grid (Clean Row, Zero Vertical Clutter) */}
+            {/* Horizontal 4-Card Grid with Tactile 3D Forward Lift & Full-Card Click */}
             {!isCollapsed && (
-              <div className="p-3">
+              <div className="p-3.5">
                 {laneRows.length === 0 ? (
                   <div className="flex items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 text-xs text-slate-400">
                     No pitches in {lane.label.toLowerCase()} — drag any pitch card here to move it.
@@ -252,19 +288,35 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                         return (
                           <article
                             key={r.id}
+                            role="link"
+                            tabIndex={0}
+                            aria-label={`Open ${r.name} pitch`}
                             draggable
+                            onClick={() => openCard(r.href)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openCard(r.href);
+                              }
+                            }}
                             onDragStart={(e) => {
+                              justDraggedRef.current = true;
                               e.dataTransfer.setData("text/plain", r.id);
                               setDraggingId(r.id);
                             }}
                             onDragEnd={() => {
                               setDraggingId(null);
                               setHoverLane(null);
+                              setTimeout(() => {
+                                justDraggedRef.current = false;
+                              }, 120);
                             }}
                             className={cx(
-                              "flex cursor-grab flex-col justify-between rounded-lg border border-slate-200/90 bg-white p-3 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs active:cursor-grabbing",
+                              "group relative flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition-all duration-200 ease-out will-change-transform",
+                              "hover:-translate-y-1 hover:scale-[1.018] hover:border-blue-300 hover:shadow-[0_14px_26px_-10px_rgba(15,23,42,0.16),0_4px_10px_-4px_rgba(37,99,235,0.10)]",
+                              "active:translate-y-0 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                               r.isLiveSubmission && r.status === "New" && "border-blue-200/90 bg-blue-50/20",
-                              draggingId === r.id && "opacity-50",
+                              draggingId === r.id && "scale-[0.97] opacity-50 shadow-none",
                               savingId === r.id && "ring-1 ring-blue-400",
                             )}
                           >
@@ -272,13 +324,20 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                               <div className="flex items-start justify-between gap-2">
                                 <Link
                                   href={r.href}
-                                  className="min-w-0 flex-1 text-sm font-semibold text-slate-900 hover:text-blue-700 hover:underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="min-w-0 flex-1 text-sm font-semibold text-slate-900 transition-colors group-hover:text-blue-700"
                                 >
-                                  <span className="inline-flex items-center gap-1.5">
+                                  <span className="inline-flex max-w-full items-center gap-1.5">
                                     {r.isLiveSubmission && (
                                       <span title="Live pitch submission" className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
                                     )}
                                     <span className="truncate">{r.name}</span>
+                                    <span
+                                      aria-hidden
+                                      className="inline-block text-xs text-blue-600 opacity-0 -translate-x-1 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100"
+                                    >
+                                      →
+                                    </span>
                                   </span>
                                 </Link>
                                 {showOwners && r.owner && <Avatar name={r.owner} size="xs" />}
@@ -288,7 +347,7 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                                 {r.sector} · {r.stage}
                               </p>
 
-                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                                 {r.askUsd ? (
                                   <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-700">
                                     {usd(r.askUsd)}
@@ -307,7 +366,10 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                               </div>
                             </div>
 
-                            <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                            <div
+                              className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-slate-400">
                                 {fmtDay(r.last)}
                               </span>
@@ -326,11 +388,11 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
                     </div>
 
                     {hiddenCount > 0 && !isExpanded && (
-                      <div className="mt-3 flex justify-center">
+                      <div className="mt-3.5 flex justify-center">
                         <button
                           type="button"
                           onClick={() => toggleExpand(lane.status)}
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-slate-900 hover:shadow-2xs"
                         >
                           <span>See all {laneRows.length} in {lane.label}</span>
                           <span className="font-mono text-[11px] text-slate-400">(+{hiddenCount} more)</span>

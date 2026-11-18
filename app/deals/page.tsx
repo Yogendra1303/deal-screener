@@ -4,7 +4,7 @@
 // working Sort/Facet dropdowns, List/Kanban toggle, and dedicated AI Reading Queue modal.
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AIReadQueueModal } from "@/components/ai-read-queue-modal";
 import { Delta } from "@/components/charts";
 import { DeckList, TempPill, slugOf as sectorSlug, triageOrder, useDealFlow, type FlowRow, type SectorStat } from "@/components/flow";
@@ -159,7 +159,10 @@ export default function DealsPage() {
   );
 }
 
+const VIEW_MODE_KEY = "ds.deals.view.v1";
+
 function DealsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const store = useStore();
   const links = useLinks();
@@ -173,11 +176,50 @@ function DealsContent() {
   const [askBand, setAskBand] = useState<AskBand>("");
   const [sortBy, setSortBy] = useState<SortKey>("newest");
   const [chips, setChips] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<"list" | "board">("list");
+  const [viewMode, setViewModeState] = useState<"list" | "board">("list");
   const [aiQueueOpen, setAiQueueOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const signalsRef = useRef<HTMLDivElement>(null);
+
+  const setViewMode = (next: "list" | "board") => {
+    setViewModeState(next);
+    try {
+      window.localStorage.setItem(VIEW_MODE_KEY, next);
+    } catch {
+      // ignore
+    }
+    try {
+      const params = new URLSearchParams(window.location.search);
+      params.set("view", next);
+      const qs = params.toString();
+      router.replace(qs ? `/deals?${qs}` : "/deals", { scroll: false });
+    } catch {
+      // ignore
+    }
+  };
+
+  // Restore persisted List | Board preference on mount & Back navigation
+  useEffect(() => {
+    const urlView = searchParams.get("view");
+    if (urlView === "board" || urlView === "list") {
+      setViewModeState(urlView);
+      try {
+        window.localStorage.setItem(VIEW_MODE_KEY, urlView);
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    try {
+      const saved = window.localStorage.getItem(VIEW_MODE_KEY);
+      if (saved === "board" || saved === "list") {
+        setViewModeState(saved);
+      }
+    } catch {
+      // ignore
+    }
+  }, [searchParams]);
 
   // React cleanly to URL parameters (including repeated searches from the global top search bar)
   useEffect(() => {
@@ -620,7 +662,10 @@ function DealsContent() {
           )}
 
           {viewMode === "board" ? (
-            <PipelineKanban rows={sortRows(narrowed, sortBy)} showOwners={!analyst} />
+            <PipelineKanban
+              rows={sortRows(tab === "live" ? narrowed.filter((r) => Boolean(r.isLiveSubmission)) : narrowed, sortBy)}
+              showOwners={!analyst}
+            />
           ) : sorted.length === 0 && hasAnyFilter ? (
             <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
               <p className="text-sm font-medium text-slate-700">No pitches match your current filter combination.</p>
