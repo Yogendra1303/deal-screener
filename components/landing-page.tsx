@@ -117,7 +117,7 @@ export function LandingPage() {
       <main>
         {/* ===================================================================
             STATIC ABOVE-THE-FOLD HERO SECTION
-            Instrument Serif H1 + Geist Sans Subheadline + Discrepancy Spotlight
+            Geist Sans H1 (58-64px desktop / 40-44px mobile, 600 weight, 1.06 line-height)
            =================================================================== */}
         <section className="relative border-b border-slate-200/80 pt-12 pb-16 sm:pt-16 sm:pb-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -129,11 +129,11 @@ export function LandingPage() {
                 </span>
               </div>
 
-              <h1 className="mx-auto mt-5 max-w-[18ch] font-serif text-[clamp(2.35rem,4.5vw+0.9rem,3.85rem)] font-normal leading-[1.05] tracking-[-0.02em] text-balance text-slate-950">
+              <h1 className="mx-auto mt-5 max-w-[16ch] font-sans text-[clamp(2.5rem,4.2vw+1rem,3.875rem)] font-semibold leading-[1.06] tracking-[-0.03em] text-balance text-slate-950 sm:max-w-[18ch]">
                 From startup pitch to investment review.
               </h1>
 
-              <p className="mx-auto mt-4 max-w-[56ch] text-[clamp(0.975rem,0.35vw+0.9rem,1.1rem)] leading-[1.62] text-slate-700">
+              <p className="mx-auto mt-4 max-w-[56ch] font-sans text-[clamp(1rem,0.35vw+0.92rem,1.125rem)] font-normal leading-[1.6] text-pretty text-slate-600">
                 Turn startup pitches into evidence-backed investment reviews. Aarka structures founder submissions, extracts source-cited slide claims, cross-checks financial figures against monthly CSV records, and supports partner review and portfolio monitoring in one workspace.
               </p>
 
@@ -296,14 +296,14 @@ export function LandingPage() {
            =================================================================== */}
         <section id="workflow" className="scroll-mt-20 border-b border-slate-200/80 bg-[#FAF9F6] py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
+            <div className="max-w-3xl">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
                 Product Workflow
               </p>
-              <h2 className="mt-2 font-serif text-[clamp(1.85rem,2.8vw+0.85rem,2.65rem)] font-normal leading-[1.1] tracking-[-0.018em] text-slate-950">
+              <h2 className="mt-2 max-w-[23ch] font-sans text-[clamp(1.875rem,2.6vw+0.9rem,2.75rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-balance text-slate-950">
                 A Structured Workspace for Startup Pitches and Investor Review.
               </h2>
-              <p className="mt-3 max-w-[56ch] text-sm leading-[1.65] text-slate-600">
+              <p className="mt-3 max-w-[56ch] font-sans text-[clamp(1rem,0.25vw+0.92rem,1.125rem)] font-normal leading-[1.6] text-slate-600">
                 Bring startup submissions and investment opportunities into a structured review process across five connected stages.
               </p>
             </div>
@@ -327,14 +327,14 @@ export function LandingPage() {
            =================================================================== */}
         <section id="privacy" className="scroll-mt-20 border-b border-slate-200/80 bg-slate-950 py-16 text-white sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
+            <div className="max-w-3xl">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
                 Data Handling &amp; Privacy
               </p>
-              <h2 className="mt-2 font-serif text-[clamp(1.85rem,2.8vw+0.85rem,2.65rem)] font-normal leading-[1.1] tracking-[-0.018em] text-white">
+              <h2 className="mt-2 max-w-[22ch] font-sans text-[clamp(1.875rem,2.6vw+0.9rem,2.75rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-balance text-white">
                 AI reads and cites. Code checks the math. Partners decide.
               </h2>
-              <p className="mt-3 max-w-[56ch] text-xs leading-[1.65] text-slate-300 sm:text-sm">
+              <p className="mt-3 max-w-[56ch] font-sans text-[clamp(1rem,0.25vw+0.92rem,1.125rem)] font-normal leading-[1.6] text-slate-300">
                 Aarka preserves original founder documents while separating information extraction, deterministic financial calculations, and partner investment decisions.
               </p>
             </div>
@@ -346,8 +346,10 @@ export function LandingPage() {
                   <span className="font-mono text-xs font-semibold text-blue-400">01 · AI Extraction</span>
                   <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Read &amp; Cite</span>
                 </div>
-                <h3 className="mt-2.5 font-sans text-base font-semibold text-white">Original files remain intact</h3>
-                <p className="mt-2 text-xs leading-[1.65] text-slate-300">
+                <h3 className="mt-2.5 font-sans text-[clamp(1.25rem,0.8vw+0.95rem,1.45rem)] font-semibold leading-[1.2] tracking-[-0.015em] text-white">
+                  Original files remain intact
+                </h3>
+                <p className="mt-2 font-sans text-[clamp(0.95rem,0.15vw+0.9rem,1.025rem)] font-normal leading-[1.6] text-slate-300">
                   Uploaded founder PDFs and monthly CSV sheets are preserved without alteration. AI extracts slide claims with exact page citations and never computes financial ratios.
                 </p>
               </div>
@@ -357,8 +359,10 @@ export function LandingPage() {
                   <span className="font-mono text-xs font-semibold text-emerald-400">02 · Deterministic Code</span>
                   <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Check &amp; Flag</span>
                 </div>
-                <h3 className="mt-2.5 font-sans text-base font-semibold text-white">Auditable calculations</h3>
-                <p className="mt-2 text-xs leading-[1.65] text-slate-300">
+                <h3 className="mt-2.5 font-sans text-[clamp(1.25rem,0.8vw+0.95rem,1.45rem)] font-semibold leading-[1.2] tracking-[-0.015em] text-white">
+                  Auditable calculations
+                </h3>
+                <p className="mt-2 font-sans text-[clamp(0.95rem,0.15vw+0.9rem,1.025rem)] font-normal leading-[1.6] text-slate-300">
                   Financial checks (ARR vs. MRR x 12, runway, compounded CSV growth) and SAFE dilution models run in deterministic TypeScript code rather than LLM-generated arithmetic.
                 </p>
               </div>
@@ -368,8 +372,10 @@ export function LandingPage() {
                   <span className="font-mono text-xs font-semibold text-amber-300">03 · Human Decisions</span>
                   <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">Override &amp; Vote</span>
                 </div>
-                <h3 className="mt-2.5 font-sans text-base font-semibold text-white">Controlled workspace access</h3>
-                <p className="mt-2 text-xs leading-[1.65] text-slate-300">
+                <h3 className="mt-2.5 font-sans text-[clamp(1.25rem,0.8vw+0.95rem,1.45rem)] font-semibold leading-[1.2] tracking-[-0.015em] text-white">
+                  Controlled workspace access
+                </h3>
+                <p className="mt-2 font-sans text-[clamp(0.95rem,0.15vw+0.9rem,1.025rem)] font-normal leading-[1.6] text-slate-300">
                   Partner and analyst access is restricted through invite-only, role-based authorization. Partners can override any score or record IC votes with a written rationale.
                 </p>
               </div>
@@ -443,10 +449,10 @@ export function LandingPage() {
                     Early-Stage Mandate · Up to $4M
                   </span>
                 </div>
-                <h2 className="font-serif text-[clamp(1.65rem,2.4vw+0.8rem,2.25rem)] font-normal leading-[1.12] tracking-[-0.018em] text-slate-950">
+                <h2 className="max-w-[23ch] font-sans text-[clamp(1.65rem,2.2vw+0.85rem,2.25rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-balance text-slate-950">
                   Raising a Pre-Seed, Seed, or Series A round?
                 </h2>
-                <p className="max-w-[56ch] text-xs leading-[1.65] text-slate-600 sm:text-sm">
+                <p className="max-w-[56ch] font-sans text-[clamp(0.95rem,0.15vw+0.9rem,1.05rem)] font-normal leading-[1.6] text-slate-600">
                   Submit your PDF pitch deck and optional monthly CSV financial sheet directly into our review queue. No account is required, and every submission issues a private data room link to track review status.
                 </p>
               </div>
@@ -476,10 +482,10 @@ export function LandingPage() {
                   <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
                     For Funds &amp; Investment Teams
                   </p>
-                  <h2 className="mt-2 font-serif text-[clamp(1.85rem,2.8vw+0.85rem,2.5rem)] font-normal leading-[1.1] tracking-[-0.018em] text-slate-950">
+                  <h2 className="mt-2 max-w-[20ch] font-sans text-[clamp(1.875rem,2.6vw+0.9rem,2.75rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-balance text-slate-950">
                     Request a Fund Workspace.
                   </h2>
-                  <p className="mt-3 max-w-[48ch] text-xs leading-[1.65] text-slate-600 sm:text-sm">
+                  <p className="mt-3 max-w-[48ch] font-sans text-[clamp(0.95rem,0.15vw+0.9rem,1.05rem)] font-normal leading-[1.6] text-slate-600">
                     Aarka workspaces are invite-only. Submit your fund details to evaluate Aarka for your investment team&apos;s deal screening, financial cross-checks, and portfolio monitoring.
                   </p>
                 </div>

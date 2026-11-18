@@ -40,7 +40,7 @@ export default function PublicPitchPage() {
               Early-Stage Mandate · Up to $4M
             </span>
           </div>
-          <h1 className="mt-2 font-serif text-2xl font-normal tracking-[-0.02em] text-slate-950 sm:text-3xl">
+          <h1 className="mt-2 font-sans text-2xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-3xl">
             Submit Your Pitch Deck
           </h1>
           <p className="mt-1.5 text-xs leading-relaxed text-slate-600 sm:text-sm">

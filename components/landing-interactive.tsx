@@ -314,10 +314,10 @@ export function WorkflowInteractiveGrid() {
                   {step.routeLabel}
                 </span>
               </div>
-              <h3 className="mt-1.5 font-sans text-base font-semibold leading-[1.32] tracking-[-0.01em] text-slate-950">
+              <h3 className="mt-1.5 font-sans text-[clamp(1.125rem,0.5vw+0.95rem,1.35rem)] font-semibold leading-[1.2] tracking-[-0.015em] text-balance text-slate-950">
                 {step.title}
               </h3>
-              <p className="mt-1.5 text-xs leading-[1.6] text-slate-600">{step.summary}</p>
+              <p className="mt-1.5 font-sans text-[clamp(0.925rem,0.15vw+0.88rem,1rem)] font-normal leading-[1.6] text-slate-600">{step.summary}</p>
 
               {/* Mobile inline stage metrics */}
               <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 lg:hidden">
@@ -403,11 +403,11 @@ export function CapabilitiesInteractiveTabs() {
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-2xl">
+        <div className="max-w-3xl">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
             Platform Capabilities
           </p>
-          <h2 className="mt-2 font-serif text-[clamp(1.85rem,2.8vw+0.85rem,2.65rem)] font-normal leading-[1.1] tracking-[-0.018em] text-slate-950">
+          <h2 className="mt-2 max-w-[22ch] font-sans text-[clamp(1.875rem,2.6vw+0.9rem,2.75rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-balance text-slate-950">
             Four modules built for structured investment review.
           </h2>
         </div>
@@ -443,10 +443,10 @@ export function CapabilitiesInteractiveTabs() {
         <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
           <div className="space-y-3.5 lg:col-span-5">
             <span className="font-mono text-xs font-semibold text-blue-700">01 · Financial Diligence</span>
-            <h3 className="font-sans text-[clamp(1.15rem,1vw+0.85rem,1.4rem)] font-semibold leading-[1.28] tracking-[-0.015em] text-slate-950">
+            <h3 className="font-sans text-[clamp(1.375rem,1.1vw+0.95rem,1.625rem)] font-semibold leading-[1.2] tracking-[-0.02em] text-balance text-slate-950">
               Spot arithmetic gaps between slide claims and monthly CSV rows before the first call.
             </h3>
-            <p className="max-w-[54ch] text-xs leading-[1.65] text-slate-600 sm:text-sm">
+            <p className="max-w-[54ch] font-sans text-[clamp(1rem,0.2vw+0.92rem,1.0625rem)] font-normal leading-[1.6] text-slate-600">
               Compare stated ARR, monthly growth, and runway against submitted CSV rows. Variances above the 10.0% default threshold (configurable per fund rule) are flagged with exact formulas.
             </p>
             <ul className="space-y-2 border-t border-slate-200 pt-3.5 text-xs text-slate-700">
@@ -494,10 +494,10 @@ export function CapabilitiesInteractiveTabs() {
         <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
           <div className="space-y-3.5 lg:col-span-5">
             <span className="font-mono text-xs font-semibold text-blue-700">02 · Deal Pipeline</span>
-            <h3 className="font-sans text-[clamp(1.15rem,1vw+0.85rem,1.4rem)] font-semibold leading-[1.28] tracking-[-0.015em] text-slate-950">
+            <h3 className="font-sans text-[clamp(1.375rem,1.1vw+0.95rem,1.625rem)] font-semibold leading-[1.2] tracking-[-0.02em] text-balance text-slate-950">
               Triage every inbound deck across list and horizontal stage boards.
             </h3>
-            <p className="max-w-[54ch] text-xs leading-[1.65] text-slate-600 sm:text-sm">
+            <p className="max-w-[54ch] font-sans text-[clamp(1rem,0.2vw+0.92rem,1.0625rem)] font-normal leading-[1.6] text-slate-600">
               Organize submissions across New Inbound, Reviewing, Meeting Set, On Hold, and Passed stages with live intake sync and one-click CSV exports.
             </p>
             <ul className="space-y-2 border-t border-slate-200 pt-3.5 text-xs text-slate-700">
@@ -545,10 +545,10 @@ export function CapabilitiesInteractiveTabs() {
         <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
           <div className="space-y-3.5 lg:col-span-5">
             <span className="font-mono text-xs font-semibold text-blue-700">03 · Investment Review</span>
-            <h3 className="font-sans text-[clamp(1.15rem,1vw+0.85rem,1.4rem)] font-semibold leading-[1.28] tracking-[-0.015em] text-slate-950">
+            <h3 className="font-sans text-[clamp(1.375rem,1.1vw+0.95rem,1.625rem)] font-semibold leading-[1.2] tracking-[-0.02em] text-balance text-slate-950">
               Benchmark sector cohorts and document partner IC decisions with an audit trail.
             </h3>
-            <p className="max-w-[54ch] text-xs leading-[1.65] text-slate-600 sm:text-sm">
+            <p className="max-w-[54ch] font-sans text-[clamp(1rem,0.2vw+0.92rem,1.0625rem)] font-normal leading-[1.6] text-slate-600">
               Compare incoming opportunities against 3-month, 6-month, and 12-month sector cohorts, record partner votes, and preserve written rationales when overriding code scores.
             </p>
             <ul className="space-y-2 border-t border-slate-200 pt-3.5 text-xs text-slate-700">
@@ -596,10 +596,10 @@ export function CapabilitiesInteractiveTabs() {
         <div className="mt-8 grid items-center gap-8 lg:grid-cols-12">
           <div className="space-y-3.5 lg:col-span-5">
             <span className="font-mono text-xs font-semibold text-blue-700">04 · Portfolio Monitoring</span>
-            <h3 className="font-sans text-[clamp(1.15rem,1vw+0.85rem,1.4rem)] font-semibold leading-[1.28] tracking-[-0.015em] text-slate-950">
+            <h3 className="font-sans text-[clamp(1.375rem,1.1vw+0.95rem,1.625rem)] font-semibold leading-[1.2] tracking-[-0.02em] text-balance text-slate-950">
               Track monthly MIS reporting health, cash runway alerts, and LP quarterly packs.
             </h3>
-            <p className="max-w-[54ch] text-xs leading-[1.65] text-slate-600 sm:text-sm">
+            <p className="max-w-[54ch] font-sans text-[clamp(1rem,0.2vw+0.92rem,1.0625rem)] font-normal leading-[1.6] text-slate-600">
               Monitor monthly MIS submissions across backed companies, flag cash runway below 9 months or revenue off plan by more than 25%, and track fund responsiveness on founder asks.
             </p>
             <ul className="space-y-2 border-t border-slate-200 pt-3.5 text-xs text-slate-700">

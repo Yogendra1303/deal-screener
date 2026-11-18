@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 import { ScrollManager } from "@/components/scroll-manager";
@@ -7,14 +7,6 @@ import { ScrollManager } from "@/components/scroll-manager";
 const geistSans = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
-  display: "swap",
-  adjustFontFallback: true,
-});
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-instrument-serif",
   display: "swap",
   adjustFontFallback: true,
 });
@@ -82,7 +74,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="h-full bg-slate-50 text-slate-900">
         <ScrollManager />

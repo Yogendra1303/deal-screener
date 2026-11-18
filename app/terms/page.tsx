@@ -40,7 +40,7 @@ export default function TermsOfUsePage() {
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
             Legal &amp; Workspace Terms
           </p>
-          <h1 className="mt-2 font-serif text-3xl font-normal tracking-[-0.02em] text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 font-sans text-3xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-4xl">
             Terms of Use
           </h1>
           <p className="mt-2 text-xs text-slate-500">Last updated: November 18, 2026</p>
