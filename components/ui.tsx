@@ -120,6 +120,7 @@ export function DropdownSelect<T extends string = string>({
   buttonClassName,
   align = "left",
   size = "md",
+  theme = "light",
   required,
 }: {
   value: T;
@@ -132,7 +133,8 @@ export function DropdownSelect<T extends string = string>({
   className?: string;
   buttonClassName?: string;
   align?: "left" | "right";
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
+  theme?: "light" | "dark";
   required?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -199,6 +201,7 @@ export function DropdownSelect<T extends string = string>({
     }
   };
 
+  const dark = theme === "dark";
   const menu =
     open && coords ? (
       <ul
@@ -206,7 +209,12 @@ export function DropdownSelect<T extends string = string>({
         role="listbox"
         aria-label={ariaLabel}
         style={{ top: coords.top, left: coords.left, minWidth: coords.width, maxHeight: coords.maxH }}
-        className="fixed z-[9999] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-xl shadow-slate-900/15"
+        className={cx(
+          "fixed z-[9999] overflow-y-auto rounded-lg border py-1 shadow-xl",
+          dark
+            ? "border-white/15 bg-zinc-900 shadow-black/50"
+            : "border-slate-200 bg-white shadow-slate-900/15",
+        )}
       >
         {normalized.map((opt) => {
           const isSelected = opt.value === value;
@@ -222,12 +230,18 @@ export function DropdownSelect<T extends string = string>({
               }}
               className={cx(
                 "flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
-                isSelected ? "bg-blue-50 text-blue-700" : "bg-white text-slate-700 hover:bg-slate-50",
+                dark
+                  ? isSelected
+                    ? "bg-blue-500/20 text-blue-300"
+                    : "bg-zinc-900 text-zinc-200 hover:bg-zinc-800"
+                  : isSelected
+                    ? "bg-blue-50 text-blue-700"
+                    : "bg-white text-slate-700 hover:bg-slate-50",
               )}
             >
               <span className="truncate">{opt.label}</span>
               {isSelected && (
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <svg viewBox="0 0 24 24" className={cx("h-3.5 w-3.5 shrink-0", dark ? "text-blue-400" : "text-blue-600")} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               )}
@@ -248,17 +262,29 @@ export function DropdownSelect<T extends string = string>({
         aria-expanded={open}
         onClick={toggleOpen}
         className={cx(
-          "inline-flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border bg-white font-medium leading-tight text-slate-700 shadow-2xs transition-colors hover:bg-slate-50",
-          open ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-200",
-          size === "sm" ? "h-8 px-2.5 text-xs" : "px-3 py-1.5 text-sm",
+          "inline-flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border font-medium leading-tight shadow-2xs transition-colors",
+          dark
+            ? open
+              ? "border-blue-500 bg-zinc-900/90 text-zinc-100 ring-2 ring-blue-500/20"
+              : "border-white/10 bg-zinc-900/80 text-zinc-200 hover:border-white/20 hover:bg-zinc-900"
+            : open
+              ? "border-blue-500 bg-white text-slate-700 ring-2 ring-blue-500/15"
+              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+          size === "xs"
+            ? "h-7 px-2 text-[11px]"
+            : size === "sm"
+              ? "h-8 px-2.5 text-xs"
+              : "px-3 py-1.5 text-sm",
           buttonClassName,
         )}
       >
         <span className="inline-flex min-w-0 items-center gap-1 truncate">
-          {prefix && <span className="shrink-0 text-slate-400">{prefix}</span>}
-          <span className={cx("truncate", selected ? "text-slate-900" : "text-slate-500")}>{selected ? selected.label : placeholder}</span>
+          {prefix && <span className={cx("shrink-0", dark ? "text-zinc-400" : "text-slate-400")}>{prefix}</span>}
+          <span className={cx("truncate", selected ? (dark ? "text-white" : "text-slate-900") : dark ? "text-zinc-400" : "text-slate-500")}>
+            {selected ? selected.label : placeholder}
+          </span>
         </span>
-        <svg viewBox="0 0 24 24" className={cx("h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg viewBox="0 0 24 24" className={cx("h-3.5 w-3.5 shrink-0 transition-transform", dark ? "text-zinc-400" : "text-slate-400", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>

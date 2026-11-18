@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { DropdownSelect } from "@/components/ui";
 
 const BACKGROUND_OPTIONS = [
   "VC (Partner / Principal / Associate)",
@@ -204,32 +205,16 @@ export function AccessRequestModal({
                   <label htmlFor="req-role" className={labelCls}>
                     Professional Role
                   </label>
-                  <div className="relative">
-                    <select
-                      id="req-role"
-                      value={background}
-                      onChange={(e) => setBackground(e.target.value)}
-                      className={`${fieldCls} appearance-none pr-9 cursor-pointer`}
-                    >
-                      {BACKGROUND_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt} className="bg-zinc-900 text-zinc-100">
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="pointer-events-none absolute top-1/2 right-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400"
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </div>
+                  <DropdownSelect
+                    id="req-role"
+                    ariaLabel="Professional Role"
+                    theme="dark"
+                    value={background}
+                    onChange={setBackground}
+                    options={BACKGROUND_OPTIONS}
+                    className="w-full"
+                    buttonClassName="h-10 rounded-lg px-3.5 text-[13px]"
+                  />
                 </div>
 
                 <div>
@@ -250,32 +235,16 @@ export function AccessRequestModal({
                   <label htmlFor="req-intent" className={labelCls}>
                     Why do you want to explore Aarka?
                   </label>
-                  <div className="relative">
-                    <select
-                      id="req-intent"
-                      value={intent}
-                      onChange={(e) => setIntent(e.target.value)}
-                      className={`${fieldCls} appearance-none pr-9 cursor-pointer`}
-                    >
-                      {INTENT_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt} className="bg-zinc-900 text-zinc-100">
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="pointer-events-none absolute top-1/2 right-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400"
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </div>
+                  <DropdownSelect
+                    id="req-intent"
+                    ariaLabel="Why do you want to explore Aarka?"
+                    theme="dark"
+                    value={intent}
+                    onChange={setIntent}
+                    options={INTENT_OPTIONS}
+                    className="w-full"
+                    buttonClassName="h-10 rounded-lg px-3.5 text-[13px]"
+                  />
                 </div>
 
                 <div className="col-span-1 md:col-span-2">

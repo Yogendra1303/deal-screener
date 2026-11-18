@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { cx } from "@/components/ui";
+import { DropdownSelect, cx } from "@/components/ui";
 
 interface FounderPitch {
   id: string;
@@ -380,18 +380,18 @@ function FounderDataRoomContent() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             {pitches.length > 1 && (
-              <select
-                aria-label="Select submission"
+              <DropdownSelect
+                ariaLabel="Select submission"
+                size="sm"
+                prefix="Pitch:"
+                align="right"
                 value={selected.id}
-                onChange={(e) => router.push(`/founder/dataroom?id=${encodeURIComponent(e.target.value)}`)}
-                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
-              >
-                {pitches.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.companyName} ({p.receivedAt ? new Date(p.receivedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recent"})
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => router.push(`/founder/dataroom?id=${encodeURIComponent(val)}`)}
+                options={pitches.map((p) => ({
+                  value: p.id,
+                  label: `${p.companyName} (${p.receivedAt ? new Date(p.receivedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recent"})`,
+                }))}
+              />
             )}
             <Link
               href={token ? "/" : "/founder"}

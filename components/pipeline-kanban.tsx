@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { FlowRow } from "@/components/flow";
 import { Avatar } from "@/components/shell";
 import { useStore } from "@/components/store";
-import { cx } from "@/components/ui";
+import { DropdownSelect, cx } from "@/components/ui";
 import { usd } from "@/lib/rules";
 import type { DealStatus } from "@/lib/types";
 
@@ -141,18 +141,14 @@ export function PipelineKanban({ rows, showOwners = true }: { rows: FlowRow[]; s
 
                         <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
                           <span className="text-[10px] text-slate-400">{r.last.slice(0, 10)}</span>
-                          <select
-                            aria-label={`Move ${r.name} stage`}
+                          <DropdownSelect<DealStatus>
+                            ariaLabel={`Move ${r.name} stage`}
+                            size="xs"
+                            align="right"
                             value={r.status}
-                            onChange={(e) => void moveDeal(r.id, e.target.value as DealStatus)}
-                            className="cursor-pointer rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-600 focus:border-blue-500 focus:outline-none"
-                          >
-                            {COLUMNS.map((opt) => (
-                              <option key={opt.status} value={opt.status}>
-                                {opt.status}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(s) => void moveDeal(r.id, s)}
+                            options={COLUMNS.map((opt) => opt.status)}
+                          />
                         </div>
                       </article>
                     );

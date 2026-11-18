@@ -23,7 +23,7 @@ import { Delta, Sparkline, StackBar } from "@/components/charts";
 import { Avatar, RoleViewDropdown } from "@/components/shell";
 import { useDataToFix } from "@/components/queues";
 import { useStore } from "@/components/store";
-import { Button, cx } from "@/components/ui";
+import { Button, DropdownSelect, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { triggerDealSync } from "@/lib/deal-sync";
 import type { DealStatus } from "@/lib/types";
@@ -511,21 +511,18 @@ function NewPitchHighlightBanner({ rows }: { rows: FlowRow[] }) {
                 {fmtDay(r.last)}
               </span>
               <div className="flex items-center gap-1.5">
-                <select
-                  aria-label={`Change status for ${r.name}`}
+                <DropdownSelect<DealStatus>
+                  ariaLabel={`Change status for ${r.name}`}
+                  size="xs"
+                  prefix="Status:"
+                  align="right"
                   value={r.status}
-                  onChange={(e) => store.setStatus(r.id, e.target.value as DealStatus)}
-                  className="cursor-pointer rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[11px] font-medium text-slate-700 hover:border-slate-300 focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="New">New</option>
-                  <option value="Reviewing">Reviewing</option>
-                  <option value="Meeting set">Meeting set</option>
-                  <option value="On hold">On hold</option>
-                  <option value="Passed">Passed</option>
-                </select>
+                  onChange={(s) => store.setStatus(r.id, s)}
+                  options={["New", "Reviewing", "Meeting set", "On hold", "Passed"]}
+                />
                 <Link
                   href={r.href}
-                  className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs transition-colors hover:bg-blue-700"
+                  className="inline-flex h-7 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-[11px] font-semibold text-white shadow-2xs transition-colors hover:bg-blue-700"
                 >
                   Open →
                 </Link>
