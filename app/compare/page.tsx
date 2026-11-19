@@ -15,24 +15,36 @@ import { COLUMNS, FX_NOTE, dealRow, periodScope, portfolioRow, type Cell, type C
 import { fmtMonth } from "@/lib/format";
 import type { KeyFact } from "@/lib/provenance";
 
+const SHORT_COL_LABEL: Record<ColKey, string> = {
+  conviction: "Conviction",
+  revenue: "Revenue / mo",
+  growth: "Growth (3m)",
+  burnMultiple: "Burn mult.",
+  runway: "Runway",
+  plan: "Vs plan",
+  customers: "Customers",
+  round: "Round",
+  reporting: "Reporting",
+};
+
 const METRICS: { key: ColKey; label: string; plain: string; bar?: number; barText?: string; unit: (n: number) => string }[] = [
-  { key: "conviction", label: "Conviction", plain: "5-pillar institutional conviction score (0 to 100, Grade A to G)", bar: 75, barText: "Grade B bar: 75+", unit: (n) => `${Math.round(n)}/100` },
   { key: "revenue", label: "Revenue", plain: "Latest monthly recurring or invoiced revenue, USD normalized", unit: (n) => (n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : n >= 1000 ? `$${(n / 1e3).toFixed(1)}K` : `$${Math.round(n)}`) },
   { key: "growth", label: "Growth", plain: "Compounded monthly revenue growth over the last 3 months", bar: 10, barText: "Seed bar: 10% / mo", unit: (n) => `${n.toFixed(1)}%` },
   { key: "burnMultiple", label: "Burn multiple", plain: "Net cash burned for each $1 of new annualized revenue (lower is better)", bar: 2, barText: "Target: 2.0x or less", unit: (n) => `${n.toFixed(1)}x` },
   { key: "runway", label: "Cash left", plain: "Months of runway remaining at the latest monthly net burn", bar: 9, barText: "Watch under 9 mo", unit: (n) => `${n.toFixed(1)} mo` },
   { key: "plan", label: "Vs plan", plain: "Reported monthly revenue compared against the pitch deck plan", bar: 0, barText: "0% = on plan", unit: (n) => `${n > 0 ? "+" : ""}${Math.round(n)}%` },
   { key: "customers", label: "Customers", plain: "Paying customers recorded in the latest reporting month", unit: (n) => Math.round(n).toLocaleString("en-US") },
+  { key: "conviction", label: "Conviction", plain: "5-pillar institutional conviction score (0 to 100, Grade A to G)", bar: 75, barText: "Grade B bar: 75+", unit: (n) => `${Math.round(n)}/100` },
 ];
 
 type Show = "all" | "Portfolio" | "Pitch";
 type Money = "usd" | "local";
 
 const BAND_TONE: Record<string, string> = {
-  "On track": "text-emerald-700",
-  Slipping: "text-amber-800",
-  "Gone quiet": "text-rose-700",
-  "Too early": "text-slate-500",
+  "On track": "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200",
+  Slipping: "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200",
+  "Gone quiet": "bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200",
+  "Too early": "bg-slate-100 text-slate-600",
 };
 
 const RIGHT_COLS = new Set<ColKey>(["conviction", "revenue", "growth", "burnMultiple", "runway", "plan", "customers"]);
@@ -77,6 +89,22 @@ export default function ComparePage() {
     [cos, p.today, store.deals, links, w.role, w.me],
   );
 
+  // Context-smart columns: strip cohort-irrelevant noise columns so tables fit cleanly without bloat.
+  const visibleColumns = useMemo(() => {
+    if (show === "Portfolio") return COLUMNS.filter((c) => c.key !== "conviction");
+    if (show === "Pitch") return COLUMNS.filter((c) => c.key !== "plan" && c.key !== "reporting");
+    return COLUMNS;
+  }, [show]);
+
+  const visibleMetrics = useMemo(() => {
+    if (show === "Portfolio") return METRICS.filter((m) => m.key !== "conviction");
+    if (show === "Pitch") return METRICS.filter((m) => m.key !== "plan");
+    return METRICS;
+  }, [show]);
+
+  const activeMetric: ColKey = visibleMetrics.some((m) => m.key === metric) ? metric : "revenue";
+  const activeSortCol: ColKey = visibleColumns.some((c) => c.key === sort.col) ? sort.col : "revenue";
+
   const sectorOptions = useMemo(() => {
     const sectors = [...new Set(rows.map((r) => r.sector).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     return [{ value: "all", label: "All sectors" }, ...sectors.map((s) => ({ value: s, label: s }))];
@@ -91,27 +119,36 @@ export default function ComparePage() {
     [rows],
   );
 
-  const filtered = useMemo(
+  const cohortRows = useMemo(
     () =>
       rows.filter(
         (r) =>
           (show === "all" || r.kind === show) &&
-          (sectorFilter === "all" || r.sector === sectorFilter) &&
-          (!hideIncomplete || hasFinancialMetrics(r)),
+          (sectorFilter === "all" || r.sector === sectorFilter),
       ),
-    [rows, show, sectorFilter, hideIncomplete],
+    [rows, show, sectorFilter],
+  );
+
+  const incompleteCount = useMemo(
+    () => cohortRows.filter((r) => !hasFinancialMetrics(r)).length,
+    [cohortRows],
+  );
+
+  const filtered = useMemo(
+    () => (hideIncomplete ? cohortRows.filter(hasFinancialMetrics) : cohortRows),
+    [cohortRows, hideIncomplete],
   );
 
   const sortedRows = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const x = a.cells[sort.col].sort;
-      const y = b.cells[sort.col].sort;
+      const x = a.cells[activeSortCol].sort;
+      const y = b.cells[activeSortCol].sort;
       if (x == null && y == null) return a.name.localeCompare(b.name);
       if (x == null) return 1;
       if (y == null) return -1;
       return sort.dir === "asc" ? x - y : y - x;
     });
-  }, [filtered, sort]);
+  }, [filtered, activeSortCol, sort.dir]);
 
   const summary = useMemo(() => {
     const revVals = filtered.map((r) => r.cells.revenue.sort).filter((n): n is number => n != null);
@@ -153,21 +190,21 @@ export default function ComparePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Executive Header */}
       <div className="max-w-3xl">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
           Fund Intelligence · Cross-Company Matrix
         </p>
         <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">Compare</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Compare portfolio companies and active pitches side by side on standardized definitions and a single currency.
+          Side-by-side portfolio and pitch comparison using standardized financial formulas and single-currency normalization.
         </p>
       </div>
 
-      {/* Compact Single-Row Control Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
+      {/* Unified Control Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 text-xs font-semibold" role="radiogroup" aria-label="Show cohort">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100/90 p-0.5 text-xs font-semibold" role="radiogroup" aria-label="Show cohort">
             {(
               [
                 ["all", `All (${scopeCounts.all})`],
@@ -201,7 +238,7 @@ export default function ComparePage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 text-xs font-semibold" role="radiogroup" aria-label="Currency display">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100/90 p-0.5 text-xs font-semibold" role="radiogroup" aria-label="Currency display">
             {(
               [
                 ["usd", "USD"],
@@ -224,53 +261,55 @@ export default function ComparePage() {
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setHideIncomplete((v) => !v)}
-            title="Hide companies without reported financial metrics (revenue, growth, runway, or customers)"
-            className={cx(
-              "cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-              hideIncomplete
-                ? "border-indigo-300 bg-indigo-50 text-indigo-800"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-            )}
-          >
-            {hideIncomplete ? "Hiding incomplete" : "Showing all"}
-          </button>
+          {incompleteCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setHideIncomplete((v) => !v)}
+              title="Toggle companies without reported financial metrics (revenue, growth, runway, or customers)"
+              className={cx(
+                "cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                hideIncomplete
+                  ? "border-blue-300 bg-blue-50 text-blue-800"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
+              )}
+            >
+              {hideIncomplete ? `Complete only (${incompleteCount} hidden)` : `Hide incomplete (${incompleteCount})`}
+            </button>
+          )}
         </div>
       </div>
 
       {/* 4-Tile Balanced Cohort Summary Strip */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card className="p-4 shadow-2xs">
+      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+        <Card className="p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Companies Shown</p>
-          <p className="mt-1.5 font-mono text-2xl font-bold text-slate-900">{summary.total}</p>
+          <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-slate-900">{summary.total}</p>
           <p className="mt-1 text-xs text-slate-500">
             {summary.portfolio} portfolio · {summary.pitches} {summary.pitches === 1 ? "pitch" : "pitches"}
           </p>
         </Card>
 
-        <Card className="p-4 shadow-2xs">
+        <Card className="p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Median Revenue / mo</p>
-          <p className="mt-1.5 font-mono text-2xl font-bold text-slate-900">
-            {summary.medianRev != null ? METRICS[1].unit(summary.medianRev) : "-"}
+          <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-slate-900">
+            {summary.medianRev != null ? METRICS[0].unit(summary.medianRev) : "-"}
           </p>
-          <p className="mt-1 text-xs text-slate-500">USD normalized · of {summary.revCount} reported</p>
+          <p className="mt-1 text-xs text-slate-500">USD normalized · {summary.revCount} reported</p>
         </Card>
 
-        <Card className="p-4 shadow-2xs">
+        <Card className="p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Median 3m Growth</p>
-          <p className="mt-1.5 font-mono text-2xl font-bold text-slate-900">
+          <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-slate-900">
             {summary.medianGrowth != null ? `${summary.medianGrowth.toFixed(1)}%` : "-"}
           </p>
           <p className="mt-1 text-xs text-slate-500">Seed bar: 10% / mo · {summary.growthCount} tracked</p>
         </Card>
 
-        <Card className="p-4 shadow-2xs">
+        <Card className="p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Verification Flags</p>
           <p
             className={cx(
-              "mt-1.5 font-mono text-2xl font-bold",
+              "mt-2 font-mono text-2xl font-bold tabular-nums",
               summary.conflicts > 0
                 ? "text-rose-700"
                 : summary.stale > 0
@@ -278,7 +317,7 @@ export default function ComparePage() {
                   : "text-emerald-700",
             )}
           >
-            {summary.conflicts + summary.stale === 0 ? "0" : summary.conflicts + summary.stale}
+            {summary.conflicts + summary.stale}
           </p>
           <p className="mt-1 text-xs text-slate-500">
             {summary.conflicts + summary.stale === 0
@@ -288,17 +327,17 @@ export default function ComparePage() {
         </Card>
       </div>
 
-      {/* Primary Hero View: Always-Expanded Side-by-Side Comparison Matrix */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3.5">
+      {/* Primary Hero View: Clean Side-by-Side Comparison Matrix */}
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 px-5 py-3.5">
           <div>
             <h2 className="text-base font-semibold text-slate-900">Side-by-side matrix</h2>
             <p className="text-xs text-slate-500">
               Click any column header to sort. Click a figure to open its source citation and formula.
             </p>
           </div>
-          <span className="font-mono text-xs text-slate-500">
-            Sorted by {COLUMNS.find((c) => c.key === sort.col)?.label} ({sort.dir === "desc" ? "high → low" : "low → high"})
+          <span className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[11px] font-medium text-slate-600">
+            Sorted by {SHORT_COL_LABEL[activeSortCol]} ({sort.dir === "desc" ? "high → low" : "low → high"})
           </span>
         </div>
 
@@ -313,29 +352,29 @@ export default function ComparePage() {
                   setSectorFilter("all");
                   setHideIncomplete(false);
                 }}
-                className="mt-2 cursor-pointer text-xs font-semibold text-indigo-700 hover:underline"
+                className="mt-2 cursor-pointer text-xs font-semibold text-blue-600 hover:underline"
               >
                 Reset filters →
               </button>
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1020px] text-sm">
+          <div className="overflow-x-auto overscroll-x-contain">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  <th className="sticky left-0 z-10 w-44 border-b border-slate-200 bg-slate-50 px-4 py-2.5 shadow-[1px_0_0_#e2e8f0]">
+                <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">
+                  <th className="sticky left-0 z-20 w-[196px] min-w-[196px] max-w-[196px] border-r border-slate-200 bg-slate-50 px-4 py-3 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.06)]">
                     Company
                   </th>
-                  {COLUMNS.map((c) => {
-                    const active = sort.col === c.key;
+                  {visibleColumns.map((c) => {
+                    const active = activeSortCol === c.key;
                     const right = RIGHT_COLS.has(c.key);
                     return (
                       <th
                         key={c.key}
                         scope="col"
                         aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-                        className={cx("border-b border-slate-200 bg-slate-50 px-3.5 py-2.5", right && "text-right")}
+                        className={cx("bg-slate-50 px-3.5 py-3", right && "text-right")}
                       >
                         <button
                           type="button"
@@ -347,8 +386,8 @@ export default function ComparePage() {
                             active && "text-slate-900",
                           )}
                         >
-                          {c.label}
-                          <span aria-hidden className={cx("text-[10px]", active ? "" : "text-slate-300")}>
+                          {SHORT_COL_LABEL[c.key]}
+                          <span aria-hidden className={cx("text-[10px]", active ? "text-blue-600" : "text-slate-300")}>
                             {active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}
                           </span>
                         </button>
@@ -357,107 +396,125 @@ export default function ComparePage() {
                   })}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {sortedRows.map((r) => (
-                  <tr key={r.id} className="group transition-colors hover:bg-slate-50/80">
-                    <th
-                      scope="row"
-                      className="sticky left-0 z-10 bg-white px-4 py-3 text-left align-middle font-normal shadow-[1px_0_0_#f1f5f9] group-hover:bg-slate-50/80"
-                    >
-                      <Link href={r.href} className="font-semibold text-slate-900 hover:text-indigo-700">
-                        {r.name}
-                      </Link>
-                      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
-                        <span
-                          className={cx(
-                            "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                            r.kind === "Portfolio" ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-600",
-                          )}
-                        >
-                          {r.kind}
-                        </span>
-                        <span className="truncate">{r.sector}</span>
-                      </span>
-                    </th>
-                    {COLUMNS.map((col) => {
-                      const cell = r.cells[col.key];
-                      const main = money === "local" && cell.local ? cell.local : cell.text;
-                      const right = RIGHT_COLS.has(col.key);
-                      const clickable = cell.status != null && (cell.evidence.length > 0 || cell.working.length > 0 || cell.status === "Missing");
-                      const body = (
-                        <>
-                          <span className={cx("flex items-center gap-1.5", right && "justify-end")}>
-                            {cell.status && <StatusDot status={cell.status} />}
-                            {cell.status === "Conflict" && (
-                              <span className="inline-flex items-center rounded-sm bg-rose-100 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-800">
-                                Conflict
+              <tbody className="divide-y divide-slate-200/75">
+                {sortedRows.map((r) => {
+                  const primaryConflictCol = visibleColumns.find((c) => r.cells[c.key].status === "Conflict")?.key;
+                  return (
+                    <tr key={r.id} className="group bg-white transition-colors hover:bg-slate-50">
+                      <th
+                        scope="row"
+                        className="sticky left-0 z-20 w-[196px] min-w-[196px] max-w-[196px] border-r border-slate-200 bg-white px-4 py-3 text-left align-middle font-normal shadow-[2px_0_6px_-2px_rgba(15,23,42,0.05)] transition-colors group-hover:bg-slate-50"
+                      >
+                        <Link href={r.href} className="block truncate font-semibold text-slate-900 hover:text-blue-700">
+                          {r.name}
+                        </Link>
+                        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-slate-500">
+                          <span
+                            className={cx(
+                              "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+                              r.kind === "Portfolio" ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600",
+                            )}
+                          >
+                            {r.kind}
+                          </span>
+                          <span className="truncate">{r.sector}</span>
+                        </div>
+                      </th>
+                      {visibleColumns.map((col) => {
+                        const cell = r.cells[col.key];
+                        const main = money === "local" && cell.local ? cell.local : cell.text;
+                        const right = RIGHT_COLS.has(col.key);
+                        const clickable = cell.status != null && (cell.evidence.length > 0 || cell.working.length > 0 || cell.status === "Missing");
+                        const isConflict = cell.status === "Conflict";
+                        const showConflictPill = isConflict && col.key === primaryConflictCol;
+                        const isReportingBand = col.key === "reporting" && BAND_TONE[cell.text];
+
+                        const body = (
+                          <>
+                            <span className={cx("flex items-center gap-1.5", right && "justify-end")}>
+                              {cell.status && !showConflictPill && <StatusDot status={cell.status} />}
+                              {showConflictPill && (
+                                <span className="inline-flex shrink-0 items-center rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-800">
+                                  Conflict
+                                </span>
+                              )}
+                              {isReportingBand ? (
+                                <span className={cx("inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold", BAND_TONE[cell.text])}>
+                                  {main}
+                                </span>
+                              ) : (
+                                <span
+                                  className={cx(
+                                    "whitespace-nowrap font-mono text-xs font-semibold tabular-nums",
+                                    isConflict
+                                      ? "text-rose-700"
+                                      : cell.sort == null && cell.status == null
+                                        ? "font-normal text-slate-400"
+                                        : "text-slate-900",
+                                  )}
+                                >
+                                  {main}
+                                </span>
+                              )}
+                            </span>
+                            {cell.sub && (
+                              <span className={cx("mt-0.5 block whitespace-nowrap text-[11px] text-slate-500", right && "text-right")}>
+                                {cell.sub}
                               </span>
                             )}
-                            <span
-                              className={cx(
-                                "whitespace-nowrap font-mono text-xs font-medium tabular-nums",
-                                cell.sort == null && cell.status == null ? "text-slate-400" : "text-slate-900",
-                                col.key === "reporting" && BAND_TONE[cell.text],
-                              )}
-                            >
-                              {main}
-                            </span>
-                          </span>
-                          {cell.sub && (
-                            <span className={cx("mt-0.5 block whitespace-nowrap text-[11px] text-slate-500", right && "text-right")}>
-                              {cell.sub}
-                            </span>
-                          )}
-                        </>
-                      );
-                      return (
-                        <td key={col.key} className="px-3.5 py-3 align-middle group-hover:bg-slate-50/80">
-                          {clickable ? (
-                            <button
-                              type="button"
-                              onClick={() => openCell(r, col.key, cell)}
-                              className={cx(
-                                "block w-full cursor-pointer rounded-md px-1.5 py-1 transition-colors hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-                                right ? "text-right" : "text-left",
-                              )}
-                            >
-                              {body}
-                            </button>
-                          ) : (
-                            <div className={cx("px-1.5 py-1", right ? "text-right" : "text-left")} title={cell.why}>
-                              {body}
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                          </>
+                        );
+                        return (
+                          <td key={col.key} className="px-3.5 py-3 align-middle">
+                            {clickable ? (
+                              <button
+                                type="button"
+                                onClick={() => openCell(r, col.key, cell)}
+                                title={isConflict && !showConflictPill ? "Derived from conflicted source · click to inspect" : cell.why}
+                                className={cx(
+                                  "block w-full cursor-pointer rounded-md px-1.5 py-1 transition-colors hover:bg-blue-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+                                  right ? "text-right" : "text-left",
+                                )}
+                              >
+                                {body}
+                              </button>
+                            ) : (
+                              <div className={cx("px-1.5 py-1", right ? "text-right" : "text-left")} title={cell.why}>
+                                {body}
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-2.5 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 bg-slate-50/80 px-5 py-2.5 text-xs text-slate-500">
           <span>{FX_NOTE}</span>
-          <span>Click any metric with a status dot to inspect its source document and formula.</span>
+          <span>Click any figure with a status dot to inspect its source citation and deterministic working.</span>
         </div>
       </section>
 
-      {/* Secondary View: Refined Single-Metric Benchmark Distribution */}
+      {/* Secondary View: Institutional Benchmark Distribution */}
       <Ranked
         rows={filtered}
-        metric={metric}
+        metrics={visibleMetrics}
+        metric={activeMetric}
         money={money}
         show={show}
         onPickMetric={setMetric}
         onResetShow={() => setShow("all")}
-        onOpen={(r) => openCell(r, metric, r.cells[metric])}
+        onOpen={(r) => openCell(r, activeMetric, r.cells[activeMetric])}
       />
 
       {/* Consolidated Methodology & Labels Disclosure */}
       <Disclosure
-        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs"
+        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
         buttonClassName="px-5 py-4 text-sm font-semibold text-slate-900"
         summary={
           <>
@@ -488,6 +545,7 @@ export default function ComparePage() {
 
 function Ranked({
   rows,
+  metrics,
   metric,
   money,
   show,
@@ -496,6 +554,7 @@ function Ranked({
   onOpen,
 }: {
   rows: CompareRow[];
+  metrics: typeof METRICS;
   metric: ColKey;
   money: Money;
   show: Show;
@@ -503,7 +562,7 @@ function Ranked({
   onResetShow: () => void;
   onOpen: (r: CompareRow) => void;
 }) {
-  const m = METRICS.find((x) => x.key === metric)!;
+  const m = metrics.find((x) => x.key === metric) ?? metrics[0];
   const lowBetter = metric === "burnMultiple";
   const withVal = rows
     .filter((r) => r.cells[metric].sort != null)
@@ -520,27 +579,26 @@ function Ranked({
   const conflicted = withVal.filter((r) => r.cells[metric].status === "Conflict").length;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)] sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
         <div>
           <h2 className="text-base font-semibold tracking-tight text-slate-900">Benchmark ranking</h2>
           <p className="mt-0.5 text-xs text-slate-500">
             {m.plain}
             {median != null && (
               <>
-                {" · "}Median of {vals.length}: <span className="font-semibold text-slate-900">{m.unit(median)}</span>
+                {" · "}Median of {vals.length}: <span className="font-mono font-semibold text-slate-900">{m.unit(median)}</span>
               </>
             )}
             {matched && ` · Most cover ${fmtMonth(matched)}`}
             {m.barText && ` · ${m.barText}`}
-            {staleCount > 0 && <span className="text-amber-700"> · {staleCount} stale</span>}
-            {conflicted > 0 && <span className="text-rose-700"> · {conflicted} conflicted</span>}
+            {staleCount > 0 && <span className="font-medium text-amber-700"> · {staleCount} stale</span>}
+            {conflicted > 0 && <span className="font-medium text-rose-700"> · {conflicted} conflicted</span>}
           </p>
         </div>
 
-        {/* Single Sleek Horizontal Pill Tab Bar */}
-        <div role="tablist" aria-label="Benchmark measure" className="inline-flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-slate-100/80 p-1">
-          {METRICS.map((item) => {
+        <div role="tablist" aria-label="Benchmark measure" className="inline-flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-slate-100/90 p-1">
+          {metrics.map((item) => {
             const active = metric === item.key;
             return (
               <button
@@ -588,13 +646,13 @@ function Ranked({
           )}
         </div>
       ) : (
-        <ul className="mt-4 space-y-1.5">
+        <ul className="mt-3 divide-y divide-slate-100">
           {withVal.map((r) => {
             const c = r.cells[metric];
             const v = c.sort!;
             const ok = good(v);
             const left = Math.min(pos(0), pos(v));
-            const width = Math.max(Math.abs(pos(v) - pos(0)), 1.2);
+            const width = Math.max(Math.abs(pos(v) - pos(0)), 1.5);
             const isConflict = c.status === "Conflict";
             const isStale = stale.has(r.id);
             const displayVal = metric === "revenue" && money === "local" && c.local ? c.local : m.unit(v);
@@ -604,17 +662,22 @@ function Ranked({
                 <button
                   type="button"
                   onClick={() => onOpen(r)}
-                  className="grid w-full cursor-pointer grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-slate-50 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_10.5rem]"
+                  className="grid w-full cursor-pointer grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)_auto] items-center gap-4 px-2 py-2.5 text-left transition-colors hover:bg-slate-50 sm:grid-cols-[minmax(0,13.5rem)_minmax(0,1fr)_11.5rem]"
                 >
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-medium text-slate-900">{r.name}</span>
-                      <span className="shrink-0 rounded bg-slate-100 px-1 py-0.5 text-[9px] font-bold uppercase text-slate-600">
+                      <span className="truncate text-sm font-semibold text-slate-900">{r.name}</span>
+                      <span
+                        className={cx(
+                          "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase",
+                          r.kind === "Portfolio" ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600",
+                        )}
+                      >
                         {r.kind}
                       </span>
                     </span>
                     {c.sub && (
-                      <span className={cx("block truncate text-[11px]", isStale ? "font-medium text-amber-700" : "text-slate-500")}>
+                      <span className={cx("mt-0.5 block truncate text-[11px]", isStale ? "font-medium text-amber-700" : "text-slate-500")}>
                         {c.sub}
                       </span>
                     )}
@@ -623,15 +686,15 @@ function Ranked({
                   <span className="relative h-2.5 rounded-full bg-slate-100">
                     <span
                       className={cx(
-                        "absolute inset-y-0 rounded-full",
+                        "absolute inset-y-0 rounded-full transition-all",
                         isConflict
-                          ? "border border-dashed border-rose-500 bg-rose-100"
+                          ? "bg-rose-500"
                           : isStale
-                            ? "border border-amber-400 bg-amber-200"
+                            ? "bg-amber-400"
                             : ok == null
-                              ? "bg-slate-700"
+                              ? "bg-blue-600"
                               : ok
-                                ? "bg-emerald-500"
+                                ? "bg-emerald-600"
                                 : "bg-rose-400",
                       )}
                       style={{ left: `${left}%`, width: `${width}%` }}
@@ -639,15 +702,15 @@ function Ranked({
                     {median != null && (
                       <span
                         aria-hidden
-                        className="absolute -inset-y-1 w-px bg-slate-900/70"
+                        className="absolute -inset-y-1 w-[2px] rounded-full bg-slate-900/75"
                         style={{ left: `${pos(median)}%` }}
-                        title="Median"
+                        title={`Median: ${m.unit(median)}`}
                       />
                     )}
                     {m.bar != null && m.bar !== 0 && (
                       <span
                         aria-hidden
-                        className="absolute -inset-y-1 w-0.5 rounded bg-amber-500"
+                        className="absolute -inset-y-1 w-[2px] rounded-full bg-amber-500"
                         style={{ left: `${pos(m.bar)}%` }}
                         title={m.barText}
                       />
@@ -656,12 +719,14 @@ function Ranked({
 
                   <span className="flex items-center justify-end gap-1.5 text-right">
                     {c.status && <StatusDot status={c.status} />}
-                    <span className="font-mono text-xs font-semibold tabular-nums text-slate-900">{displayVal}</span>
+                    <span className={cx("font-mono text-xs font-semibold tabular-nums", isConflict ? "text-rose-700" : "text-slate-900")}>
+                      {displayVal}
+                    </span>
                     {isConflict && (
-                      <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">Conflict</span>
+                      <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800">Conflict</span>
                     )}
                     {!isConflict && isStale && (
-                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">Stale</span>
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">Stale</span>
                     )}
                   </span>
                 </button>
@@ -678,7 +743,7 @@ function Ranked({
             <Link
               key={r.id}
               href={r.href}
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700"
+              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700 hover:border-blue-300 hover:text-blue-700"
             >
               {r.name}
             </Link>
@@ -686,25 +751,29 @@ function Ranked({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-        {m.bar != null && (
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
+        {m.bar != null ? (
           <>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-3 rounded-full bg-emerald-500" /> Meets bar
+              <span className="h-2 w-3 rounded-full bg-emerald-600" /> Meets bar
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-3 rounded-full bg-rose-400" /> Below bar
             </span>
           </>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-3 rounded-full bg-blue-600" /> Reported
+          </span>
         )}
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-3 rounded-full border border-dashed border-rose-500 bg-rose-100" /> Conflicted
+          <span className="h-2 w-3 rounded-full bg-rose-500" /> Conflicted
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-3 rounded-full border border-amber-400 bg-amber-200" /> Stale period
+          <span className="h-2 w-3 rounded-full bg-amber-400" /> Stale period
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-3 w-px bg-slate-900/70" /> Median
+          <span className="h-3 w-[2px] rounded-full bg-slate-900/75" /> Median
         </span>
       </div>
     </section>

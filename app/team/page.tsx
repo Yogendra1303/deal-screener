@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { QuestionItem } from "@/components/evidence";
 import { AskList, useFounderAsks } from "@/components/founder-links";
 import { useLinks } from "@/components/links-store";
@@ -353,11 +353,11 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
               Every pitch in the pipeline has an assigned owner.
             </p>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-200/75">
               {unassignedPitches.map((item) => (
-                <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3.5 transition-colors hover:bg-slate-50/70">
                   <div className="min-w-0">
-                    <Link href={`/deals/${item.id}`} className="text-sm font-semibold text-slate-900 hover:text-indigo-700">
+                    <Link href={`/deals/${item.id}`} className="text-sm font-semibold text-slate-900 hover:text-blue-700">
                       {item.name}
                     </Link>
                     <p className="mt-0.5 text-xs text-slate-500">
@@ -368,7 +368,7 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/dataroom/${item.id}`}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     >
                       Open Room
                     </Link>
@@ -376,6 +376,7 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
                       ariaLabel={`Assign owner for ${item.name}`}
                       value=""
                       placeholder="Assign owner…"
+                      tone="warn"
                       onChange={(owner) => {
                         links.claim(item.id, owner);
                         showToast(`Assigned ${item.name} to ${owner}.`);
@@ -684,28 +685,52 @@ function AskAnalystModal({
   const [companyKey, setCompanyKey] = useState(companyOptions[0]?.value ?? "");
   const [dueDays, setDueDays] = useState("7");
   const [text, setText] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const pickedCompany = companyOptions.find((c) => c.value === companyKey);
+  const effectiveCompanyKey = companyOptions.some((c) => c.value === companyKey)
+    ? companyKey
+    : (companyOptions[0]?.value ?? "");
+  const pickedCompany = companyOptions.find((c) => c.value === effectiveCompanyKey);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
 
   return (
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="ask-analyst-modal-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4"
+        className="w-full max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Assign Question to Analyst</h3>
+            <h3 id="ask-analyst-modal-title" className="text-base font-bold text-slate-900">
+              Assign Question to Analyst
+            </h3>
             <p className="mt-0.5 text-xs text-slate-500">
               Adds a tracked, source-cited diligence question directly to the analyst&apos;s queue.
             </p>
           </div>
-          <button type="button" onClick={onClose} className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800"
+          >
             ✕
           </button>
         </div>
@@ -725,7 +750,7 @@ function AskAnalystModal({
             });
             onSubmitted(owner, pickedCompany.name);
           }}
-          className="space-y-3 text-xs"
+          className="space-y-3.5 text-xs"
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="block space-y-1">
@@ -761,7 +786,7 @@ function AskAnalystModal({
             <span className="block font-semibold text-slate-700">Company</span>
             <DropdownSelect
               ariaLabel="Company"
-              value={companyKey}
+              value={effectiveCompanyKey}
               onChange={setCompanyKey}
               options={companyOptions.map((c) => ({ value: c.value, label: c.label }))}
               size="sm"
@@ -772,20 +797,23 @@ function AskAnalystModal({
           <label className="block space-y-1">
             <span className="font-semibold text-slate-700">Question</span>
             <textarea
+              ref={textareaRef}
               rows={3}
               required
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="e.g. Confirm whether Q3 revenue includes one-time setup fees before our partner call."
-              className="w-full rounded-lg border border-slate-300 p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none"
             />
           </label>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">Assign Question</Button>
+            <Button type="submit" disabled={!text.trim() || !pickedCompany}>
+              Assign Question
+            </Button>
           </div>
         </form>
       </div>

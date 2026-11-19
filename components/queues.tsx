@@ -89,26 +89,21 @@ export function AnalystQueue({ who, readOnly }: { who: string; readOnly?: boolea
           <section id="reports" className="scroll-mt-6">
             <SectionHead title="Reports to read" hint="Received, not marked read" count={toRead.length} />
             {toRead.length ? (
-              <Card className="divide-y divide-slate-100 overflow-hidden">
+              <Card className="divide-y divide-slate-200/75 overflow-hidden">
                 {toRead.map(({ c, r }) => {
                   const waited = daysBetween(r.receivedAt!, p.today);
                   return (
-                    <div key={`${c.id}-${r.month}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-slate-50">
+                    <div key={`${c.id}-${r.month}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-blue-50/30">
                       <Link href={`/portfolio/${c.id}?tab=reporting`} className="group min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 font-medium text-slate-900 group-hover:text-indigo-700">
-                          <span className="truncate">
-                            {c.name}, {fmtMonth(r.month)}
-                          </span>
-                          <span aria-hidden className="text-xs text-slate-300 group-hover:text-indigo-600">
-                            →
-                          </span>
+                        <div className="truncate text-sm font-semibold text-slate-900 group-hover:text-blue-700">
+                          {c.name}, {fmtMonth(r.month)}
                         </div>
-                        <p className={cx("text-xs", waited > 7 ? "text-amber-800" : "text-slate-500")}>
-                          Arrived {fmtDay(r.receivedAt!)}, waiting {waited} days{waited > 7 ? " (the aim is 7)" : ""}
+                        <p className={cx("mt-0.5 text-xs", waited > 7 ? "font-medium text-amber-800" : "text-slate-500")}>
+                          Arrived {fmtDay(r.receivedAt!)}, waiting {waited} days{waited > 7 ? " (target: 7d)" : ""}
                         </p>
                       </Link>
                       {!readOnly && (
-                        <Button variant="secondary" className="px-2.5 py-1 text-xs" onClick={() => p.acknowledge(c.id, r.month)}>
+                        <Button variant="secondary" className="shrink-0 px-3 py-1.5 text-xs" onClick={() => p.acknowledge(c.id, r.month)}>
                           Mark as read
                         </Button>
                       )}
@@ -124,20 +119,19 @@ export function AnalystQueue({ who, readOnly }: { who: string; readOnly?: boolea
           <section id="chase" className="scroll-mt-6">
             <SectionHead title="Chase founders" hint="Owed to the fund" count={chase.length} />
             {chase.length ? (
-              <Card className="divide-y divide-slate-100 overflow-hidden">
+              <Card className="divide-y divide-slate-200/75 overflow-hidden">
                 {chase.map(({ c, m }) => (
-                  <div key={m.key} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-slate-50">
+                  <div key={m.key} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-blue-50/30">
                     <Link href={`/portfolio/${c.id}?tab=reporting`} className="group min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 font-medium text-slate-900 group-hover:text-indigo-700">
-                        <span className="truncate">
-                          {c.name}: {m.what}
-                        </span>
-                        <span aria-hidden className="text-xs text-slate-300 group-hover:text-indigo-600">
-                          →
-                        </span>
+                      <div className="truncate text-sm font-semibold text-slate-900 group-hover:text-blue-700">
+                        {c.name}: {m.what}
                       </div>
-                      <p className="text-xs text-slate-500">
-                        {m.overdueDays > 0 ? `${m.overdueDays} days overdue` : "Due"} · {m.reminders.length ? `reminded ${m.reminders.map(fmtDay).join(", ")}` : "no reminder yet"}
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        <span className={m.overdueDays > 30 ? "font-medium text-rose-700" : undefined}>
+                          {m.overdueDays > 0 ? `${m.overdueDays} days overdue` : "Due"}
+                        </span>
+                        {" · "}
+                        {m.reminders.length ? `reminded ${m.reminders.map(fmtDay).join(", ")}` : "no reminder yet"}
                       </p>
                     </Link>
                     {!readOnly && !m.key.endsWith(":question") && <ReminderButton itemKey={m.key} sentToday={m.reminders.includes(p.today)} />}
@@ -268,28 +262,37 @@ function DataToFix({ who }: { who: string }) {
       <SectionHead title="Numbers to fix" hint="Conflicts and gaps on these companies. Click one for its sources" count={items.length} />
       {items.length ? (
         <Card className="overflow-hidden">
-          <ul className="grid divide-y divide-slate-100 md:grid-cols-2 md:divide-y-0">
-            {items.map((i) => (
-              <li key={i.key} className="md:border-b md:border-slate-100 md:odd:border-r">
-                <button
-                  type="button"
-                  onClick={() => ev.open({ fact: i.fact, company: i.company })}
-                  className="group flex w-full cursor-pointer items-start justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
+          <ul className="grid divide-y divide-slate-200/75 md:grid-cols-2 md:divide-y-0">
+            {items.map((i, idx) => {
+              const isLastRow = idx >= items.length - (items.length % 2 === 0 ? 2 : 1);
+              return (
+                <li
+                  key={i.key}
+                  className={cx(
+                    "md:odd:border-r md:odd:border-slate-200/75",
+                    !isLastRow && "md:border-b md:border-slate-200/75",
+                  )}
                 >
-                  <span className="min-w-0 text-sm">
-                    <span className="font-medium text-slate-900 group-hover:text-indigo-700">{i.company.name}</span>
-                    <span className="text-slate-500"> · {i.fact.label}</span>
-                    <span className="block truncate text-xs text-slate-500">{i.fact.why}</span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <StatusLabel status={i.fact.status} />
-                    <span aria-hidden className="text-xs text-slate-300 group-hover:text-indigo-600">
-                      →
+                  <button
+                    type="button"
+                    onClick={() => ev.open({ fact: i.fact, company: i.company })}
+                    className="group flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-blue-50/35"
+                  >
+                    <span className="min-w-0 text-sm">
+                      <span className="font-semibold text-slate-900 group-hover:text-blue-700">{i.company.name}</span>
+                      <span className="text-slate-500"> · {i.fact.label}</span>
+                      <span className="mt-0.5 block truncate text-xs text-slate-500">{i.fact.why}</span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
+                    <span className="flex shrink-0 items-center gap-2">
+                      <StatusLabel status={i.fact.status} />
+                      <span aria-hidden className="text-xs text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600">
+                        →
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </Card>
       ) : (

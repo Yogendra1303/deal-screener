@@ -14,7 +14,7 @@ import { MONTHS, TEMP_SHARE, type Temperature, TEMP_RULE_TEXT } from "@/lib/funn
 
 // ---------- Shared pieces ----------
 
-export const PANEL = "rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]";
+export const PANEL = "rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]";
 
 const sum = (a: number[]) => a.reduce((s, x) => s + x, 0);
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
@@ -509,9 +509,8 @@ export function MomentumMap({ facts }: { facts: SectorFacts[] }) {
         </div>
         {node}
       </div>
-      <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500">
-        Dashed lines are the ±{Math.round(TEMP_SHARE * 100)}% the temperature rule uses. Bigger bubble, more decks in 6 months. Click a sector to open it.{" "}
-        <span className="text-slate-400">{TEMP_RULE_TEXT}</span>
+      <p className="border-t border-slate-200/75 bg-slate-50/60 px-4 py-2.5 text-[11px] text-slate-500" title={TEMP_RULE_TEXT}>
+        Dashed lines mark ±{Math.round(TEMP_SHARE * 100)}% momentum thresholds · Bubble size reflects 6m deck volume · Click any sector to drill down.
       </p>
     </section>
   );
@@ -596,6 +595,9 @@ export function OutcomeColumns({
         </div>
         {node}
       </div>
+      <p className="border-t border-slate-200/75 bg-slate-50/60 px-4 py-2.5 text-[11px] text-slate-500">
+        Hover any month bar for outcome breakdown · Last 3 months highlighted on the x-axis.
+      </p>
     </section>
   );
 }
@@ -690,16 +692,16 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
   const hp = { sort, dir, onSort };
 
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white @container">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)] @container">
       <PanelHead
         title="Every sector"
         sub="Click a header to sort. Capital raised and round counts track broader sector activity; everything else is counted from our decks."
       />
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overscroll-x-contain">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left">
             <tr>
-              <H className="sticky left-0 z-10 bg-slate-50 shadow-[1px_0_0_#e2e8f0]" {...hp}>
+              <H className="sticky left-0 z-20 bg-slate-50 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.06)]" {...hp}>
                 Sector
               </H>
               <H className="hidden @2xl:table-cell" {...hp}>
@@ -725,10 +727,10 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
               </H>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-200/75">
             {list.map((f) => (
-              <tr key={f.m.sector} className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/80">
-                <td className="sticky left-0 z-10 bg-white px-4 py-3 align-middle shadow-[1px_0_0_#e2e8f0] group-hover:bg-slate-50/80">
+              <tr key={f.m.sector} className="group bg-white transition-colors hover:bg-slate-50">
+                <td className="sticky left-0 z-20 border-r border-slate-200/80 bg-white px-4 py-3 align-middle shadow-[2px_0_6px_-2px_rgba(15,23,42,0.05)] group-hover:bg-slate-50">
                   <Link href={`/sectors/${slugOf(f.m.sector)}`} className="flex items-center gap-2">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TEMP_COLOR[f.m.temp] }} aria-hidden />
                     <span className="truncate font-semibold tracking-tight text-slate-900 group-hover:underline">{f.m.sector}</span>

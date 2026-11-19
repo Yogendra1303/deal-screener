@@ -73,6 +73,7 @@ export default function CompanyRoomPage({ params }: { params: Promise<{ id: stri
                   ariaLabel={`Assign owner for ${r.name}`}
                   value={r.owner ?? ""}
                   placeholder="Unassigned"
+                  tone={!r.owner ? "warn" : "default"}
                   onChange={(next) => {
                     if (r.side === "pitch") links.claim(r.id, next);
                     else p.setOwner(r.id, next);
@@ -82,7 +83,6 @@ export default function CompanyRoomPage({ params }: { params: Promise<{ id: stri
                     ...ownerChoices.map((n) => ({ value: n, label: n })),
                   ]}
                   size="xs"
-                  buttonClassName={!r.owner ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100/70" : undefined}
                 />
               ) : r.owner ? (
                 <>

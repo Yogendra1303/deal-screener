@@ -38,29 +38,29 @@ export default function MarketPage() {
         <p className="mt-1 text-sm text-slate-500">What founders are pitching us, sector by sector, against where the money is going.</p>
       </div>
 
-      <section className="grid gap-px overflow-hidden rounded-xl bg-slate-200/70 shadow-[0_1px_2px_rgba(15,23,42,0.06)] sm:grid-cols-3 lg:grid-cols-6">
-        <Cell label="Decks, 6 months" hint="A company that pitched twice counts as two decks and one company.">
+      <section className="grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.05)] sm:grid-cols-3 lg:grid-cols-6">
+        <Cell label="Decks (6m)" hint="A company that pitched twice counts as two decks and one company.">
           <span className="font-mono">{monthly.reduce((a, b) => a + b, 0)}</span>
-          <span className="ml-1.5 text-xs font-normal text-slate-500">· {facts.reduce((s, f) => s + f.companies, 0)} companies</span>
+          <span className="ml-1.5 text-xs font-normal text-slate-500">· {facts.reduce((s, f) => s + f.companies, 0)} cos</span>
         </Cell>
-        <Cell label="Decks, last 3 months">
+        <Cell label="Decks (3m)">
           <ChangeLine n={recent} change={recent / Math.max(1, before) - 1} from={[before, recent]} />
         </Cell>
-        <Cell label="Raised in market, 90d" hint="Tracked early-stage sector rounds over the last 90 days">
+        <Cell label="Market raised (90d)" hint="Tracked early-stage sector rounds over the last 90 days">
           <ChangeLine n={raised >= 1000 ? `$${(raised / 1000).toFixed(2)}B` : `$${raised}M`} change={raisedBefore > 0 ? raised / raisedBefore - 1 : 0} />
         </Cell>
         {(
           [
             ["Heating up", heating, "border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300"],
             ["Crowding", crowding, "border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300"],
-            ["Cooling", cooling, "border-red-200 bg-red-50 text-red-800 hover:border-red-300"],
+            ["Cooling", cooling, "border-rose-200 bg-rose-50 text-rose-800 hover:border-rose-300"],
           ] as const
         ).map(([label, list, tone]) => (
           <Cell key={label} label={`${label} · ${list.length}`}>
             <span className="mt-0.5 flex flex-wrap gap-1">
               {list.length ? (
                 list.map((sct) => (
-                  <Link key={sct} href={`/sectors/${slugOf(sct)}`} className={`rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${tone}`}>
+                  <Link key={sct} href={`/sectors/${slugOf(sct)}`} className={`rounded-md border px-1.5 py-0.5 text-[11px] font-semibold transition-colors ${tone}`}>
                     {sct}
                   </Link>
                 ))
@@ -97,9 +97,9 @@ export default function MarketPage() {
 
 function Cell({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white px-3 py-2.5" title={hint}>
-      <p className={LABEL}>{label}</p>
-      <div className="mt-1 text-sm font-semibold tracking-tight tabular-nums text-slate-900">{children}</div>
+    <div className="bg-white px-3.5 py-3" title={hint}>
+      <p className={`${LABEL} truncate whitespace-nowrap`}>{label}</p>
+      <div className="mt-1.5 text-sm font-semibold tracking-tight tabular-nums text-slate-900">{children}</div>
     </div>
   );
 }

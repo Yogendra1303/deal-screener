@@ -229,51 +229,65 @@ export function DocDrawer({ name, docs, start, onClose }: { name: string; docs: 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
   }, [onClose]);
 
   if (!doc) return null;
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={`${name} documents`}>
-      <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-slate-900/30" />
-      <div className="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]" />
+      <div className="relative flex h-full w-full max-w-2xl flex-col border-l border-slate-200 bg-white shadow-2xl">
         <div className="border-b border-slate-200 px-5 pb-3 pt-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Source documents</p>
-              <h2 className="truncate text-lg font-semibold text-slate-900">{name}</h2>
+              <h2 className="truncate text-base font-semibold text-slate-900">{name}</h2>
             </div>
-            <button onClick={onClose} className="rounded-md px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900">
-              ✕ Close
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close document preview"
+              className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-transparent text-slate-500 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
             </button>
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {docs.map((d, k) => (
               <button
                 key={d.fileName}
+                type="button"
                 onClick={() => {
                   setI(k);
                   setMsg(null);
                 }}
                 className={cx(
-                  "rounded-md border px-2 py-1 text-xs font-medium",
-                  k === i ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                  "cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                  k === i ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
                 )}
               >
-                <span className="mr-1.5 font-mono text-[10px] uppercase tracking-wider opacity-70">{d.code}</span>
+                <span className="mr-1.5 font-mono text-[10px] uppercase tracking-wider opacity-75">{d.code}</span>
                 {d.title}
               </button>
             ))}
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-5 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 bg-slate-50/90 px-5 py-2.5">
           <div className="min-w-0 text-xs text-slate-600">
-            <span className="font-mono text-slate-800">{doc.fileName}</span>
-            <span className="block text-slate-500">{doc.origin}</span>
+            <span className="block truncate font-mono font-medium text-slate-800">{doc.fileName}</span>
+            <span className="block truncate text-slate-500">{doc.origin}</span>
           </div>
           <div className="flex shrink-0 gap-2">
             {doc.view === "html" && body?.text && (
               <button
+                type="button"
                 onClick={() => {
                   const w = window.open("", "_blank");
                   if (!w) return;
@@ -282,16 +296,17 @@ export function DocDrawer({ name, docs, start, onClose }: { name: string; docs: 
                   w.focus();
                   w.print();
                 }}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-400"
+                className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
               >
-                Print / Save as PDF
+                Print / Save PDF
               </button>
             )}
             <button
+              type="button"
               onClick={async () => setMsg((await downloadDoc(doc)) ? null : "This file is not in this browser any more.")}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+              className="cursor-pointer rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-slate-800"
             >
-              Download file ↓
+              Download ↓
             </button>
           </div>
         </div>
@@ -322,22 +337,22 @@ function CsvTable({ text }: { text: string }) {
   if (!head) return <p className="p-5 text-sm text-slate-500">Empty file.</p>;
   const numeric = head.map((_, c) => rest.length > 0 && rest.every((r) => !r[c] || /^-?[\d.,]+%?$/.test(r[c])));
   return (
-    <div className="p-5">
+    <div className="overflow-x-auto overscroll-x-contain p-5">
       <table className="w-full text-left text-xs">
         <thead>
-          <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-500">
+          <tr className="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wider text-slate-600">
             {head.map((h, c) => (
-              <th key={c} className={cx("px-2 py-2 font-semibold", numeric[c] && "text-right")}>
+              <th key={c} className={cx("px-2.5 py-2 font-semibold", numeric[c] && "text-right")}>
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-slate-100">
           {rest.map((r, k) => (
-            <tr key={k} className="border-b border-slate-100">
+            <tr key={k} className="even:bg-slate-50/40 hover:bg-slate-50">
               {head.map((_, c) => (
-                <td key={c} className={cx("px-2 py-1.5 text-slate-800", numeric[c] && "text-right tabular-nums")}>
+                <td key={c} className={cx("px-2.5 py-2 text-slate-800", numeric[c] && "text-right font-mono tabular-nums")}>
                   {r[c]}
                 </td>
               ))}

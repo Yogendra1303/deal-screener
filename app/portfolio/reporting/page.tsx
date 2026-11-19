@@ -90,11 +90,11 @@ export default function ReportingPage() {
       </p>
 
       <Card className="overflow-hidden">
-        <div ref={scroller} className="overflow-x-auto">
+        <div ref={scroller} className="overflow-x-auto overscroll-x-contain">
           <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-0 text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                <th className="sticky left-0 z-10 w-32 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left font-semibold sm:w-40">Company</th>
+                <th className="sticky left-0 z-20 w-36 border-r border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left font-semibold shadow-[2px_0_6px_-2px_rgba(15,23,42,0.06)] sm:w-44">Company</th>
                 {months.map((m) => (
                   <th key={m} className="border-b border-slate-200 px-1.5 py-2.5 text-center font-semibold">
                     {fmtMonth(m)}
@@ -104,8 +104,8 @@ export default function ReportingPage() {
             </thead>
             <tbody>
               {cos.map((c) => (
-                <tr key={c.id}>
-                  <th scope="row" className="sticky left-0 z-10 border-b border-slate-100 bg-white px-4 py-2 text-left font-medium">
+                <tr key={c.id} className="group bg-white hover:bg-slate-50">
+                  <th scope="row" className="sticky left-0 z-20 border-r border-b border-slate-200/80 bg-white px-4 py-2.5 text-left font-medium shadow-[2px_0_6px_-2px_rgba(15,23,42,0.05)] group-hover:bg-slate-50">
                     <Link href={`/portfolio/${c.id}`} className="text-slate-900 hover:text-indigo-700">
                       {c.name}
                     </Link>

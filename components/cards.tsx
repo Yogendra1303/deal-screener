@@ -143,50 +143,59 @@ const KIND_PILL = { Portfolio: "bg-slate-100 text-slate-700", Pitch: "bg-slate-1
 
 function GroupCard({ group, items }: { group: Group; items: Entry[] }) {
   return (
-    <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-100 bg-slate-50/70 px-4 py-3">
-        <Link href={group.href} className="text-base font-semibold text-slate-900 hover:text-indigo-700">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <header className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-slate-200/80 bg-slate-50/90 px-4 py-2.5">
+        <Link href={group.href} className="text-sm font-semibold text-slate-900 hover:text-blue-700">
           {group.name}
         </Link>
-        <span className={cx("rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", KIND_PILL[group.kind])}>{group.kind}</span>
+        <span className={cx("rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide", KIND_PILL[group.kind])}>
+          {group.kind}
+        </span>
         {group.status && <span className="text-xs text-slate-500">{group.status}</span>}
-        <span className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+        <span className="ml-auto flex items-center gap-2.5 text-xs text-slate-500">
           {group.owner && (
-            <>
-              <Avatar name={group.owner} size="xs" /> {group.owner.split(" ")[0]}
-            </>
+            <span className="inline-flex items-center gap-1.5">
+              <Avatar name={group.owner} size="xs" />
+              <span>{group.owner.split(" ")[0]}</span>
+            </span>
           )}
-          <Link href={group.href} className="font-medium text-indigo-700 hover:text-indigo-900">
-            {group.kind === "Pitch" ? "Open pitch" : "Open company"} →
+          <Link href={group.href} className="font-semibold text-blue-600 hover:text-blue-800">
+            {group.kind === "Pitch" ? "Open pitch" : "Open room"} →
           </Link>
         </span>
       </header>
       <ul className="divide-y divide-slate-100">
         {items.map((e) => {
+          const redundantRoomCta = e.cta === "Open room" && e.href === group.href;
           const body = (
             <>
-              <span aria-hidden className={cx("mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full", TONE[e.tone].dot)} />
+              <span aria-hidden className={cx("mt-1.5 h-2 w-2 shrink-0 rounded-full", TONE[e.tone].dot)} />
               <span className="min-w-0 flex-1">
-                <span className="block font-medium text-slate-900">{e.title}</span>
-                {e.detail && <span className="mt-0.5 block text-sm leading-relaxed text-slate-600">{e.detail}</span>}
-                {e.meta && <span className="mt-1 block text-xs text-slate-500">{e.meta}</span>}
+                <span className="block text-sm font-medium text-slate-900 group-hover:text-blue-700">{e.title}</span>
+                {e.detail && <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">{e.detail}</span>}
+                {e.meta && <span className="mt-0.5 block text-[11px] text-slate-500">{e.meta}</span>}
               </span>
             </>
           );
-          const cta = e.cta && (
-            <span className="shrink-0 self-center rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 group-hover:border-indigo-300 group-hover:text-indigo-700">
-              {e.cta}
-            </span>
-          );
+          const cta =
+            e.cta && !redundantRoomCta ? (
+              <span className="shrink-0 self-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-2xs transition-colors group-hover:border-blue-300 group-hover:text-blue-700">
+                {e.cta}
+              </span>
+            ) : (e.href || e.onClick) && !e.action ? (
+              <span aria-hidden className="shrink-0 self-center text-xs text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600">
+                →
+              </span>
+            ) : null;
           return (
-            <li key={e.key} className="flex items-start gap-3 px-4 py-3">
+            <li key={e.key} className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/70">
               {e.href ? (
                 <Link href={e.href} className="group flex min-w-0 flex-1 items-start gap-3">
                   {body}
                   {cta}
                 </Link>
               ) : e.onClick ? (
-                <button onClick={e.onClick} className="group flex min-w-0 flex-1 items-start gap-3 text-left">
+                <button type="button" onClick={e.onClick} className="group flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left">
                   {body}
                   {cta}
                 </button>
@@ -202,9 +211,11 @@ function GroupCard({ group, items }: { group: Group; items: Entry[] }) {
   );
 }
 
-/** A focused window over a dimmed page: only this one job is in view, grouped by company. */
+/** Right-side enterprise slide-over drawer: focused view of one metric's underlying companies and actions. */
 export function Panel({ t, onClose }: { t: TileSpec; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [showHow, setShowHow] = useState(false);
+
   useEffect(() => {
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -216,62 +227,90 @@ export function Panel({ t, onClose }: { t: TileSpec; onClose: () => void }) {
       document.body.style.overflow = prev;
     };
   }, [onClose]);
+
   const tone = TONE[t.tone];
   const groups = t.entries ? groupEntries(t.entries) : [];
   const portfolio = groups.filter((g) => g.group.kind === "Portfolio");
   const pitches = groups.filter((g) => g.group.kind === "Pitch");
+
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="panel-title">
-      <button className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" aria-label="Close" onClick={onClose} />
-      <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-slate-50 shadow-2xl sm:rounded-3xl">
-        <div className={cx("h-1.5 shrink-0", tone.bar)} />
-        <div className="flex items-start gap-4 bg-white px-5 pb-4 pt-5 sm:px-6">
-          <span className={cx("grid h-12 w-12 shrink-0 place-items-center rounded-2xl", tone.soft, tone.text)}>
-            <TileIcon name={t.icon} className="h-6 w-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 id="panel-title" className="text-xl font-semibold tracking-tight text-slate-900">
-              {t.title}
-            </h2>
-            <p className="mt-0.5 text-sm text-slate-600">{t.explain}</p>
-            <p className="mt-2 flex flex-wrap gap-2 text-xs">
-              <span className={cx("rounded-full px-2 py-0.5 font-semibold", tone.soft, tone.text)}>
-                {t.count} {t.count === 1 ? "item" : "items"}
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div className="relative flex h-full w-full max-w-xl flex-col border-l border-slate-200 bg-slate-50 shadow-2xl">
+        {/* Clean Enterprise Drawer Header */}
+        <div className="border-b border-slate-200 bg-white px-5 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className={cx("mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg", tone.soft, tone.text)}>
+                <TileIcon name={t.icon} className="h-4 w-4" />
               </span>
-              {t.entries && portfolio.length > 0 && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
-                  {portfolio.length} portfolio {portfolio.length === 1 ? "company" : "companies"}
-                </span>
-              )}
-              {t.entries && pitches.length > 0 && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
-                  {pitches.length} {pitches.length === 1 ? "pitch" : "pitches"}
-                </span>
-              )}
-            </p>
+              <div className="min-w-0">
+                <h2 id="panel-title" className="text-base font-semibold tracking-tight text-slate-900">
+                  {t.title}
+                </h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{t.explain}</p>
+              </div>
+            </div>
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={onClose}
+              aria-label="Close drawer"
+              className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-transparent text-slate-500 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
           </div>
-          <button ref={closeRef} onClick={onClose} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </button>
+
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span className={cx("rounded-md px-2 py-0.5 font-semibold", tone.soft, tone.text)}>
+              {t.count} {t.count === 1 ? "item" : "items"}
+            </span>
+            {t.entries && portfolio.length > 0 && (
+              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700">
+                {portfolio.length} portfolio {portfolio.length === 1 ? "company" : "companies"}
+              </span>
+            )}
+            {t.entries && pitches.length > 0 && (
+              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700">
+                {pitches.length} {pitches.length === 1 ? "pitch" : "pitches"}
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Compact Action Guidance Strip */}
         {t.next && t.count > 0 && (
-          <p className="border-y border-slate-200 bg-slate-50 px-5 py-2.5 text-sm text-indigo-900 sm:px-6">
-            <span className="font-semibold">What to do: </span>
+          <div className="border-b border-slate-200 bg-blue-50/50 px-5 py-2.5 text-xs leading-relaxed text-slate-700">
+            <span className="font-semibold text-blue-900">Next step: </span>
             {t.next}
-          </p>
+          </div>
         )}
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+
+        {/* Scrollable Content */}
+        <div className="flex-1 space-y-3.5 overflow-y-auto px-5 py-4">
           {t.count === 0 ? (
-            <p className="py-12 text-center text-sm text-slate-500">{t.clear}</p>
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500">
+              {t.clear}
+            </div>
           ) : t.entries ? (
             <>
-              {portfolio.length > 0 && pitches.length > 0 && <h3 className="px-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Portfolio companies</h3>}
+              {portfolio.length > 0 && pitches.length > 0 && (
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Portfolio companies</h3>
+              )}
               {portfolio.map((g) => (
                 <GroupCard key={g.group.id} group={g.group} items={g.items} />
               ))}
-              {portfolio.length > 0 && pitches.length > 0 && <h3 className="px-1 pt-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Pitches</h3>}
+              {portfolio.length > 0 && pitches.length > 0 && (
+                <h3 className="pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Pitches</h3>
+              )}
               {pitches.map((g) => (
                 <GroupCard key={g.group.id} group={g.group} items={g.items} />
               ))}
@@ -280,14 +319,27 @@ export function Panel({ t, onClose }: { t: TileSpec; onClose: () => void }) {
             t.body?.()
           )}
         </div>
+
+        {/* Clean Collapsible Methodology Footer */}
         {t.how && (
-          <p className="border-t border-slate-200 bg-white px-5 py-3 text-xs leading-relaxed text-slate-500 sm:px-6">
-            <span className="font-semibold text-slate-700">How this number is worked out: </span>
-            {t.how}{" "}
-            <Link href="/method" className="font-medium text-indigo-700 hover:text-indigo-900">
-              All calculations →
-            </Link>
-          </p>
+          <div className="border-t border-slate-200 bg-white px-5 py-3 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setShowHow((v) => !v)}
+                className="inline-flex cursor-pointer items-center gap-1.5 font-medium text-slate-600 hover:text-slate-900"
+              >
+                <span aria-hidden className="text-[10px] text-slate-400">
+                  {showHow ? "▾" : "▸"}
+                </span>
+                How this count is calculated
+              </button>
+              <Link href="/method" className="font-medium text-blue-600 hover:text-blue-800">
+                All formulas →
+              </Link>
+            </div>
+            {showHow && <p className="mt-2 leading-relaxed text-slate-500">{t.how}</p>}
+          </div>
         )}
       </div>
     </div>

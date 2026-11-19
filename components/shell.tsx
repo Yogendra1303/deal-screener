@@ -820,12 +820,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
     );
 
   return (
-    <div className="min-h-full lg:pl-72">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-slate-200 bg-white lg:block">
+    <div className="min-h-full overflow-x-clip lg:pl-72">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-200/90 bg-white lg:block">
         <Sidebar />
       </aside>
 
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-10">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-slate-200/90 bg-white/95 px-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] backdrop-blur-xs sm:px-6 lg:px-10">
         <div className="flex items-center gap-3 lg:hidden">
           <button
             type="button"
@@ -893,7 +893,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       {open && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <button className="absolute inset-0 bg-slate-900/40" aria-label="Close menu" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-slate-200 bg-white shadow-lg shadow-slate-200/50">
             <Sidebar onNavigate={() => setOpen(false)} />

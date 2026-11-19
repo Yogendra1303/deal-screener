@@ -446,10 +446,10 @@ export default function FundAnalyticsPage() {
         <SectionTitle right={<span className="text-xs text-slate-500">Conservative {analytics.arrMultiple}x ARR valuation floor at 1.0x cost</span>}>
           Portfolio Valuation &amp; MOIC Schedule
         </SectionTitle>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overscroll-x-contain">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
-              <tr className="border-y border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+              <tr className="border-y border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">
                 <th className="px-4 py-2.5">Company</th>
                 <th className="px-4 py-2.5 text-right">Cost Basis</th>
                 <th className="px-4 py-2.5 text-right">Ownership</th>
@@ -461,9 +461,9 @@ export default function FundAnalyticsPage() {
                 <th className="px-4 py-2.5 text-right">Health</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200/75">
               {analytics.companyValuations.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/70">
+                <tr key={c.id} className="transition-colors even:bg-slate-50/35 hover:bg-blue-50/30">
                   <td className="px-4 py-3">
                     <Link href={`/portfolio/${c.id}`} className="font-semibold text-slate-900 hover:text-blue-700 hover:underline">
                       {c.name}
@@ -524,10 +524,10 @@ export default function FundAnalyticsPage() {
       {/* Sector Hit-Rate & Deployment Table */}
       <Card className="overflow-hidden p-5">
         <SectionTitle>Sector Hit-Rate &amp; Deployment Breakdown</SectionTitle>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overscroll-x-contain">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
-              <tr className="border-y border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+              <tr className="border-y border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">
                 <th className="px-4 py-2.5">Sector</th>
                 <th className="px-4 py-2.5 text-right">Inbound Decks</th>
                 <th className="px-4 py-2.5 text-right">Partner Meetings</th>
@@ -536,9 +536,9 @@ export default function FundAnalyticsPage() {
                 <th className="px-4 py-2.5 text-right">Capital Deployed</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200/75">
               {analytics.sectorBreakdown.map((s) => (
-                <tr key={s.sector} className="hover:bg-slate-50/70">
+                <tr key={s.sector} className="transition-colors even:bg-slate-50/35 hover:bg-blue-50/30">
                   <td className="px-4 py-2.5 font-semibold text-slate-900">
                     <Link href={`/sectors/${slugOf(s.sector)}`} className="hover:text-indigo-700 hover:underline">
                       {s.sector}

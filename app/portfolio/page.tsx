@@ -273,10 +273,10 @@ export default function PortfolioPage() {
         <Card className="p-8 text-center text-sm text-slate-600">Nothing here. Try another filter or search.</Card>
       ) : viewMode === "table" ? (
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] text-sm">
+          <div className="overflow-x-auto overscroll-x-contain">
+            <table className="w-full min-w-[860px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">
                   <th className="px-4 py-2.5">
                     <button
                       type="button"
@@ -338,9 +338,9 @@ export default function PortfolioPage() {
                   <th className="px-4 py-2.5 text-right">Open</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200/75">
                 {tableRows.map(({ c, runway, health, latestRev, missingCount, conflicts }) => (
-                  <tr key={c.id} className="transition-colors hover:bg-slate-50/80">
+                  <tr key={c.id} className="transition-colors even:bg-slate-50/35 hover:bg-blue-50/30">
                     <td className="px-4 py-3 align-middle">
                       <Link href={`/portfolio/${c.id}`} className="font-semibold text-slate-900 hover:text-indigo-700">
                         {c.name}

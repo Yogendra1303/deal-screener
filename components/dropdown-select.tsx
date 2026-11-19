@@ -26,6 +26,7 @@ export function DropdownSelect<T extends string = string>({
   align = "left",
   size = "md",
   theme = "light",
+  tone = "default",
   required,
 }: {
   value: T;
@@ -40,6 +41,7 @@ export function DropdownSelect<T extends string = string>({
   align?: "left" | "right";
   size?: "xs" | "sm" | "md";
   theme?: "light" | "dark";
+  tone?: "default" | "warn";
   required?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -172,9 +174,13 @@ export function DropdownSelect<T extends string = string>({
             ? open
               ? "border-blue-500 bg-zinc-900/90 text-zinc-100 ring-2 ring-blue-500/20"
               : "border-white/10 bg-zinc-900/80 text-zinc-200 hover:border-white/20 hover:bg-zinc-900"
-            : open
-              ? "border-blue-500 bg-white text-slate-700 ring-2 ring-blue-500/15"
-              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+            : tone === "warn"
+              ? open
+                ? "border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-400/25"
+                : "border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400 hover:bg-amber-100/70"
+              : open
+                ? "border-blue-500 bg-white text-slate-700 ring-2 ring-blue-500/15"
+                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
           size === "xs"
             ? "h-7 px-2 text-[11px]"
             : size === "sm"
@@ -184,12 +190,25 @@ export function DropdownSelect<T extends string = string>({
         )}
       >
         <span className="inline-flex min-w-0 items-center gap-1 truncate">
-          {prefix && <span className={cx("shrink-0", dark ? "text-zinc-400" : "text-slate-400")}>{prefix}</span>}
-          <span className={cx("truncate", selected ? (dark ? "text-white" : "text-slate-900") : dark ? "text-zinc-400" : "text-slate-500")}>
+          {prefix && <span className={cx("shrink-0", dark ? "text-zinc-400" : tone === "warn" ? "text-amber-700" : "text-slate-400")}>{prefix}</span>}
+          <span
+            className={cx(
+              "truncate",
+              tone === "warn" && !dark
+                ? "font-semibold text-amber-900"
+                : selected
+                  ? dark
+                    ? "text-white"
+                    : "text-slate-900"
+                  : dark
+                    ? "text-zinc-400"
+                    : "text-slate-500",
+            )}
+          >
             {selected ? selected.label : placeholder}
           </span>
         </span>
-        <svg viewBox="0 0 24 24" className={cx("h-3.5 w-3.5 shrink-0 transition-transform", dark ? "text-zinc-400" : "text-slate-400", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg viewBox="0 0 24 24" className={cx("h-3.5 w-3.5 shrink-0 transition-transform", dark ? "text-zinc-400" : tone === "warn" ? "text-amber-600" : "text-slate-400", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>

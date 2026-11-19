@@ -359,8 +359,8 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
   const cols = 9 + (owners ? 1 : 0) + (sort === "look" ? 1 : 0);
   const flip = (key: ColSort["key"]) => setCol((c) => (c?.key === key ? (c.dir === -1 ? { key, dir: 1 } : null) : { key, dir: -1 }));
   return (
-    <div className="@container overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <div className="overflow-x-auto">
+    <div className="@container overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+      <div className="overflow-x-auto overscroll-x-contain">
         <table className="w-full border-collapse text-sm">
           <thead className="border-b border-slate-200 bg-slate-50">
             <tr className="text-left">
@@ -431,8 +431,8 @@ function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boo
     <tr
       onClick={() => router.push(r.href)}
       className={cx(
-        "group cursor-pointer border-b border-slate-100 last:border-0 transition-colors",
-        isHighlightedNew ? "bg-blue-50/60 hover:bg-blue-50/90" : "hover:bg-slate-50/80",
+        "group cursor-pointer border-b border-slate-200/75 last:border-0 transition-colors",
+        isHighlightedNew ? "bg-blue-50/55 hover:bg-blue-50/90" : "even:bg-slate-50/35 hover:bg-blue-50/30",
       )}
     >
       {showPoints && <td className={cx(td, "text-right font-mono text-xs font-semibold tabular-nums text-slate-900")}>{r.look.points}</td>}
@@ -616,8 +616,8 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
   const picked = pick ? rows.filter((r) => (!pick.sector || r.sector === pick.sector) && r.dates.some((d) => (pick.ym ? d.startsWith(pick.ym) : MONTHS.includes(d.slice(0, 7))))) : [];
   const label = pick ? [pick.sector ?? "Every sector", pick.ym ? fmtMonth(pick.ym) : "last 6 months"].join(", ") : "";
   return (
-    <section className="rounded-lg border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-end justify-between gap-4 px-5 pt-5">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-100 px-5 py-4">
         <div>
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           <p className="text-sm text-slate-500">
@@ -634,7 +634,7 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
           More
         </span>
       </div>
-      <div className="mt-4 overflow-x-auto px-3 sm:px-5">
+      <div className="mt-4 overflow-x-auto overscroll-x-contain px-3 sm:px-5">
         <table className="w-full min-w-[740px] table-fixed border-collapse text-xs">
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
