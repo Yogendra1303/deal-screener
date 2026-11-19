@@ -990,18 +990,18 @@ export default function MethodPage() {
                 Core separation of duties: AI extracts and cites; TypeScript computes every sum and comparison; Partners make every decision.
               </p>
             </div>
-            <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {LIFECYCLE_STEPS.map((s) => (
-                <li key={s.step} className="flex flex-col rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 text-xs">
-                  <div className="flex items-center justify-between">
+                <li key={s.step} className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-xs">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-[10px] font-bold text-indigo-600">STEP {s.step}</span>
-                    <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                    <span className="shrink-0 rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
                       {s.who}
                     </span>
                   </div>
-                  <p className="mt-2 font-bold text-slate-900">{s.title}</p>
-                  <p className="mt-1 flex-1 leading-relaxed text-slate-600">{s.what}</p>
-                  <Link href={s.href} className="mt-2.5 font-semibold text-indigo-600 hover:underline">
+                  <p className="mt-2 text-sm font-bold text-slate-900">{s.title}</p>
+                  <p className="mt-1 flex-1 break-words leading-relaxed text-slate-600">{s.what}</p>
+                  <Link href={s.href} className="mt-3 font-semibold text-indigo-600 hover:underline">
                     Open →
                   </Link>
                 </li>

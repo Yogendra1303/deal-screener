@@ -90,8 +90,8 @@ export interface EmailIn {
   sample?: boolean;
 }
 
-/** Fictional addresses: each company gets one address that drops files straight into its data room. */
-export const INBOX_DOMAIN = "in.samplefund.example";
+/** Company-scoped inbound routing domain: each company gets one address that drops files straight into its data room. */
+export const INBOX_DOMAIN = "in.aarkavc.xyz";
 export const PITCH_INBOX = `pitches@${INBOX_DOMAIN}`;
 
 export function inboxAddress(companyName: string) {

@@ -1163,32 +1163,32 @@ export default function RulesPage() {
               </span>
             </div>
 
-            <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {thesis.process.map((step, idx) => {
                 const active = selectedProcessIdx === idx;
                 return (
-                  <li key={`${step.step}-${idx}`}>
+                  <li key={`${step.step}-${idx}`} className="min-w-0">
                     <button
                       type="button"
                       onClick={() => setSelectedProcessIdx(idx)}
                       className={cx(
-                        "flex h-full w-full cursor-pointer flex-col rounded-xl border p-3.5 text-left transition",
+                        "flex h-full w-full cursor-pointer flex-col rounded-xl border p-4 text-left transition",
                         active
                           ? "border-indigo-500 bg-indigo-50/40 ring-2 ring-indigo-500/15"
                           : "border-slate-200 bg-slate-50/60 hover:border-indigo-300 hover:bg-white",
                       )}
                     >
-                      <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-[10px] font-bold uppercase text-slate-400">
                           Step 0{idx + 1}
                         </span>
-                        <span className="rounded bg-indigo-100/80 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">
+                        <span className="shrink-0 rounded bg-indigo-100/80 px-2 py-0.5 text-[10px] font-semibold text-indigo-800">
                           {step.days}
                         </span>
                       </div>
                       <p className="mt-2 text-sm font-bold text-slate-900">{step.step}</p>
-                      <p className="mt-1 text-[11px] font-medium text-slate-600">{step.who}</p>
-                      <p className="mt-auto pt-2 text-[11px] leading-snug text-slate-500">{step.output}</p>
+                      <p className="mt-1 text-xs font-medium text-slate-600">{step.who}</p>
+                      <p className="mt-auto break-words pt-2 text-xs leading-relaxed text-slate-500">{step.output}</p>
                     </button>
                   </li>
                 );

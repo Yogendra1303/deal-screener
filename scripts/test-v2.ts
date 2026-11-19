@@ -101,7 +101,7 @@ check("every sample request is dated on or before the demo date", SEED_REQUESTS.
 
 // Data room, email-in and request lists
 check("founder emails match the sample decks' format", founderEmail("Ananya Rao", "Ledgerly") === "ananya@ledgerly.example" && founderEmail("Karan Patel", "Sunroof Grid") === "karan@sunroofgrid.example");
-check("each company gets its own fund address", inboxAddress("Sunroof Grid") === "sunroofgrid@in.samplefund.example");
+check("each company gets its own fund address", inboxAddress("Sunroof Grid") === "sunroofgrid@in.aarkavc.xyz");
 check("file names suggest the right folder", guessFolder("Kitebay-board-Q2-2026.pdf") === "board" && guessFolder("Ledgerly-cap-table.pdf") === "legal" && guessFolder("bank-statements-Sep.pdf") === "financials" && guessFolder("Ledgerly-S&M-spend-and-new-customers.xlsx") === "customers");
 check("a file name with no clue gets no suggestion", guessFolder("IMG_2041.jpg") === undefined);
 check("request lines file by their diligence id first", folderFor("equity", "anything") === "legal" && folderFor("retention", "anything") === "customers" && folderFor(undefined, "Q3 board deck") === "board");

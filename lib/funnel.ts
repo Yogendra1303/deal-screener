@@ -75,7 +75,7 @@ export function founderFit(founders: FounderProfile[]): FitResult {
 
 // ---------- How each pitch arrived ----------
 
-export const PARTNER_INBOX = "kabir@samplefund.example";
+export const PARTNER_INBOX = "partners@aarkavc.xyz";
 export const PITCH_ADDRESS = "pitches@aarkavc.xyz";
 
 export interface Ingest {
