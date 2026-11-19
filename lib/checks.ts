@@ -129,14 +129,16 @@ export function runChecks(args: {
 
   // 6. The deck's own maths: runway vs cash and burn
   if (
-    t.cash.amount &&
-    t.monthlyBurn.amount &&
+    t.cash.amount != null &&
+    t.cash.amount > 0 &&
+    t.monthlyBurn.amount != null &&
+    t.monthlyBurn.amount > 0 &&
     t.runwayMonths.value != null &&
     sameCurrency(t.cash.currency, t.monthlyBurn.currency)
   ) {
     const computed = t.cash.amount / t.monthlyBurn.amount;
     const stated = t.runwayMonths.value;
-    if (Math.abs(stated - computed) > 2 && Math.abs(stated - computed) / computed > 0.2) {
+    if (computed > 0 && Math.abs(stated - computed) > 2 && Math.abs(stated - computed) / computed > 0.2) {
       const cur = t.cash.currency || t.monthlyBurn.currency;
       flags.push({
         checkId: "runway_maths",

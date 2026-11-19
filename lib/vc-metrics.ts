@@ -137,9 +137,23 @@ export function calculateVCMetrics(
   const profiles = context?.profiles ?? deal?.profiles ?? [];
   const registry = context?.registry ?? deal?.registry ?? null;
 
-  // Base numbers
+  // Base numbers (preserve native currency for ratios; normalize to USD for cross-currency USD comparisons)
+  const revCurrency = (latestRow?.currency || record?.traction?.mrr?.currency || record?.traction?.arr?.currency || "USD").trim().toUpperCase();
+  const fxRate =
+    revCurrency === "INR" || revCurrency === "₹"
+      ? 84
+      : revCurrency === "AED"
+        ? 3.6725
+        : revCurrency === "SAR"
+          ? 3.75
+          : revCurrency === "EUR" || revCurrency === "€"
+            ? 0.92
+            : revCurrency === "GBP" || revCurrency === "£"
+              ? 0.79
+              : 1;
   const currentRevenue = latestRow?.revenue ?? (record?.traction?.mrr?.amount ?? null);
   const currentARR = currentRevenue != null ? currentRevenue * 12 : null;
+  const currentARRUsd = currentARR != null ? currentARR / fxRate : null;
   const prevRevenue = prevRow?.revenue ?? null;
   const prevARR = prevRevenue != null ? prevRevenue * 12 : null;
 
@@ -254,7 +268,7 @@ export function calculateVCMetrics(
   let ownershipStatus: VCMetricsResult["ownership"]["status"] = "N/A";
 
   if (ask != null && ask > 0) {
-    const baselinePost = currentARR && currentARR > 200_000 ? Math.max(ask * 4, currentARR * 15) : ask * 5;
+    const baselinePost = currentARRUsd && currentARRUsd > 200_000 ? Math.max(ask * 4, currentARRUsd * 15) : ask * 5;
     impliedPost = Math.round(baselinePost);
     ownershipPct = Math.round((ask / impliedPost) * 1000) / 10;
 
@@ -267,11 +281,11 @@ export function calculateVCMetrics(
     }
   }
 
-  // 6. ARR per Headcount
+  // 6. ARR per Headcount (USD normalized)
   let arrPerHead: number | null = null;
   let headTier: VCMetricsResult["arrPerHeadcount"]["tier"] = "N/A";
-  if (currentARR != null && headcount != null && headcount > 0) {
-    arrPerHead = Math.round(currentARR / headcount);
+  if (currentARRUsd != null && headcount != null && headcount > 0) {
+    arrPerHead = Math.round(currentARRUsd / headcount);
     if (arrPerHead >= 200_000) headTier = "High Productivity";
     else if (arrPerHead >= 100_000) headTier = "Standard";
     else headTier = "Early Stage";
