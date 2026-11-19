@@ -511,9 +511,9 @@ export function FounderDashboard({
                   {allPitches.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50/60">
                       <td className="px-5 py-3.5 font-medium text-slate-900">{p.companyName}</td>
-                      <td className="px-5 py-3.5 text-slate-600">{p.sector || "—"}</td>
+                      <td className="px-5 py-3.5 text-slate-600">{p.sector || "-"}</td>
                       <td className="px-5 py-3.5 text-slate-500 tabular-nums">
-                        {p.receivedAt ? new Date(p.receivedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                        {p.receivedAt ? new Date(p.receivedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-"}
                       </td>
                       <td className="px-5 py-3.5">
                         <span className={cx("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset", statusBadge(p.status))}>

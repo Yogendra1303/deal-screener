@@ -197,7 +197,10 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<LinksStore>(() => {
-    const ownerOf = (id: string) => DEAL_OWNERS[id] ?? inbound.find((i) => i.id === id)?.owner ?? local.owners[id];
+    const ownerOf = (id: string) =>
+      Object.prototype.hasOwnProperty.call(local.owners, id)
+        ? local.owners[id] || undefined
+        : (inbound.find((i) => i.id === id)?.owner ?? DEAL_OWNERS[id]);
     return {
       ready,
       today,
@@ -291,12 +294,21 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
           return { ...l, emails: { ...l.emails, [emailId]: { ...base, filed } } };
         }),
       ownerOf,
-      claim: (id, who) =>
+      claim: (id, who) => {
         update((l) => ({
           ...l,
           owners: { ...l.owners, [id]: who },
-          inbound: l.inbound.map((x) => (x.id === id ? { ...x, owner: who } : x)),
-        })),
+          inbound: l.inbound.map((x) => (x.id === id ? { ...x, owner: who || undefined } : x)),
+        }));
+        setDbInbound((prev) => prev.map((x) => (x.id === id ? { ...x, owner: who || undefined } : x)));
+        if (isVc) {
+          void fetch(`/api/deals/${encodeURIComponent(id)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ owner: who }),
+          }).catch(() => undefined);
+        }
+      },
       openFile: async (f) => {
         // This browser's copy first; then the server's, which another browser may have uploaded.
         const blob = f.key ? await loadDeck(f.key) : null;
@@ -313,7 +325,7 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
       changed: JSON.stringify(local) !== JSON.stringify(EMPTY),
       reset: () => update(() => EMPTY),
     };
-  }, [ready, today, requests, inbound, emails, local, update, edit]);
+  }, [ready, today, requests, inbound, emails, local, update, edit, isVc]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

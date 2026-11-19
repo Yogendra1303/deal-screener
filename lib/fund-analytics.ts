@@ -81,19 +81,16 @@ export const DEFAULT_FUND_CONFIG: FundConfig = {
 
 /**
  * Deterministic multi-currency FX conversion to USD for fund-level aggregation.
- * Covers INR (₹), AED, SAR, EUR (€), GBP (£), and USD ($).
+ * Uses the same canonical reference rates as Compare (lib/compare.ts) and Evidence Matrix.
  */
 export function toUsd(amount: number, currency: string): number {
   if (!Number.isFinite(amount)) return 0;
   const code = (currency || "USD").trim().toUpperCase();
-  if (code === "INR" || code === "₹") {
-    // Full INR values (e.g. 1,420,000) convert at ~84 INR/USD; values in Cr (<1000) convert at $120K/Cr
-    return amount > 10_000 ? amount / 84 : amount * 120_000;
-  }
-  if (code === "AED") return amount / 3.67;
+  if (code === "INR" || code === "₹") return amount / 84;
+  if (code === "AED") return amount / 3.6725;
   if (code === "SAR") return amount / 3.75;
-  if (code === "EUR" || code === "€") return amount * 1.08;
-  if (code === "GBP" || code === "£") return amount * 1.27;
+  if (code === "EUR" || code === "€") return amount / 0.92;
+  if (code === "GBP" || code === "£") return amount / 0.79;
   return amount;
 }
 
@@ -122,12 +119,13 @@ export function computeFundAnalytics(
     deployedUsd += investedUsd;
 
     const latestRep = [...c.reports]
-      .filter((r) => r.receivedAt && r.numbers.revenue?.value != null)
+      .filter((r) => r.receivedAt && r.receivedAt.slice(0, 10) <= today && r.numbers.revenue?.value != null)
       .sort((a, b) => b.month.localeCompare(a.month))[0];
 
-    const latestMrrUsd = latestRep?.numbers.revenue?.value
-      ? toUsd(latestRep.numbers.revenue.value, c.currency)
-      : null;
+    const latestMrrUsd =
+      latestRep?.numbers.revenue?.value != null
+        ? toUsd(latestRep.numbers.revenue.value, c.currency)
+        : null;
     const latestArrUsd = latestMrrUsd != null ? Math.round(latestMrrUsd * 12) : null;
 
     // Conservative ARR valuation benchmark floored at 1.0x cost basis for early-stage holdings

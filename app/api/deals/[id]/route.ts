@@ -78,7 +78,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       return Response.json({ error: "No such deal." }, { status: 404 });
     }
 
-    // Use patchDeal so only provided fields change — never clobber company_name, sector, founder_email, or intake_json!
+    // Use patchDeal so only provided fields change - never clobber company_name, sector, founder_email, or intake_json!
     const updated = await patchDeal(id, patch);
 
     const session = await auth().catch(() => null);

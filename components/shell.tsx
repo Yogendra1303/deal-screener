@@ -420,7 +420,7 @@ function NotificationMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Notifications"
         aria-expanded={open}
-        title="Notifications — New pitches & portfolio updates"
+        title="Notifications - New pitches & portfolio updates"
         className={cx(
           "relative inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900",
           open ? "border-blue-600 ring-2 ring-blue-500/20" : "border-slate-200",
@@ -503,7 +503,7 @@ function NotificationMenu() {
 
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
             {filtered.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-slate-500">All caught up — no unread notifications.</div>
+              <div className="px-4 py-8 text-center text-xs text-slate-500">All caught up - no unread notifications.</div>
             ) : (
               filtered.slice(0, 20).map((item) => (
                 <div

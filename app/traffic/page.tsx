@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DropdownSelect, LABEL, cx } from "@/components/ui";
+import { useWorkspace } from "@/components/workspace";
 
 interface TrafficEvent {
   ts: string;
@@ -117,7 +119,7 @@ const SHARE_CHANNELS = [
 ] as const;
 
 function formatDuration(sec: number | null | undefined): string {
-  if (!sec || sec <= 0) return "—";
+  if (!sec || sec <= 0) return "-";
   if (sec < 60) return `${sec}s`;
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -156,7 +158,7 @@ function sourceBarColor(source: string): string {
 }
 
 function timeAgo(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const diffSec = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
   if (diffSec < 60) return `${diffSec}s ago`;
   const diffMin = Math.round(diffSec / 60);
@@ -167,7 +169,7 @@ function timeAgo(iso?: string): string {
 }
 
 function formatExactTime(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Date(iso).toLocaleString("en-US", {
       month: "short",
@@ -246,6 +248,7 @@ function BreakdownCard({
 }
 
 export default function LiveTrafficPage() {
+  const w = useWorkspace();
   const [data, setData] = useState<TrafficTelemetry | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"external" | "owner" | "logins" | "requests">("external");
@@ -317,7 +320,7 @@ export default function LiveTrafficPage() {
       }
       setToast(
         action === "approve"
-          ? `Approved & whitelisted ${email} — they can now sign in with Google.`
+          ? `Approved & whitelisted ${email} - they can now sign in with Google.`
           : `Revoked dashboard access for ${email}.`,
       );
       await load();
@@ -343,9 +346,33 @@ export default function LiveTrafficPage() {
   const pitchConversion =
     data && data.funnel30d.pitchViews > 0
       ? `${Math.round((data.funnel30d.submissions / data.funnel30d.pitchViews) * 100)}%`
-      : "—";
+      : "-";
 
   const maxDailyViews = Math.max(1, ...(data?.dailySeries.map((d) => d.views) ?? [1]));
+
+  if (w.ready && w.role !== "Partner") {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-amber-200 bg-amber-50/70 p-6 text-center space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-amber-800">Partner View Required</p>
+        <h1 className="text-lg font-semibold text-slate-900">Live site traffic &amp; workspace approvals are restricted to Partners</h1>
+        <p className="text-xs text-slate-600">
+          Switch to Partner view from the sidebar profile card or return to your Analyst Home queue.
+        </p>
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={() => w.setDemoRole("Partner")}
+            className="cursor-pointer rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            Switch to Partner View
+          </button>
+          <Link href="/" className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -365,7 +392,7 @@ export default function LiveTrafficPage() {
             )}
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            External visitor analytics across Reddit, LinkedIn, X, Instagram, Search &amp; Direct—separated cleanly from your own Wi-Fi, with time on page, logins, and waitlist approvals.
+            External visitor analytics across Reddit, LinkedIn, X, Instagram, Search &amp; Direct, separated cleanly from your own Wi-Fi, with time on page, logins, and waitlist approvals.
           </p>
         </div>
 
@@ -387,7 +414,7 @@ export default function LiveTrafficPage() {
         </div>
       )}
 
-      {/* Clean Hero Analytics Card (Strictly External Visitors — 0 from Your IP) */}
+      {/* Clean Hero Analytics Card (Strictly External Visitors - 0 from Your IP) */}
       {loading && !data ? (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">
           Loading live analytics…
@@ -501,7 +528,7 @@ export default function LiveTrafficPage() {
               <div>
                 <p className="text-xs font-semibold text-slate-900">Tracked Share Links (Reddit, LinkedIn, X, Instagram, WhatsApp)</p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Choose whether you&apos;re sharing the Pitch Form or Homepage—every external click &amp; time spent is attributed automatically.
+                  Choose whether you&apos;re sharing the Pitch Form or Homepage; every external click &amp; time spent is attributed automatically.
                 </p>
               </div>
               <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-xs">
@@ -674,7 +701,7 @@ export default function LiveTrafficPage() {
                 {filteredVisits.length === 0 ? (
                   <p className="p-6 text-sm text-slate-500">
                     {tab === "external"
-                      ? "0 external visits recorded so far. All hits from your own IP are strictly excluded—once outsiders click your shared links, they appear here in real time."
+                      ? "0 external visits recorded so far. All hits from your own IP are strictly excluded; once outsiders click your shared links, they appear here in real time."
                       : "No internal visits recorded from your Wi-Fi yet."}
                   </p>
                 ) : (
@@ -778,7 +805,7 @@ export default function LiveTrafficPage() {
                         const detailText =
                           String(log.details?.message ?? "") ||
                           [log.details?.companyName, log.details?.sector, log.details?.stage].filter(Boolean).join(" · ") ||
-                          "—";
+                          "-";
                         return (
                           <tr key={log.id || `${log.created_at}-${i}`} className="hover:bg-slate-50/60">
                             <td className="px-4 py-2.5 whitespace-nowrap">

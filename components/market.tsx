@@ -628,12 +628,13 @@ function SortHead({
   className?: string;
 }) {
   const on = Boolean(k && sort === k);
+  const isRight = Boolean(className?.includes("text-right"));
   return (
     <th className={cx("whitespace-nowrap bg-slate-50 border-b border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 uppercase tracking-wider", className)} aria-sort={on ? (dir === "asc" ? "ascending" : "descending") : undefined}>
       {k ? (
         <button
           onClick={() => onSort(k)}
-          className={cx("inline-flex items-center gap-1 uppercase tracking-wider hover:text-slate-900", on && "text-slate-900")}
+          className={cx("inline-flex cursor-pointer items-center gap-1 uppercase tracking-wider hover:text-slate-900", isRight && "w-full justify-end", on && "text-slate-900")}
           title={on ? `Sorted ${dir === "asc" ? "lowest" : "highest"} first. Click to reverse.` : "Click to sort"}
         >
           {children}
@@ -750,13 +751,29 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
                   <ChangeBar value={f.m.moneyChange} max={0.6} />
                 </td>
                 <td className="hidden whitespace-nowrap px-4 py-3 text-right align-middle @4xl:table-cell">
-                  <Link
-                    href={`/sectors/${slugOf(f.m.sector)}?f=strong`}
-                    title={`${f.strong} of ${f.rated} companies have strong founder-market fit. Click to list them.`}
-                    className="inline-flex items-center gap-1 rounded-sm bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide tabular-nums text-emerald-800 hover:bg-emerald-200/80"
-                  >
-                    {f.strong} of {f.rated} <span className="font-normal text-emerald-700">({pct(f.strong, f.rated)}%)</span>
-                  </Link>
+                  {(() => {
+                    const fitPct = pct(f.strong, f.rated);
+                    const toneCls =
+                      fitPct >= 50
+                        ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200/80"
+                        : fitPct >= 25
+                          ? "bg-slate-100 text-slate-700 hover:bg-slate-200/80"
+                          : "bg-amber-100 text-amber-800 hover:bg-amber-200/80";
+                    const pctCls =
+                      fitPct >= 50 ? "text-emerald-700" : fitPct >= 25 ? "text-slate-500" : "text-amber-700";
+                    return (
+                      <Link
+                        href={`/sectors/${slugOf(f.m.sector)}?f=strong`}
+                        title={`${f.strong} of ${f.rated} companies have strong founder-market fit. Click to list them.`}
+                        className={cx(
+                          "inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide tabular-nums transition-colors",
+                          toneCls,
+                        )}
+                      >
+                        {f.strong} of {f.rated} <span className={cx("font-normal", pctCls)}>({fitPct}%)</span>
+                      </Link>
+                    );
+                  })()}
                 </td>
                 <td className="hidden px-4 py-3 align-middle @xl:table-cell">
                   <span className="flex items-center gap-2" title={`${f.meetings} meetings, ${f.companies - f.meetings - f.passed} still open, ${f.passed} passed or on hold, of ${f.companies} companies`}>
@@ -778,24 +795,24 @@ export function SectorGrid({ facts }: { facts: SectorFacts[] }) {
           </tbody>
           <tfoot className="border-t border-slate-200 bg-slate-50 text-slate-900">
             <tr>
-              <td className="sticky left-0 z-10 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider shadow-[1px_0_0_#e2e8f0]">All sectors</td>
-              <td className="hidden px-3 py-2 @2xl:table-cell">
+              <td className="sticky left-0 z-10 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider shadow-[1px_0_0_#e2e8f0]">All sectors</td>
+              <td className="hidden px-4 py-2.5 @2xl:table-cell">
                 <MiniColumns values={MONTHS.map((_, i) => sum(facts.map((f) => f.m.counts[i])))} />
               </td>
-              <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums">{tot.decks3}</td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-2.5 text-right font-mono font-semibold tabular-nums">{tot.decks3}</td>
+              <td className="px-4 py-2.5">
                 <ChangeBar value={tot.decks3 / Math.max(1, before3) - 1} max={2} className={GRID_BAR} from={[before3, tot.decks3]} />
               </td>
-              <td className="hidden whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums @3xl:table-cell">
+              <td className="hidden whitespace-nowrap px-4 py-2.5 text-right font-mono tabular-nums @3xl:table-cell">
                 ${tot.raised.toLocaleString("en-US")}M<span className="ml-1 text-[11px] text-slate-400">{tot.rounds} rds</span>
               </td>
-              <td className="hidden px-3 py-2 @3xl:table-cell">
+              <td className="hidden px-4 py-2.5 @3xl:table-cell">
                 <ChangeBar value={tot.raised / Math.max(1, tot.raisedBefore) - 1} max={0.6} />
               </td>
-              <td className="hidden whitespace-nowrap px-3 py-2 text-right text-[11px] tabular-nums @4xl:table-cell">
+              <td className="hidden whitespace-nowrap px-4 py-2.5 text-right text-[11px] tabular-nums @4xl:table-cell">
                 {tot.strong} of {tot.rated} ({pct(tot.strong, tot.rated)}%)
               </td>
-              <td className="hidden whitespace-nowrap px-3 py-2 text-[11px] tabular-nums text-slate-600 @xl:table-cell">
+              <td className="hidden whitespace-nowrap px-4 py-2.5 text-[11px] tabular-nums text-slate-600 @xl:table-cell">
                 {tot.meetings} {tot.meetings === 1 ? "meeting" : "meetings"} · {tot.passed} passed / on hold · {tot.companies} companies
               </td>
             </tr>

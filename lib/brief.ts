@@ -124,7 +124,7 @@ export function portfolioBrief(c: PortfolioCompany, facts: KeyFact[], questions:
       by: "Code",
       cites: [
         { label: "Runway", fact: "runway" },
-        ...(f("burnMultiple").value !== "—" ? [{ label: "Burn multiple", fact: "burnMultiple" }] : []),
+        ...(f("burnMultiple").value !== "-" ? [{ label: "Burn multiple", fact: "burnMultiple" }] : []),
       ],
     });
 

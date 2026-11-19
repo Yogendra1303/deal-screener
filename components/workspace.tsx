@@ -5,7 +5,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { SEED_QUESTIONS, type Answer, type Question } from "@/lib/questions";
 import { signInCheck, type Session } from "@/lib/auth";
-import type { Role } from "@/lib/team";
+import { PARTNER, type Role } from "@/lib/team";
 import { hydrate, persist } from "@/lib/db/client";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -110,7 +110,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const localSession: Session | null = saved && saved.name && saved.role ? saved : null;
     if (localSession && preferredRole && localSession.role !== preferredRole) {
       localSession.role = preferredRole;
-      localSession.name = preferredRole === "Partner" ? "Kabir Shah" : "Riya Menon";
+      localSession.name = preferredRole === "Partner" ? (localSession.userName || PARTNER.name) : "Riya Menon";
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSession(localSession);
@@ -157,8 +157,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             const currentRole = readStoredRole();
             const role: Role = urlOverride ?? currentRole ?? (localSession && localSession.email === data.user.email ? localSession.role : serverRole);
             persistRole(role);
-            const defaultName = role === "Partner" ? "Kabir Shah" : "Riya Menon";
             const realName = data.user.name?.trim() || data.user.email.split("@")[0];
+            const defaultName = role === "Partner" ? (realName || PARTNER.name) : "Riya Menon";
             const next: Session = {
               name: defaultName,
               role,
@@ -187,11 +187,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const setDemoRole = useCallback((role: Role) => {
     persistRole(role);
     setSession((prev) => {
-      const name = role === "Partner" ? "Kabir Shah" : "Riya Menon";
+      const name = role === "Partner" ? (prev?.userName || PARTNER.name) : "Riya Menon";
       const next: Session = {
         name,
         role,
-        email: prev?.email ?? (role === "Partner" ? "kabir@fundhub.demo" : "riya@fundhub.demo"),
+        email: prev?.email ?? (role === "Partner" ? "partners@aarkavc.xyz" : "riya@aarkavc.xyz"),
         userName: prev?.userName,
         userImage: prev?.userImage,
       };

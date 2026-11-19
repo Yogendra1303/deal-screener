@@ -49,7 +49,8 @@ function clamp(n: number, min: number, max: number): number {
 export function calculateCapTable(input: CapTableInput): CapTableOutput {
   const valuation = Math.max(100_000, Number(input.valuationUsd) || 0);
   const roundSize = Math.max(0, Number(input.roundSizeUsd) || 0);
-  const fundCheck = clamp(Number(input.fundCheckUsd) || 0, 0, Math.max(roundSize, Number(input.fundCheckUsd) || 0));
+  const rawCheck = Math.max(0, Number(input.fundCheckUsd) || 0);
+  const fundCheck = roundSize > 0 ? clamp(rawCheck, 0, roundSize) : rawCheck;
   const optionPoolTarget = clamp(Number(input.optionPoolPct) || 0, 0, 30);
   const discount = clamp(Number(input.discountPct) || 0, 0, 50);
   const existingFounders = clamp(Number(input.existingFoundersPct) || 100, 10, 100);
@@ -61,7 +62,7 @@ export function calculateCapTable(input: CapTableInput): CapTableOutput {
 
   if (input.instrument === "post_safe") {
     // YC Post-Money SAFE: investor ownership = check / effective post-money cap
-    const effectiveCap = valuation * (1 - discount / 100);
+    const effectiveCap = Math.max(1, valuation * (1 - discount / 100));
     postMoneyUsd = Math.max(effectiveCap, roundSize);
     totalNewInvestorPct = clamp((roundSize / postMoneyUsd) * 100, 0, 80);
     fundOwnershipPct = clamp((fundCheck / postMoneyUsd) * 100, 0, totalNewInvestorPct);

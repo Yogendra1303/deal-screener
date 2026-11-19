@@ -10,8 +10,8 @@ import type { DealResult, SheetRow } from "./types";
 import { calculateVCMetrics } from "./vc-metrics";
 
 /** Reference exchange rates (units per US dollar). */
-export const FX: Record<string, number> = { USD: 1, INR: 84, AED: 3.6725, SAR: 3.75 };
-export const FX_NOTE = "Reference FX rates: ₹84, AED 3.6725 and SAR 3.75 to one US dollar.";
+export const FX: Record<string, number> = { USD: 1, INR: 84, AED: 3.6725, SAR: 3.75, EUR: 0.92, GBP: 0.79 };
+export const FX_NOTE = "Reference FX rates: ₹84, AED 3.6725, SAR 3.75, €0.92, and £0.79 to one US dollar.";
 
 /** Reporting health as a number so the column sorts: higher is healthier. "Too early" has no rank and sorts last. */
 export const REPORTING_RANK: Record<string, number> = { "On track": 3, Slipping: 2, "Gone quiet": 1 };
@@ -55,12 +55,27 @@ export interface CompareRow {
   cells: Record<ColKey, Cell>;
 }
 
-const toUsd = (n: number, cur: string) => n / (FX[cur] ?? NaN);
+const toUsd = (n: number, cur: string): number | null => {
+  const rate = FX[(cur || "USD").toUpperCase()];
+  if (!rate || !Number.isFinite(n)) return null;
+  return n / rate;
+};
 const usdText = (n: number) => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${Math.round(n)}`);
-const empty = (text = "—", why?: string): Cell => ({ sort: null, text, status: null, evidence: [], working: [], why });
+const empty = (text = "-", why?: string): Cell => ({ sort: null, text, status: null, evidence: [], working: [], why });
 
 function moneyCell(value: number, cur: string, status: FactStatus, evidence: Evidence[], label: string): Cell {
   const v = toUsd(value, cur);
+  if (v == null) {
+    return {
+      sort: null,
+      text: fmtMoney(value, cur),
+      local: fmtMoney(value, cur),
+      sub: label,
+      status,
+      evidence,
+      working: [`Reported in ${cur} (no FX rate configured)`],
+    };
+  }
   return {
     sort: v,
     text: usdText(v),
@@ -68,7 +83,7 @@ function moneyCell(value: number, cur: string, status: FactStatus, evidence: Evi
     sub: label,
     status,
     evidence,
-    working: cur === "USD" ? [] : [`${fmtMoney(value, cur)} ÷ ${FX[cur]} = ${usdText(v)} (sample rate)`],
+    working: cur === "USD" ? [] : [`${fmtMoney(value, cur)} ÷ ${FX[cur.toUpperCase()]} = ${usdText(v)} (reference rate)`],
   };
 }
 
@@ -100,7 +115,7 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
         evidence: [...misEvidence(c, g.from, "revenue"), ...misEvidence(c, g.to, "revenue")],
         working: fact("growth").working ?? [],
       }
-    : empty("—", "Needs four months of reports.");
+    : empty("-", "Needs four months of reports.");
 
   const b = burnMultiple(c, today);
   const bm: Cell = b
@@ -113,7 +128,7 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
         evidence: [],
         working: b.working,
       }
-    : empty("—", "Needs four months of reports.");
+    : empty("-", "Needs four months of reports.");
 
   const rwFact = fact("runway");
   const rwReport = [...c.reports].reverse().find((r) => r.receivedAt && r.receivedAt.slice(0, 10) <= today && runwayMonths(r) != null);
@@ -129,7 +144,10 @@ export function portfolioRow(c: PortfolioCompany, today: string): CompareRow {
       ? { sort: null, text: "Not yet", sub: pf.value, status: "Claimed", evidence: pf.evidence, working: [], why: pf.why }
       : pf.status === "Missing"
         ? { sort: null, text: "No report", sub: pf.sub, status: "Missing", evidence: pf.evidence, working: [], why: pf.why }
-        : { sort: parseFloat(pf.value.replace("−", "-")), text: pf.value, sub: pf.sub?.split(":")[0], status: pf.status, evidence: pf.evidence, working: pf.working ?? [] };
+        : (() => {
+            const parsed = parseFloat(pf.value.replace("−", "-"));
+            return { sort: Number.isFinite(parsed) ? parsed : null, text: pf.value, sub: pf.sub?.split(":")[0], status: pf.status, evidence: pf.evidence, working: pf.working ?? [] };
+          })();
 
   const cf = fact("customers");
   const custReport = [...sent].reverse().find((r) => r.numbers.customers);
@@ -185,10 +203,15 @@ export function dealRow(d: DealResult): CompareRow {
   const month = (m: string) => fmtMonth(m).split(" ")[0];
   const sheetEv = (r: SheetRow, v: string): Evidence => ({ source: "Numbers sheet", value: `${v} in ${fmtMonth(r.month)}`, file: "Monthly numbers sheet (CSV)" });
 
-  const revenue = last ? { ...moneyCell(last.revenue!, cur, fact("revenue").status, fact("revenue").evidence, `${month(last.month)}, sheet`), asOf: last.month } : empty();
+  const deckMrr = d.record.traction.mrr.amount ?? (d.record.traction.arr.amount != null ? d.record.traction.arr.amount / 12 : null);
+  const revenue = last
+    ? { ...moneyCell(last.revenue!, cur, fact("revenue").status, fact("revenue").evidence, `${month(last.month)}, sheet`), asOf: last.month }
+    : deckMrr != null
+      ? moneyCell(deckMrr, d.record.traction.mrr.currency || cur, "Claimed", fact("revenue").evidence, "from deck")
+      : empty();
 
   const from = last ? sheet.find((r) => r.month === addMonths(last.month, -3)) : undefined;
-  const g3 = last && from ? (Math.pow(last.revenue! / from.revenue!, 1 / 3) - 1) * 100 : null;
+  const g3 = last && from && from.revenue! > 0 && last.revenue! >= 0 ? (Math.pow(last.revenue! / from.revenue!, 1 / 3) - 1) * 100 : null;
   const growth: Cell =
     g3 != null
       ? {
@@ -201,10 +224,10 @@ export function dealRow(d: DealResult): CompareRow {
           working: [`(${fmtMoney(last!.revenue, cur)} ÷ ${fmtMoney(from!.revenue, cur)}) ^ (1 ÷ 3) − 1 = ${g3.toFixed(1)}%`],
         }
       : sheetGrowth(d.sheet ?? [])
-        ? empty("—", "Needs four months in the sheet.")
+        ? empty("-", "Needs four months in the sheet.")
         : empty();
 
-  let bm: Cell = empty("—", "Needs four months of revenue and burn in the sheet.");
+  let bm: Cell = empty("-", "Needs four months of revenue and burn in the sheet.");
   if (last && from) {
     const window = [1, 2, 3].map((i) => sheet.find((r) => r.month === addMonths(last.month, i - 3)));
     if (window.every((r) => r?.netBurn != null)) {
@@ -220,10 +243,16 @@ export function dealRow(d: DealResult): CompareRow {
   }
 
   const rf = fact("runway");
-  const runway: Cell = rf.status === "Missing" ? empty() : { sort: parseFloat(rf.value), text: `${parseFloat(rf.value).toFixed(1)} mo`, sub: rf.sub, status: rf.status, evidence: rf.evidence, working: rf.working ?? [] };
+  const rwNum = rf.status === "Missing" ? NaN : parseFloat(rf.value);
+  const runway: Cell = Number.isFinite(rwNum)
+    ? { sort: rwNum, text: `${rwNum.toFixed(1)} mo`, sub: rf.sub, status: rf.status, evidence: rf.evidence, working: rf.working ?? [] }
+    : empty();
 
   const cf = fact("customers");
-  const customers: Cell = cf.status === "Missing" ? empty() : { sort: parseFloat(cf.value.replace(/,/g, "")), text: cf.value, sub: cf.sub, status: cf.status, evidence: cf.evidence, working: [] };
+  const custNum = cf.status === "Missing" ? NaN : parseFloat(cf.value.replace(/,/g, ""));
+  const customers: Cell = Number.isFinite(custNum)
+    ? { sort: custNum, text: cf.value, sub: cf.sub, status: cf.status, evidence: cf.evidence, working: [] }
+    : empty();
 
   const rd = fact("round");
   const vc = calculateVCMetrics(d.sheet, d.record, d.form.amountUsd, { deal: d });
@@ -258,7 +287,7 @@ export function dealRow(d: DealResult): CompareRow {
       growth,
       burnMultiple: bm,
       runway,
-      plan: empty("—", "Pitches have no plan to compare against yet."),
+      plan: empty("-", "Pitches have no plan to compare against yet."),
       customers,
       round: { sort: d.form.amountUsd, text: `Raising ${rd.value}`, sub: d.form.stage, status: rd.status, evidence: rd.evidence, working: [] },
       reporting: empty("Pitch", "Not invested, so no reporting yet."),

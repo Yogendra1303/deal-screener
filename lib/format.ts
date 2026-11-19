@@ -3,7 +3,7 @@
 const SYMBOLS: Record<string, string> = { INR: "₹", USD: "$", AED: "AED ", SAR: "SAR ", GBP: "£", EUR: "€" };
 
 export function fmtMoney(amount: number | null | undefined, currency?: string | null): string {
-  if (amount == null) return "—";
+  if (amount == null) return "-";
   const cur = (currency || "").toUpperCase();
   const sym = SYMBOLS[cur] ?? (cur ? `${cur} ` : "");
   const abs = Math.abs(amount);
@@ -23,7 +23,7 @@ function trim(n: number): string {
 }
 
 export function fmtNum(n: number | null | undefined): string {
-  if (n == null) return "—";
+  if (n == null) return "-";
   return n.toLocaleString("en-US");
 }
 

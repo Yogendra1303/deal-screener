@@ -66,7 +66,7 @@ export function attentionFor(c: PortfolioCompany, today: string): Attention[] {
   // Good news is worth a line too, when nothing else is.
   const plan = c.pitch.plan;
   const planReport = c.reports.find((r) => r.month === plan.month && r.numbers.revenue);
-  if (planReport && !flags.some((f) => f.kind === "plan")) {
+  if (planReport && plan.revenue > 0 && !flags.some((f) => f.kind === "plan")) {
     const diff = Math.round((planReport.numbers.revenue!.value / plan.revenue - 1) * 100);
     out.push({
       level: "good",

@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       subject
         .replace(/^(re|fwd|fw):\s*/i, "")
         .replace(/pitch\s*deck|seed\s*round|deck|intro|investment/gi, "")
-        .replace(/[-|:–—]/g, " ")
+        .replace(/[-|:\u2013\u2014]/g, " ")
         .trim()
         .slice(0, 60) ||
       founderEmail.split("@")[1]?.split(".")[0] ||

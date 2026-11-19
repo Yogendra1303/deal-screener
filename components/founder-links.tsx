@@ -2,6 +2,7 @@
 
 // The fund's side of founder links: building a request, the data room rows (what each company has
 // sent, what is missing, what we still need), and what analysts have asked founders.
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLinks } from "./links-store";
 import { usePortfolio } from "./portfolio-store";
@@ -364,6 +365,13 @@ export interface RoomRow {
   email: string;
   inbox: string;
   status: string;
+  sector: string;
+  stage: string;
+  country: string;
+  askUsd: number | null;
+  receivedAt: string;
+  via: string;
+  oneLiner?: string;
   shared: RoomFile[];
   missing: RoomMissing[];
   need: RequestItem[];
@@ -501,6 +509,13 @@ export function useDataRoom(): RoomRow[] {
           email,
           inbox: inboxAddress(form.companyName),
           status: d ? store.bandOf(d) : "Not read yet",
+          sector: form.sector,
+          stage: form.stage,
+          country: form.country,
+          askUsd: form.amountUsd ?? null,
+          receivedAt: at,
+          via: inb ? (PITCH_CHANNEL[inb.via] ?? "Pitch form") : s ? sampleChannel(id) : "Added by analyst",
+          oneLiner: d?.record.oneLiner ?? inb?.oneLiner,
           shared,
           missing: bits.missing,
           need: notAsked(id, d ? openLines(d) : FIRST_LOOK),
@@ -550,6 +565,13 @@ export function useDataRoom(): RoomRow[] {
           email,
           inbox: inboxAddress(c.name),
           status: "Portfolio",
+          sector: c.sector,
+          stage: c.investment.round,
+          country: c.country,
+          askUsd: c.investment.amountUsd,
+          receivedAt: c.investment.date.slice(0, 10),
+          via: "Portfolio",
+          oneLiner: c.oneLiner,
           shared,
           missing,
           need: notAsked(c.id, PORTFOLIO_YEARLY.filter((i) => !asked.has(i.id) && !asked.has(i.label.toLowerCase()))),
@@ -596,7 +618,12 @@ export function useFounderAsks(who?: string): AskLine[] {
           who: r.from,
           company: r.companyName,
           companyId: r.companyId,
-          href: r.side === "pitch" ? `/deals/${r.companyId}?tab=diligence` : `/portfolio/${r.companyId}`,
+          href:
+            st === "Sent" && !r.checked[i.id]
+              ? `/dataroom/${r.companyId}`
+              : r.side === "pitch"
+                ? `/deals/${r.companyId}?tab=diligence`
+                : `/portfolio/${r.companyId}`,
           text: i.label,
           at: r.sentAt,
           state: st === "Sent" ? (r.checked[i.id] ? "Sent, checked" : "Sent, not checked") : st === "Don't have" ? "Doesn't have it" : st === "Later" ? "Coming later" : st,
@@ -640,22 +667,32 @@ export function AskList({ lines, showWho = true, limit = 8 }: { lines: AskLine[]
     <div>
       <ul className="divide-y divide-slate-100">
         {shown.map((l) => (
-          <li key={l.key} className="flex items-start gap-3 py-2.5">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-slate-900">{l.text}</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                <a href={l.href} className="font-medium text-slate-700 hover:text-indigo-700">
-                  {l.company}
-                </a>
-                {showWho && ` · ${l.who.split(" ")[0]}`} · asked {fmtDay(l.at)}
-              </p>
-            </div>
-            <span className={cx("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset", ASK_TONE[l.tone])}>{l.state}</span>
+          <li key={l.key}>
+            <Link
+              href={l.href}
+              className="group -mx-3 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-slate-50"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-slate-900 group-hover:text-indigo-700">{l.text}</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  <span className="font-medium text-slate-700 group-hover:text-indigo-700">{l.company}</span>
+                  {showWho && ` · ${l.who.split(" ")[0]}`} · asked {fmtDay(l.at)}
+                </p>
+              </div>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset", ASK_TONE[l.tone])}>
+                  {l.state}
+                </span>
+                <span aria-hidden className="text-xs text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-600">
+                  →
+                </span>
+              </span>
+            </Link>
           </li>
         ))}
       </ul>
       {lines.length > limit && (
-        <button onClick={() => setAll((x) => !x)} className="mt-1 text-xs font-medium text-indigo-700 hover:text-indigo-900">
+        <button type="button" onClick={() => setAll((x) => !x)} className="mt-2 text-xs font-medium text-indigo-700 hover:text-indigo-900">
           {all ? "Show fewer" : `Show all ${lines.length}`}
         </button>
       )}

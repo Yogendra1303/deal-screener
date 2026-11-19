@@ -300,7 +300,7 @@ export const SEED_DECISIONS: Record<string, Decision> = {
     note: "A $25M Series B in the US. Stage, country and round size are all outside the fund's rules. Strong team; not our fund.",
     trigger: TRIGGER_HINT["Outside focus"],
     checkOn: null,
-    by: "Kabir Shah",
+    by: "Yogendra Kapkoti",
     at: "2026-10-20",
   },
   loomhaus: {
@@ -309,7 +309,7 @@ export const SEED_DECISIONS: Record<string, Decision> = {
     note: "Founders know the craft and the channel. Only a few months of sales, so there is nothing yet to show repeat buying.",
     trigger: "₹15 L monthly revenue with 30% of buyers ordering again, or a seed lead committing.",
     checkOn: "2027-01-20",
-    by: "Kabir Shah",
+    by: "Yogendra Kapkoti",
     at: "2026-10-22",
   },
 };
@@ -332,7 +332,7 @@ export interface PastDeal {
 
 const past = (x: Omit<PastDeal, "decision"> & { reason: PassReason; note: string; trigger: string; checkOn: string; at: string; by?: string; status?: Decision["status"] }): PastDeal => {
   const { reason, note, trigger, checkOn, at, by, status, ...rest } = x;
-  return { ...rest, decision: { status: status ?? "Passed", reason, note, trigger, checkOn, at, by: by ?? "Kabir Shah" } };
+  return { ...rest, decision: { status: status ?? "Passed", reason, note, trigger, checkOn, at, by: by ?? "Yogendra Kapkoti" } };
 };
 
 export const PAST_DEALS: PastDeal[] = [

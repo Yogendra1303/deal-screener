@@ -1,4 +1,4 @@
-// Every deal row the database knows — with ETag / 304 Not Modified conditional caching for zero-lag sync.
+// Every deal row the database knows - with ETag / 304 Not Modified conditional caching for zero-lag sync.
 import crypto from "crypto";
 import { NoDatabaseError, listDeals } from "@/lib/db/repository";
 import { seedDatabase } from "@/lib/db/seed";

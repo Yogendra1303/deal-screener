@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useDealFlow } from "@/components/flow";
+import { slugOf, useDealFlow } from "@/components/flow";
 import { usePortfolio } from "@/components/portfolio-store";
 import { Card, LABEL, SectionTitle, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
@@ -256,16 +256,22 @@ export default function FundAnalyticsPage() {
         </div>
       )}
 
-      {/* Editable Fund Parameters */}
+      {/* Editable Fund Parameters (Partner-only edit, Analyst read-only) */}
       <Card className="p-4">
+        {w.role !== "Partner" && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            Analyst view: Fund capital parameters are read-only. Switch to Partner view to modify committed capital, reserves, or valuation multiples.
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
           <label className="block lg:col-span-2">
             <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500">Fund Name</span>
             <input
               type="text"
+              disabled={w.role !== "Partner"}
               value={config.fundName}
               onChange={(e) => setConfig((c) => ({ ...c, fundName: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
             />
           </label>
           <label className="block">
@@ -276,9 +282,10 @@ export default function FundAnalyticsPage() {
               type="number"
               step={1_000_000}
               min={1_000_000}
+              disabled={w.role !== "Partner"}
               value={config.committedUsd}
               onChange={(e) => setConfig((c) => ({ ...c, committedUsd: Math.max(1_000_000, Number(e.target.value) || 0) }))}
-              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
             />
           </label>
           <label className="block">
@@ -288,9 +295,10 @@ export default function FundAnalyticsPage() {
               step={5}
               min={0}
               max={75}
+              disabled={w.role !== "Partner"}
               value={config.reserveTargetPct}
               onChange={(e) => setConfig((c) => ({ ...c, reserveTargetPct: Math.min(75, Math.max(0, Number(e.target.value) || 0)) }))}
-              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
             />
           </label>
           <label className="block">
@@ -300,14 +308,16 @@ export default function FundAnalyticsPage() {
               step={1}
               min={1}
               max={25}
+              disabled={w.role !== "Partner"}
               value={config.arrMultiple ?? 8}
               onChange={(e) => setConfig((c) => ({ ...c, arrMultiple: Math.min(25, Math.max(1, Number(e.target.value) || 8)) }))}
-              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-slate-200 px-2.5 py-1.5 font-mono text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
             />
           </label>
           <button
             type="button"
-            onClick={() => saveConfig(config)}
+            disabled={w.role !== "Partner"}
+            onClick={() => w.role === "Partner" && saveConfig(config)}
             className="h-[34px] cursor-pointer rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50"
           >
             {saved ? "Saved ✓" : "Save Parameters"}
@@ -438,23 +448,23 @@ export default function FundAnalyticsPage() {
         </SectionTitle>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
-            <thead className="border-b border-slate-100 text-left text-xs text-slate-500">
-              <tr>
-                <th className="py-2 pr-3 font-medium">Company</th>
-                <th className="py-2 pr-3 text-right font-medium">Cost Basis</th>
-                <th className="py-2 pr-3 text-right font-medium">Ownership</th>
-                <th className="py-2 pr-3 text-right font-medium">Latest ARR (USD)</th>
-                <th className="py-2 pr-3 text-right font-medium">Implied Value</th>
-                <th className="py-2 pr-3 text-right font-medium">Basis</th>
-                <th className="py-2 pr-3 text-right font-medium">MOIC</th>
-                <th className="py-2 pr-3 text-right font-medium">Runway</th>
-                <th className="py-2 text-right font-medium">Health</th>
+            <thead>
+              <tr className="border-y border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <th className="px-4 py-2.5">Company</th>
+                <th className="px-4 py-2.5 text-right">Cost Basis</th>
+                <th className="px-4 py-2.5 text-right">Ownership</th>
+                <th className="px-4 py-2.5 text-right">Latest ARR (USD)</th>
+                <th className="px-4 py-2.5 text-right">Implied Value</th>
+                <th className="px-4 py-2.5 text-right">Basis</th>
+                <th className="px-4 py-2.5 text-right">MOIC</th>
+                <th className="px-4 py-2.5 text-right">Runway</th>
+                <th className="px-4 py-2.5 text-right">Health</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {analytics.companyValuations.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50/70">
-                  <td className="py-2.5 pr-3">
+                  <td className="px-4 py-3">
                     <Link href={`/portfolio/${c.id}`} className="font-semibold text-slate-900 hover:text-blue-700 hover:underline">
                       {c.name}
                     </Link>
@@ -462,15 +472,15 @@ export default function FundAnalyticsPage() {
                       {c.sector} · {c.currency}
                     </span>
                   </td>
-                  <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-slate-700">{fmtM(c.investedUsd)}</td>
-                  <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-slate-700">{c.ownershipPct.toFixed(1)}%</td>
-                  <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-slate-700">
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-700">{fmtM(c.investedUsd)}</td>
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-700">{c.ownershipPct.toFixed(1)}%</td>
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-700">
                     {c.latestArrUsd != null ? fmtM(c.latestArrUsd) : "-"}
                   </td>
-                  <td className="py-2.5 pr-3 text-right font-mono font-semibold tabular-nums text-slate-900">
+                  <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-slate-900">
                     {fmtM(c.impliedValueUsd)}
                   </td>
-                  <td className="py-2.5 pr-3 text-right">
+                  <td className="px-4 py-3 text-right">
                     <span
                       className={cx(
                         "inline-flex rounded px-1.5 py-0.5 font-mono text-[10px] font-medium",
@@ -482,19 +492,23 @@ export default function FundAnalyticsPage() {
                       {c.valuationBasis === "ARR Markup" ? `${analytics.arrMultiple}x ARR` : "Cost Floor"}
                     </span>
                   </td>
-                  <td className="py-2.5 pr-3 text-right font-mono font-semibold tabular-nums text-emerald-700">
+                  <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-emerald-700">
                     {c.moic.toFixed(2)}x
                   </td>
-                  <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-slate-700">
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-700">
                     {c.runwayMonths != null ? `${c.runwayMonths} mo` : "-"}
                   </td>
-                  <td className="py-2.5 text-right">
+                  <td className="px-4 py-3 text-right">
                     <span
                       className={cx(
-                        "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                        c.health === "On track" || c.health === "Too early"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-amber-50 text-amber-800",
+                        "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+                        c.health === "On track"
+                          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                          : c.health === "Too early"
+                            ? "bg-slate-100 text-slate-600 ring-slate-200"
+                            : c.health === "Slipping"
+                              ? "bg-amber-50 text-amber-800 ring-amber-200"
+                              : "bg-rose-50 text-rose-700 ring-rose-200",
                       )}
                     >
                       {c.health}
@@ -512,25 +526,29 @@ export default function FundAnalyticsPage() {
         <SectionTitle>Sector Hit-Rate &amp; Deployment Breakdown</SectionTitle>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
-            <thead className="border-b border-slate-100 text-left text-xs text-slate-500">
-              <tr>
-                <th className="py-2 pr-3 font-medium">Sector</th>
-                <th className="py-2 pr-3 text-right font-medium">Inbound Decks</th>
-                <th className="py-2 pr-3 text-right font-medium">Partner Meetings</th>
-                <th className="py-2 pr-3 text-right font-medium">Meeting Hit Rate</th>
-                <th className="py-2 pr-3 text-right font-medium">Portfolio Cos</th>
-                <th className="py-2 text-right font-medium">Capital Deployed</th>
+            <thead>
+              <tr className="border-y border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <th className="px-4 py-2.5">Sector</th>
+                <th className="px-4 py-2.5 text-right">Inbound Decks</th>
+                <th className="px-4 py-2.5 text-right">Partner Meetings</th>
+                <th className="px-4 py-2.5 text-right">Meeting Hit Rate</th>
+                <th className="px-4 py-2.5 text-right">Portfolio Cos</th>
+                <th className="px-4 py-2.5 text-right">Capital Deployed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {analytics.sectorBreakdown.map((s) => (
                 <tr key={s.sector} className="hover:bg-slate-50/70">
-                  <td className="py-2 pr-3 font-medium text-slate-900">{s.sector}</td>
-                  <td className="py-2 pr-3 text-right font-mono tabular-nums text-slate-700">{s.inbound}</td>
-                  <td className="py-2 pr-3 text-right font-mono tabular-nums text-slate-700">{s.meetings}</td>
-                  <td className="py-2 pr-3 text-right font-mono tabular-nums text-slate-700">{s.hitRatePct}%</td>
-                  <td className="py-2 pr-3 text-right font-mono tabular-nums text-slate-700">{s.companies}</td>
-                  <td className="py-2 text-right font-mono font-semibold tabular-nums text-slate-900">
+                  <td className="px-4 py-2.5 font-semibold text-slate-900">
+                    <Link href={`/sectors/${slugOf(s.sector)}`} className="hover:text-indigo-700 hover:underline">
+                      {s.sector}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-700">{s.inbound}</td>
+                  <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-700">{s.meetings}</td>
+                  <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-700">{s.hitRatePct}%</td>
+                  <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-700">{s.companies}</td>
+                  <td className="px-4 py-2.5 text-right font-mono font-semibold tabular-nums text-slate-900">
                     {s.deployedUsd > 0 ? fmtM(s.deployedUsd) : "-"}
                   </td>
                 </tr>

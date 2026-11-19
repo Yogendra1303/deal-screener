@@ -419,7 +419,7 @@ export function portfolioFacts(c: PortfolioCompany, today: string): KeyFact[] {
     facts.push({
       key: "runway",
       label: "Runway",
-      value: rw != null ? `${rw.toFixed(1)} months` : "—",
+      value: rw != null ? `${rw.toFixed(1)} months` : "-",
       sub: r ? `At ${fmtMonth(r.month).split(" ")[0]}'s burn` : undefined,
       status: rw == null ? "Missing" : "Reported",
       why: rw == null ? "Needs cash and burn from the same month." : "Worked out by code from the founder's reported cash and burn.",
@@ -479,7 +479,7 @@ export function portfolioFacts(c: PortfolioCompany, today: string): KeyFact[] {
     facts.push({
       key: "growth",
       label: "Monthly growth",
-      value: g ? pct1(g.pct) : "—",
+      value: g ? pct1(g.pct) : "-",
       sub: g ? `Average, ${fmtMonth(g.from.month).split(" ")[0]} to ${fmtMonth(g.to.month).split(" ")[0]}` : "Needs four months of reports",
       status: g ? "Reported" : "Missing",
       why: g ? "Worked out by code from reported revenue, compounded over three months." : "Not enough months reported yet.",
@@ -491,7 +491,7 @@ export function portfolioFacts(c: PortfolioCompany, today: string): KeyFact[] {
     facts.push({
       key: "burnMultiple",
       label: "Burn multiple",
-      value: b?.value != null ? `${b.value.toFixed(1)}×` : b ? "n/a" : "—",
+      value: b?.value != null ? `${b.value.toFixed(1)}×` : b ? "n/a" : "-",
       sub: b?.note ?? "Burn ÷ new annual revenue, 3 months",
       status: b ? "Reported" : "Missing",
       why: b ? "Worked out by code from reported burn and revenue. Under 1× is efficient; over 2× is worth asking about." : "Needs four months of reports.",

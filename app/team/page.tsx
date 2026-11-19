@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
+import { QuestionItem } from "@/components/evidence";
 import { AskList, useFounderAsks } from "@/components/founder-links";
 import { useLinks } from "@/components/links-store";
 import { usePortfolio } from "@/components/portfolio-store";
@@ -46,6 +47,24 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
   const riyaLoad = useAnalystLoad("Riya Menon");
   const arjunLoad = useAnalystLoad("Arjun Bhat");
 
+  const openAnalystSection = (analystName: string, sectionId?: string) => {
+    setTab(slug(analystName));
+    if (!sectionId) return;
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+    });
+  };
+
+  const partnerQuestions = useMemo(
+    () =>
+      w.role === "Partner"
+        ? w.questions.filter((q) => !q.answer && (q.owner === currentUserName || q.owner === PARTNER.name))
+        : [],
+    [w.role, w.questions, currentUserName],
+  );
+
   const unassignedPitches = useMemo(() => {
     const seen = new Set<string>();
     const list: { id: string; name: string; stage: string; sector: string; country: string; ask: number | null; receivedAt: string }[] = [];
@@ -77,7 +96,7 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
       });
     }
     for (const i of links.inbound) {
-      if (i.owner || links.ownerOf(i.id) || seen.has(i.id)) continue;
+      if (links.ownerOf(i.id) || seen.has(i.id)) continue;
       seen.add(i.id);
       list.push({
         id: i.id,
@@ -94,13 +113,15 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
 
   const totals = useMemo(() => {
     const loads = [riyaLoad, arjunLoad];
-    const openQuestions = loads.reduce((s, l) => s + l.owed.length, 0);
+    const openQuestions = loads.reduce((s, l) => s + l.owed.length, 0) + partnerQuestions.length;
     const overdueQuestions = loads.reduce((s, l) => s + l.overdue, 0);
     const unreadReports = loads.reduce((s, l) => s + l.toRead, 0);
     const totalChase = loads.reduce((s, l) => s + l.chase, 0);
     const totalConflicts = loads.reduce((s, l) => s + l.conflicts, 0);
-    return { openQuestions, overdueQuestions, unreadReports, totalChase, totalConflicts };
-  }, [riyaLoad, arjunLoad]);
+    const busiestQuestionsAnalyst = [...loads].sort((a, b) => b.overdue - a.overdue || b.owed.length - a.owed.length)[0];
+    const busiestOpsAnalyst = [...loads].sort((a, b) => b.conflicts + b.toRead - (a.conflicts + a.toRead))[0];
+    return { openQuestions, overdueQuestions, unreadReports, totalChase, totalConflicts, busiestQuestionsAnalyst, busiestOpsAnalyst };
+  }, [riyaLoad, arjunLoad, partnerQuestions.length]);
 
   const ownerChoices = useMemo(
     () => [currentUserName, ...ANALYSTS.map((a) => a.name).filter((n) => n !== currentUserName)],
@@ -174,7 +195,13 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
 
         <button
           type="button"
-          onClick={() => setTab(remainingAnalysts[0] ? slug(remainingAnalysts[0].name) : "all")}
+          onClick={() => {
+            if (partnerQuestions.length > 0 && tab === "all") {
+              document.getElementById("partner-questions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else if (totals.busiestQuestionsAnalyst) {
+              openAnalystSection(totals.busiestQuestionsAnalyst.name, "questions");
+            }
+          }}
           className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-left shadow-2xs transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-sm"
         >
           <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -190,13 +217,16 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
             <span className="text-sm font-normal text-slate-400"> waiting</span>
           </div>
           <p className="mt-1 text-xs text-slate-500 group-hover:text-indigo-700">
-            Inspect analyst answers →
+            {partnerQuestions.length > 0 ? `${partnerQuestions.length} waiting on you →` : "Inspect analyst answers →"}
           </p>
         </button>
 
         <button
           type="button"
-          onClick={() => setTab(remainingAnalysts[0] ? slug(remainingAnalysts[0].name) : "all")}
+          onClick={() => {
+            const target = totals.busiestOpsAnalyst ?? remainingAnalysts[0];
+            if (target) openAnalystSection(target.name, target.conflicts > 0 ? "fixes" : "reports");
+          }}
           className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-left shadow-2xs transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-sm"
         >
           <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -336,6 +366,12 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Link
+                      href={`/dataroom/${item.id}`}
+                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Open Room
+                    </Link>
                     <DropdownSelect
                       ariaLabel={`Assign owner for ${item.name}`}
                       value=""
@@ -388,16 +424,42 @@ export default function TeamPage({ searchParams }: { searchParams: Promise<{ who
           <AskedFounders who={picked.name} />
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {remainingAnalysts.map((a) => (
-            <AnalystCard
-              key={a.name}
-              name={a.name}
-              canAsk={w.role === "Partner"}
-              onOpen={() => setTab(slug(a.name))}
-              onAsk={() => setAskModalAnalyst(a.name)}
-            />
-          ))}
+        <div className="space-y-5">
+          {partnerQuestions.length > 0 && (
+            <section id="partner-questions" className="scroll-mt-6 rounded-2xl border border-indigo-200 bg-white p-5 shadow-2xs">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold text-slate-900">Questions waiting on you</h2>
+                    <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-700 ring-1 ring-inset ring-indigo-200">
+                      Action needed · {partnerQuestions.length}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Questions raised by analysts that need your Partner input. Click a question to reply with a source or open the deal.
+                  </p>
+                </div>
+              </div>
+              <ul className="space-y-2.5">
+                {partnerQuestions.map((q) => (
+                  <QuestionItem key={q.id} q={q} showCompany />
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            {remainingAnalysts.map((a) => (
+              <AnalystCard
+                key={a.name}
+                name={a.name}
+                canAsk={w.role === "Partner"}
+                onOpen={() => setTab(slug(a.name))}
+                onOpenSection={(sectionId) => openAnalystSection(a.name, sectionId)}
+                onAsk={() => setAskModalAnalyst(a.name)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -422,36 +484,38 @@ function AnalystCard({
   name,
   canAsk,
   onOpen,
+  onOpenSection,
   onAsk,
 }: {
   name: string;
   canAsk: boolean;
   onOpen: () => void;
+  onOpenSection: (sectionId: string) => void;
   onAsk: () => void;
 }) {
   const l = useAnalystLoad(name);
   const needsAttention = l.overdue > 0 || l.oldestUnreadDays > 7 || l.conflicts > 0 || l.asksOld > 0;
-  const rows: { label: string; value: string; bad?: boolean }[] = [
-    { label: "Questions waiting", value: `${l.owed.length}${l.overdue ? `, ${l.overdue} overdue` : ""}`, bad: l.overdue > 0 },
-    { label: "Unread MIS reports", value: l.toRead ? `${l.toRead} (oldest ${l.oldestUnreadDays}d)` : "0", bad: l.oldestUnreadDays > 7 },
-    { label: "Founders to chase", value: String(l.chase) },
-    { label: "Founder asks >14d", value: String(l.asksOld), bad: l.asksOld > 0 },
-    { label: "Numbers to verify", value: `${l.fixes}${l.conflicts ? `, ${l.conflicts} in conflict` : ""}`, bad: l.conflicts > 0 },
-    { label: "Assigned pitches", value: `${l.pitches}${l.pitchesNew ? `, ${l.pitchesNew} new` : ""}` },
+  const rows: { label: string; value: string; bad?: boolean; sectionId: string }[] = [
+    { label: "Questions waiting", value: `${l.owed.length}${l.overdue ? `, ${l.overdue} overdue` : ""}`, bad: l.overdue > 0, sectionId: "questions" },
+    { label: "Unread MIS reports", value: l.toRead ? `${l.toRead} (oldest ${l.oldestUnreadDays}d)` : "0", bad: l.oldestUnreadDays > 7, sectionId: "reports" },
+    { label: "Founders to chase", value: String(l.chase), sectionId: "chase" },
+    { label: "Founder asks >14d", value: String(l.asksOld), bad: l.asksOld > 0, sectionId: "asks" },
+    { label: "Numbers to verify", value: `${l.fixes}${l.conflicts ? `, ${l.conflicts} in conflict` : ""}`, bad: l.conflicts > 0, sectionId: "fixes" },
+    { label: "Assigned pitches", value: `${l.pitches}${l.pitchesNew ? `, ${l.pitchesNew} new` : ""}`, sectionId: "pitches" },
   ];
 
   return (
     <Card className="flex flex-col p-5 shadow-2xs">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <button type="button" onClick={onOpen} className="group flex cursor-pointer items-center gap-3 text-left">
           <Avatar name={name} size="md" />
           <div>
-            <h2 className="text-base font-bold text-slate-900">{name}</h2>
+            <h2 className="text-base font-bold text-slate-900 group-hover:text-indigo-700">{name}</h2>
             <p className="text-xs text-slate-500">
               Analyst · {l.companies.length} portfolio cos · {l.pitches} pitches
             </p>
           </div>
-        </div>
+        </button>
         <span
           className={cx(
             "rounded-full px-2.5 py-0.5 text-[10px] font-bold ring-1 ring-inset",
@@ -464,51 +528,81 @@ function AnalystCard({
         </span>
       </div>
 
-      {/* Compact 3-Metric Highlight Strip */}
-      <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-center">
-        <div>
+      {/* Compact Interactive 3-Metric Highlight Strip */}
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2 text-center">
+        <button
+          type="button"
+          onClick={() => onOpenSection("questions")}
+          className="cursor-pointer rounded-lg p-1.5 transition hover:bg-white hover:shadow-2xs hover:ring-1 hover:ring-slate-200"
+        >
           <p className="text-[10px] font-semibold uppercase text-slate-400">Questions</p>
           <p className={cx("mt-0.5 font-mono text-base font-bold", l.overdue > 0 ? "text-rose-700" : "text-slate-900")}>
             {l.owed.length}
           </p>
-        </div>
-        <div>
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenSection("reports")}
+          className="cursor-pointer rounded-lg p-1.5 transition hover:bg-white hover:shadow-2xs hover:ring-1 hover:ring-slate-200"
+        >
           <p className="text-[10px] font-semibold uppercase text-slate-400">Unread MIS</p>
           <p className={cx("mt-0.5 font-mono text-base font-bold", l.oldestUnreadDays > 7 ? "text-amber-700" : "text-slate-900")}>
             {l.toRead}
           </p>
-        </div>
-        <div>
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenSection("fixes")}
+          className="cursor-pointer rounded-lg p-1.5 transition hover:bg-white hover:shadow-2xs hover:ring-1 hover:ring-slate-200"
+        >
           <p className="text-[10px] font-semibold uppercase text-slate-400">Conflicts</p>
           <p className={cx("mt-0.5 font-mono text-base font-bold", l.conflicts > 0 ? "text-rose-700" : "text-slate-900")}>
             {l.conflicts}
           </p>
-        </div>
+        </button>
       </div>
 
-      <dl className="mt-3 divide-y divide-slate-100 text-xs">
+      <div className="mt-3 divide-y divide-slate-100 text-xs">
         {rows.map((r) => (
-          <div key={r.label} className="flex justify-between gap-3 py-1.5">
-            <dt className="text-slate-600">{r.label}</dt>
-            <dd className={cx("font-mono font-semibold tabular-nums", r.bad ? "text-rose-700" : "text-slate-900")}>
-              {r.value}
-            </dd>
-          </div>
+          <button
+            key={r.label}
+            type="button"
+            onClick={() => onOpenSection(r.sectionId)}
+            className="group -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-slate-50"
+          >
+            <span className="text-slate-600 group-hover:text-slate-900">{r.label}</span>
+            <span className="flex items-center gap-1.5">
+              <span className={cx("font-mono font-semibold tabular-nums", r.bad ? "text-rose-700" : "text-slate-900")}>
+                {r.value}
+              </span>
+              <span aria-hidden className="text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-600">
+                →
+              </span>
+            </span>
+          </button>
         ))}
-      </dl>
+      </div>
 
       <div className="mt-4 flex-1">
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Assigned Portfolio</h3>
         <ul className="mt-2 space-y-1.5">
           {l.companies.map((c) => (
-            <li key={c.id} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5 text-xs">
-              {c.head ? <Dot level={c.head.level} small /> : <span className="w-1.5" />}
-              <span className="min-w-0">
-                <Link href={`/portfolio/${c.id}`} className="font-semibold text-slate-900 hover:text-indigo-700">
-                  {c.name}
-                </Link>
-                {c.head && <span className="text-slate-600">: {c.head.text}</span>}
-              </span>
+            <li key={c.id}>
+              <Link
+                href={`/portfolio/${c.id}`}
+                className="group flex items-start justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2 text-xs transition-colors hover:border-indigo-200 hover:bg-white"
+              >
+                <span className="flex min-w-0 items-start gap-2">
+                  {c.head ? <Dot level={c.head.level} small /> : <span className="w-1.5" />}
+                  <span className="min-w-0">
+                    <span className="font-semibold text-slate-900 group-hover:text-indigo-700">{c.name}</span>
+                    {c.head && <span className="text-slate-600">: {c.head.text}</span>}
+                  </span>
+                </span>
+                <span aria-hidden className="shrink-0 text-slate-300 group-hover:text-indigo-600">
+                  →
+                </span>
+              </Link>
             </li>
           ))}
         </ul>

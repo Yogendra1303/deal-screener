@@ -26,7 +26,7 @@ export function parseSheet(csv: string): SheetRow[] {
     const cells = splitRow(line);
     const num = (i: number) => {
       if (i < 0) return null;
-      const raw = (cells[i] ?? "").replace(/[, ]/g, "");
+      const raw = (cells[i] ?? "").replace(/[, $₹€£]/g, "");
       if (!raw) return null;
       const n = Number(raw);
       return Number.isFinite(n) ? n : null;

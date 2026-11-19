@@ -8,7 +8,6 @@ import { SectorHeatmap, slugOf, useDealFlow } from "@/components/flow";
 import { ChangeBar, MomentumMap, OutcomeColumns, SectorGrid, monthlyOutcomes, sectorFacts } from "@/components/market";
 import { useStore } from "@/components/store";
 import { LABEL } from "@/components/ui";
-import { FLOW_NOTE } from "@/lib/flow";
 
 export default function MarketPage() {
   const store = useStore();
@@ -22,7 +21,7 @@ export default function MarketPage() {
       </div>
     );
   const facts = sectorFacts(rows, market);
-  const monthly = market[0].counts.map((_, i) => market.reduce((s, m) => s + m.counts[i], 0));
+  const monthly = (market[0]?.counts ?? []).map((_, i) => market.reduce((s, m) => s + (m.counts[i] ?? 0), 0));
   const recent = monthly.slice(-3).reduce((a, b) => a + b, 0);
   const before = monthly.slice(-6, -3).reduce((a, b) => a + b, 0);
   const raised = market.reduce((s, m) => s + m.raised[0], 0);
@@ -48,7 +47,7 @@ export default function MarketPage() {
           <ChangeLine n={recent} change={recent / Math.max(1, before) - 1} from={[before, recent]} />
         </Cell>
         <Cell label="Raised in market, 90d" hint="Tracked early-stage sector rounds over the last 90 days">
-          <ChangeLine n={raised >= 1000 ? `$${(raised / 1000).toFixed(2)}B` : `$${raised}M`} change={raised / raisedBefore - 1} />
+          <ChangeLine n={raised >= 1000 ? `$${(raised / 1000).toFixed(2)}B` : `$${raised}M`} change={raisedBefore > 0 ? raised / raisedBefore - 1 : 0} />
         </Cell>
         {(
           [
@@ -87,9 +86,9 @@ export default function MarketPage() {
       <SectorHeatmap rows={rows} market={market} />
 
       <p className="text-xs text-slate-400">
-        Change compares the last 3 months with the 3 before across tracked sector cohorts. {FLOW_NOTE}{" "}
+        Change compares the last 3 months with the 3 before across tracked sector cohorts.{" "}
         <Link href="/method" className="font-medium text-slate-700 underline-offset-2 hover:underline">
-          How the numbers work
+          How the numbers work →
         </Link>
       </p>
     </div>

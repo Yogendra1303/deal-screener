@@ -19,7 +19,6 @@ export const TEAM: Member[] = [
   { name: "Ashutosh Sinha", role: "Partner", initials: "AS", tone: "bg-purple-600 text-white" },
   { name: "Gopal Ahuja", role: "Partner", initials: "GA", tone: "bg-emerald-600 text-white" },
   { name: "Sanchit Kumar", role: "Partner", initials: "SK", tone: "bg-cyan-600 text-white" },
-  { name: "Kabir Shah", role: "Partner", initials: "KS", tone: "bg-indigo-600 text-white" },
   { name: "Riya Menon", role: "Analyst", initials: "RM", tone: "bg-teal-600 text-white" },
   { name: "Arjun Bhat", role: "Analyst", initials: "AB", tone: "bg-amber-500 text-white" },
 ];
@@ -84,7 +83,7 @@ export function lastTouch(c: Contact, today: string): Touch | undefined {
 export const DEAL_CONTACTS: Record<string, Contact[]> = {
   ledgerly: [
     {
-      person: "Kabir Shah",
+      person: "Yogendra Kapkoti",
       knows: "Ananya Rao",
       how: "Introduced by the CFO of a portfolio company",
       sample: true,

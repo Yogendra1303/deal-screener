@@ -105,7 +105,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       cc: partnerEmail !== toEmail ? [partnerEmail] : undefined,
       replyTo: partnerEmail,
       subject,
-      text: `${message}${dataRoomUrl ? `\n\nPrivate Data Room: ${dataRoomUrl}` : ""}\n\n— ${partnerName}, Aarka`,
+      text: `${message}${dataRoomUrl ? `\n\nPrivate Data Room: ${dataRoomUrl}` : ""}\n\n- ${partnerName}, Aarka`,
       html,
     });
 

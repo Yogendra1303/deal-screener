@@ -2,6 +2,7 @@
 
 // The evidence panel: click any number to see every source behind it, the code's working,
 // the questions already asked about it, and a box to ask a teammate. It never edits a number.
+import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Disclosure } from "./disclosure";
 import { Avatar } from "./shell";
@@ -223,19 +224,30 @@ export function QuestionItem({ q, compact, showCompany }: { q: Question; compact
   const [text, setText] = useState("");
   const [source, setSource] = useState("");
   const state = stateOf(q, DEMO_DATE);
-  const canAnswer = !q.answer && q.owner === w.me;
+  const canAnswer = !q.answer && (q.owner === w.me || w.role === "Partner");
+  const companyHref = q.side === "deal" ? `/deals/${q.companyId}` : `/portfolio/${q.companyId}`;
   return (
-    <li className="border-b border-slate-100 py-3 first:pt-1 last:border-0 last:pb-1">
+    <li
+      className={cx(
+        compact
+          ? "border-b border-slate-100 py-3 first:pt-1 last:border-0 last:pb-1"
+          : "rounded-xl border border-slate-200 bg-white p-3.5 transition-colors hover:border-indigo-300/80 hover:bg-slate-50/40",
+      )}
+    >
       <div className="flex items-start gap-3">
         <Avatar name={q.askedBy} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
             <p className="text-[13px] text-slate-500">
-              <span className="font-semibold text-slate-900">{q.askedBy.split(" ")[0]}</span> asked <span className="font-medium text-slate-700">{q.owner.split(" ")[0]}</span>
+              <span className="font-semibold text-slate-900">{q.askedBy.split(" ")[0]}</span> asked{" "}
+              <span className="font-medium text-slate-700">{q.owner.split(" ")[0]}</span>
               {showCompany && (
                 <>
                   {" "}
-                  about <span className="font-medium text-slate-700">{q.companyName}</span>
+                  about{" "}
+                  <Link href={companyHref} className="font-semibold text-slate-900 hover:text-indigo-700 hover:underline">
+                    {q.companyName}
+                  </Link>
                 </>
               )}
               <span className="text-slate-400"> · {fmtDay(q.askedAt)}</span>
@@ -243,36 +255,81 @@ export function QuestionItem({ q, compact, showCompany }: { q: Question; compact
             <span
               className={cx(
                 "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                state === "Overdue" ? "bg-red-50 text-red-700 ring-1 ring-red-200" : state === "Answered" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-slate-50 text-slate-600 ring-1 ring-slate-200",
+                state === "Overdue"
+                  ? "bg-red-50 text-red-700 ring-1 ring-red-200"
+                  : state === "Answered"
+                    ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                    : "bg-slate-50 text-slate-600 ring-1 ring-slate-200",
               )}
             >
               {ageText(q, DEMO_DATE)}
             </span>
           </div>
-          <p className="mt-1 text-sm leading-relaxed text-slate-800">{q.text}</p>
+          {canAnswer && !answering ? (
+            <button
+              type="button"
+              onClick={() => setAnswering(true)}
+              className="mt-1 block w-full cursor-pointer text-left text-sm leading-relaxed text-slate-800 hover:text-slate-950"
+            >
+              {q.text}
+            </button>
+          ) : (
+            <p className="mt-1 text-sm leading-relaxed text-slate-800">{q.text}</p>
+          )}
           {q.about && !compact && (
-            <span className="mt-1.5 inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">On {q.about.label.toLowerCase()}</span>
+            <Link
+              href={`${companyHref}?tab=numbers`}
+              className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+            >
+              On {q.about.label.toLowerCase()} →
+            </Link>
           )}
           {q.answer && (
             <div className="mt-2.5 flex items-start gap-2.5 border-l-2 border-emerald-300 pl-3">
               <Avatar name={q.answer.by} size="xs" />
               <div className="min-w-0">
                 <p className="text-[13px] text-slate-500">
-                  <span className="font-semibold text-slate-900">{q.answer.by.split(" ")[0]}</span> answered<span className="text-slate-400"> · {fmtDay(q.answer.at)}</span>
+                  <span className="font-semibold text-slate-900">{q.answer.by.split(" ")[0]}</span> answered
+                  <span className="text-slate-400"> · {fmtDay(q.answer.at)}</span>
                 </p>
                 <p className="mt-0.5 text-sm leading-relaxed text-slate-800">{q.answer.text}</p>
                 <p className="mt-0.5 text-[11px] text-slate-500">Source: {q.answer.source}</p>
               </div>
             </div>
           )}
-          {canAnswer && !answering && (
-            <button onClick={() => setAnswering(true)} className="mt-2 block rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50">
+          {!compact && (
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 pt-0.5">
+              <div>
+                {canAnswer && !answering && (
+                  <button
+                    type="button"
+                    onClick={() => setAnswering(true)}
+                    className="cursor-pointer rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs hover:border-indigo-300 hover:text-indigo-700"
+                  >
+                    Reply with source
+                  </button>
+                )}
+              </div>
+              <Link
+                href={companyHref}
+                className="text-xs font-medium text-slate-500 transition-colors hover:text-indigo-700"
+              >
+                Open {q.side === "deal" ? "pitch" : "company"} →
+              </Link>
+            </div>
+          )}
+          {compact && canAnswer && !answering && (
+            <button
+              type="button"
+              onClick={() => setAnswering(true)}
+              className="mt-2 block cursor-pointer rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+            >
               Reply with an answer
             </button>
           )}
           {canAnswer && answering && (
             <form
-              className="mt-2 space-y-1.5"
+              className="mt-2.5 space-y-1.5"
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!text.trim() || !source.trim()) return;

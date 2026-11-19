@@ -380,7 +380,7 @@ export function DeckList({ rows, sort = "date", pageSize = 20, empty = "Nothing 
               </th>
               <th className={cx(th, "min-w-[125px] whitespace-nowrap pr-4")}>Status</th>
               <th className={cx(th, "hidden @5xl:table-cell")}>Latest signal</th>
-              {owners && <th className={cx(th, "hidden w-12 @2xl:table-cell")}>Owner</th>}
+              {owners && <th className={cx(th, "hidden whitespace-nowrap @2xl:table-cell")}>Owner</th>}
               <th className={cx(th, "hidden text-right whitespace-nowrap @2xl:table-cell")} aria-sort={col?.key === "in" ? (col.dir === 1 ? "ascending" : "descending") : undefined}>
                 <SortButton k="in" col={col} onFlip={flip} right>
                   In
@@ -459,16 +459,27 @@ function DeckRow({ r, showPoints, owner, onOpen }: { r: FlowRow; showPoints: boo
         <span className="block max-w-[14rem] truncate leading-tight text-slate-900">{r.sub}</span>
         <span className="mt-0.5 block whitespace-nowrap text-xs leading-tight text-slate-500">{r.stage}</span>
       </td>
-      <td className={cx(td, "hidden whitespace-nowrap text-right font-mono text-xs font-medium tabular-nums text-slate-900 @md:table-cell")}>{r.askUsd ? money(r.askUsd) : "—"}</td>
-      <td className={cx(td, "hidden whitespace-nowrap @4xl:table-cell")}>{r.fit ? <Tag tone={FIT_TAG[r.fit]}>{r.fit}</Tag> : <span className="text-xs text-slate-500">—</span>}</td>
+      <td className={cx(td, "hidden whitespace-nowrap text-right font-mono text-xs font-medium tabular-nums text-slate-900 @md:table-cell")}>{r.askUsd ? money(r.askUsd) : "-"}</td>
+      <td className={cx(td, "hidden whitespace-nowrap @4xl:table-cell")}>{r.fit ? <Tag tone={FIT_TAG[r.fit]}>{r.fit}</Tag> : <span className="text-xs text-slate-500">-</span>}</td>
       <td className={cx(td, "hidden min-w-[140px] whitespace-nowrap @xl:table-cell")}>
         <ChecksCell cover={r.cover} sources={r.sources} onOpen={(code) => onOpen(r, code)} />
       </td>
       <td className={cx(td, "min-w-[125px] whitespace-nowrap pr-4")}>
         <LabelPill label={r.label} />
       </td>
-      <td className={cx(td, "hidden max-w-[12rem] whitespace-nowrap @5xl:table-cell")}>{sig ? <SignalBadge kind={sig.kind} /> : <span className="text-xs text-slate-500">—</span>}</td>
-      {owner && <td className={cx(td, "hidden whitespace-nowrap @2xl:table-cell")}>{r.owner ? <Avatar name={r.owner} size="xs" /> : <span className="text-xs text-slate-500">—</span>}</td>}
+      <td className={cx(td, "hidden max-w-[12rem] whitespace-nowrap @5xl:table-cell")}>{sig ? <SignalBadge kind={sig.kind} /> : <span className="text-xs text-slate-500">-</span>}</td>
+      {owner && (
+        <td className={cx(td, "hidden whitespace-nowrap @2xl:table-cell")}>
+          {r.owner ? (
+            <span className="inline-flex items-center gap-1.5 text-xs text-slate-700" title={r.owner}>
+              <Avatar name={r.owner} size="xs" />
+              <span>{r.owner.split(" ")[0]}</span>
+            </span>
+          ) : (
+            <span className="text-xs font-medium text-amber-700">Unassigned</span>
+          )}
+        </td>
+      )}
       <td className={cx(td, "hidden text-right font-mono text-xs whitespace-nowrap tabular-nums text-slate-500 @2xl:table-cell")}>{fmtDay(r.last)}</td>
       <td className={cx(td, "hidden w-8 px-2 text-slate-400 transition-colors group-hover:text-slate-700 @2xl:table-cell")} aria-hidden>
         →
@@ -701,17 +712,17 @@ export function SectorHeatmap({ rows, market, title = "Deal flow heatmap" }: { r
           </tbody>
         </table>
       </div>
-      <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 px-5 pt-4 pb-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
-        <div className="flex flex-wrap items-center gap-8 text-xs text-slate-600">
-          <span className="flex items-center gap-1.5">
+      <div className="mt-4 space-y-2 border-t border-slate-200 px-5 py-3.5">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs text-slate-600">
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="font-semibold uppercase tracking-wider text-slate-700">Decks</span>
             <span className="text-slate-500">Last 3m vs prior 3m</span>
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="font-semibold uppercase tracking-wider text-slate-700">Money</span>
             <span className="text-slate-500">90d sector seed/A volume</span>
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="font-semibold uppercase tracking-wider text-slate-700">Reading</span>
             <span className="text-slate-500">±15% momentum threshold</span>
           </span>

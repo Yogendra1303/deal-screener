@@ -47,7 +47,7 @@ function cellText(c: PortfolioCompany, month: string, today: string): { main: st
     case "not due":
       return { main: "Not due", sub: `due ${fmtShort(dueDateFor(month))}` };
     default:
-      return { main: "—" };
+      return { main: "-" };
   }
 }
 
@@ -67,7 +67,9 @@ export default function ReportingPage() {
     [cos, p.today],
   );
   const unread = cos.flatMap((c) =>
-    c.reports.filter((r) => r.receivedAt && !r.acknowledgedAt).map((r) => ({ c, r, waiting: daysBetween(r.receivedAt!, p.today) })),
+    c.reports
+      .filter((r) => r.receivedAt && !r.acknowledgedAt && r.receivedAt.slice(0, 10) <= p.today)
+      .map((r) => ({ c, r, waiting: daysBetween(r.receivedAt!, p.today) })),
   );
   const asks = cos.flatMap((c) => c.asks.filter((a) => !a.answeredAt).map((a) => ({ c, a, open: daysBetween(a.openedAt, p.today) })));
 
@@ -91,10 +93,10 @@ export default function ReportingPage() {
         <div ref={scroller} className="overflow-x-auto">
           <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-0 text-sm">
             <thead>
-              <tr className="bg-slate-50 text-xs font-medium text-slate-500">
-                <th className="sticky left-0 z-10 w-32 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left font-medium sm:w-40">Company</th>
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <th className="sticky left-0 z-10 w-32 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left font-semibold sm:w-40">Company</th>
                 {months.map((m) => (
-                  <th key={m} className="border-b border-slate-200 px-1.5 py-2.5 text-center font-medium">
+                  <th key={m} className="border-b border-slate-200 px-1.5 py-2.5 text-center font-semibold">
                     {fmtMonth(m)}
                   </th>
                 ))}
@@ -125,7 +127,7 @@ export default function ReportingPage() {
                             TINT[status],
                             status === "not due" && "border border-dashed border-slate-300 ring-0",
                             active && "outline-2 outline-offset-1 outline-indigo-500",
-                            status !== "before investment" && "hover:brightness-95",
+                            status !== "before investment" && "cursor-pointer hover:brightness-95",
                           )}
                         >
                           <span className="text-xs font-semibold leading-tight">{t.main}</span>
@@ -263,7 +265,7 @@ function MonthPanel({ c, month }: { c: PortfolioCompany; month: string }) {
             <div key={m.key} className={cx("rounded-lg p-3", n ? "bg-slate-50" : r?.receivedAt ? "bg-red-50" : "bg-slate-50")}>
               <div className="text-xs text-slate-500">{m.label}</div>
               <div className={cx("mt-0.5 text-sm font-medium tabular-nums", n ? "text-slate-900" : "text-red-700")}>
-                {n ? (m.money ? fmtMoney(n.value, c.currency) : n.value.toLocaleString("en-US")) : r?.receivedAt ? "Not sent" : "—"}
+                {n ? (m.money ? fmtMoney(n.value, c.currency) : n.value.toLocaleString("en-US")) : r?.receivedAt ? "Not sent" : "-"}
               </div>
               {n && <div className="text-[11px] text-slate-500">MIS page {n.page}</div>}
             </div>

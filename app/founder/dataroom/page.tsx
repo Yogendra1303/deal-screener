@@ -80,7 +80,7 @@ const DOC_SLOTS: {
     fileTypes: ["cap_table"],
     uploadCategory: "cap_table",
     title: "Cap Table",
-    description: "Share only if requested or ready — founder ownership, option pool, SAFEs, and prior rounds.",
+    description: "Share only if requested or ready - founder ownership, option pool, SAFEs, and prior rounds.",
     required: false,
     accept: ".pdf,.csv,.xlsx,.xls",
   },
@@ -154,7 +154,7 @@ function FounderDataRoomContent() {
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Founder-entered financial metrics — strictly blank until THIS founder enters them
+  // Founder-entered financial metrics - strictly blank until THIS founder enters them
   const [mrr, setMrr] = useState("");
   const [cash, setCash] = useState("");
   const [burn, setBurn] = useState("");
@@ -468,12 +468,12 @@ function FounderDataRoomContent() {
             <div>
               <span className="block text-slate-400">Stage &amp; Ask</span>
               <span className="mt-0.5 block font-medium text-slate-900">
-                {selected.stage || "—"} · {formatAsk(selected.askAmount)}
+                {selected.stage || "-"} · {formatAsk(selected.askAmount)}
               </span>
             </div>
             <div>
               <span className="block text-slate-400">Sector</span>
-              <span className="mt-0.5 block font-medium text-slate-900">{selected.sector || "—"}</span>
+              <span className="mt-0.5 block font-medium text-slate-900">{selected.sector || "-"}</span>
             </div>
             <div>
               <span className="block text-slate-400">Website</span>
@@ -487,7 +487,7 @@ function FounderDataRoomContent() {
                   {selected.website.replace(/^https?:\/\//, "")}
                 </a>
               ) : (
-                <span className="mt-0.5 block text-slate-500">—</span>
+                <span className="mt-0.5 block text-slate-500">-</span>
               )}
             </div>
           </div>

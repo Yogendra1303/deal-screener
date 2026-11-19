@@ -151,8 +151,8 @@ export function companyHealth(company: PortfolioCompany, today: string): Company
     (r) => r.question!.answeredAt && daysBetween(r.question!.askedAt, r.question!.answeredAt) <= R.followUpDays,
   ).length;
   const signals: Signal[] = [
-    { label: `On time, last ${R.windowMonths}`, value: windowed.length ? `${onTime} of ${windowed.length}` : "—", ok: onTime === windowed.length },
-    { label: `Complete, last ${R.windowMonths}`, value: complete == null ? "—" : `${Math.round(complete * 100)}%`, ok: complete == null || complete >= R.completeMin },
+    { label: `On time, last ${R.windowMonths}`, value: windowed.length ? `${onTime} of ${windowed.length}` : "-", ok: onTime === windowed.length },
+    { label: `Complete, last ${R.windowMonths}`, value: complete == null ? "-" : `${Math.round(complete * 100)}%`, ok: complete == null || complete >= R.completeMin },
     {
       label: "Last report",
       value: lastReceived ? (sinceLast === 0 ? "today" : `${plural(sinceLast, "day")} ago`) : "none yet",
@@ -223,7 +223,7 @@ export function fundHealth(company: PortfolioCompany, today: string): FundHealth
   const signals: Signal[] = [
     {
       label: "Typical time to read a report",
-      value: typical == null ? "—" : typical === 0 ? "same day" : plural(Math.round(typical), "day"),
+      value: typical == null ? "-" : typical === 0 ? "same day" : plural(Math.round(typical), "day"),
       ok: typical == null || typical <= R.ackDays,
     },
     { label: "Reports not read yet", value: String(unread.length), ok: unread.length === 0 },

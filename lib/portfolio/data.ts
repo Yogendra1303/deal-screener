@@ -51,7 +51,7 @@ export const PORTFOLIO: PortfolioCompany[] = [
       { name: "Farhan Ali", role: "CTO" },
     ],
     owner: "Riya Menon",
-    partner: "Kabir Shah",
+    partner: "Yogendra Kapkoti",
     investment: { date: "2026-01-20", round: "Seed", amountUsd: 1_500_000, ownershipPct: 9.5 },
     pitch: {
       receivedAt: "2025-11-04",
@@ -91,7 +91,7 @@ export const PORTFOLIO: PortfolioCompany[] = [
     ],
     notes: [
       { date: "2026-06-15", author: "Riya Menon", text: "Steady month. Customer growth is coming mostly from referrals." },
-      { date: "2026-09-20", author: "Kabir Shah", text: "The returns module is pulling revenue ahead of plan. Next month, ask about gross margin on it." },
+      { date: "2026-09-20", author: "Yogendra Kapkoti", text: "The returns module is pulling revenue ahead of plan. Next month, ask about gross margin on it." },
     ],
   },
   {
@@ -107,7 +107,7 @@ export const PORTFOLIO: PortfolioCompany[] = [
       { name: "Kavya Iyer", role: "COO" },
     ],
     owner: "Arjun Bhat",
-    partner: "Kabir Shah",
+    partner: "Yogendra Kapkoti",
     investment: { date: "2025-12-10", round: "Seed", amountUsd: 2_000_000, ownershipPct: 11 },
     pitch: {
       receivedAt: "2025-09-15",
@@ -171,7 +171,7 @@ export const PORTFOLIO: PortfolioCompany[] = [
       { name: "Leena Thomas", role: "CTO" },
     ],
     owner: "Riya Menon",
-    partner: "Kabir Shah",
+    partner: "Yogendra Kapkoti",
     investment: { date: "2025-11-05", round: "Pre-seed", amountUsd: 500_000, ownershipPct: 6 },
     pitch: {
       receivedAt: "2025-08-20",
@@ -225,7 +225,7 @@ export const PORTFOLIO: PortfolioCompany[] = [
       { name: "Tanvi Rao", role: "CPO" },
     ],
     owner: "Arjun Bhat",
-    partner: "Kabir Shah",
+    partner: "Yogendra Kapkoti",
     investment: { date: "2026-02-25", round: "Pre-seed", amountUsd: 750_000, ownershipPct: 7 },
     pitch: {
       receivedAt: "2025-12-09",
@@ -276,7 +276,7 @@ export const PORTFOLIO: PortfolioCompany[] = [
       { name: "Meera Pillai", role: "CTO" },
     ],
     owner: "Riya Menon",
-    partner: "Kabir Shah",
+    partner: "Yogendra Kapkoti",
     investment: { date: "2025-10-15", round: "Seed", amountUsd: 2_500_000, ownershipPct: 12 },
     pitch: {
       receivedAt: "2025-07-10",
@@ -332,7 +332,7 @@ export const PORTFOLIO: PortfolioCompany[] = [
       },
     ],
     notes: [
-      { date: "2026-07-20", author: "Kabir Shah", text: "Fleet contracts are lumpy. Good to see revenue that renews monthly." },
+      { date: "2026-07-20", author: "Yogendra Kapkoti", text: "Fleet contracts are lumpy. Good to see revenue that renews monthly." },
       { date: "2026-10-14", author: "Riya Menon", text: "Audit done; August and September arrived together, as agreed." },
     ],
     nextRound: { round: "Series A", when: "Q4 2026", source: "Founder's ask on 2 Jun 2026" },
@@ -350,7 +350,7 @@ export const PORTFOLIO: PortfolioCompany[] = [
       { name: "Dana Yousef", role: "CTO" },
     ],
     owner: "Arjun Bhat",
-    partner: "Kabir Shah",
+    partner: "Yogendra Kapkoti",
     investment: { date: "2026-09-02", round: "Pre-seed", amountUsd: 600_000, ownershipPct: 6 },
     pitch: {
       receivedAt: "2026-06-18",

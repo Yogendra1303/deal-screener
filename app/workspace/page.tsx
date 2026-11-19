@@ -128,7 +128,7 @@ function InboundEmailBox() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           from: "Maya Lin <maya@gridpulse-demo.io>",
-          subject: "GridPulse Seed Round — $1.5M AI Grid Optimization Pitch",
+          subject: "GridPulse Seed Round - $1.5M AI Grid Optimization Pitch",
           text: "Hi Aarka team, raising a $1.5M Seed round for GridPulse (Climate / B2B software).",
         }),
       });

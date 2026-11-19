@@ -34,9 +34,9 @@ export default function ResultsPage() {
         rows={[
           { bar: "All 10 test decks screened", pass: ev.processed === 10, now: `${ev.processed} of 10` },
           { bar: "A blind run with an API key", pass: ev.processed > 0 && ev.byChat === 0, now: ev.byChat ? `${ev.byChat} read in a Claude chat (not blind)` : ev.processed ? "Yes" : "Not run" },
-          { bar: "Catches 90% or more of planted issues", pass: ev.planted > 0 && ev.caught / ev.planted >= 0.9, now: ev.processed ? `${ev.caught} of ${ev.planted}` : "—" },
-          { bar: "At most 1 false alarm per deck", pass: ev.processed > 0 && ev.falseAlarms <= ev.processed, now: ev.processed ? `${ev.falseAlarms} across ${ev.processed}` : "—" },
-          { bar: "95% or more of key numbers read right", pass: ev.factsTotal > 0 && ev.factsRight / ev.factsTotal >= 0.95, now: ev.factsTotal ? `${ev.factsRight} of ${ev.factsTotal}` : "—" },
+          { bar: "Catches 90% or more of planted issues", pass: ev.planted > 0 && ev.caught / ev.planted >= 0.9, now: ev.processed ? `${ev.caught} of ${ev.planted}` : "-" },
+          { bar: "At most 1 false alarm per deck", pass: ev.processed > 0 && ev.falseAlarms <= ev.processed, now: ev.processed ? `${ev.falseAlarms} across ${ev.processed}` : "-" },
+          { bar: "95% or more of key numbers read right", pass: ev.factsTotal > 0 && ev.factsRight / ev.factsTotal >= 0.95, now: ev.factsTotal ? `${ev.factsRight} of ${ev.factsTotal}` : "-" },
           { bar: "20 or more page references checked by hand", pass: checked.length >= 20, now: `${checked.length} checked` },
         ]}
       />
@@ -75,32 +75,32 @@ export default function ResultsPage() {
       </section>
 
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Planted issues caught" value={ev.processed ? `${ev.caught} of ${ev.planted}` : "—"} />
+        <Stat label="Planted issues caught" value={ev.processed ? `${ev.caught} of ${ev.planted}` : "-"} />
         <Stat
           label="False alarms"
-          value={ev.processed ? String(ev.falseAlarms) : "—"}
+          value={ev.processed ? String(ev.falseAlarms) : "-"}
           hint="Flags on things that weren't planted"
           tone={ev.falseAlarms ? "warn" : undefined}
         />
         <Stat
           label="Numbers read right"
-          value={ev.factsTotal ? `${ev.factsRight} of ${ev.factsTotal}` : "—"}
+          value={ev.factsTotal ? `${ev.factsRight} of ${ev.factsTotal}` : "-"}
           hint="Key numbers vs the answer key"
           tone={ev.factsTotal && ev.factsRight < ev.factsTotal ? "warn" : undefined}
         />
         <Stat
           label="Bands as expected"
-          value={ev.processed ? `${ev.bandMatches} of ${ev.processed}` : "—"}
+          value={ev.processed ? `${ev.bandMatches} of ${ev.processed}` : "-"}
           hint="Expected bands are our own judgment"
         />
         <Stat
           label="Per deck"
-          value={ev.avgSeconds != null ? `${Math.round(ev.avgSeconds)}s · $${ev.avgCostUsd!.toFixed(2)}` : "—"}
+          value={ev.avgSeconds != null ? `${Math.round(ev.avgSeconds)}s · $${ev.avgCostUsd!.toFixed(2)}` : "-"}
           hint={ev.avgSeconds != null ? "Average time and list-price cost" : "Not measured for chat runs"}
         />
         <Stat
           label="Page references right"
-          value={checked.length ? `${Math.round((right / checked.length) * 100)}%` : "—"}
+          value={checked.length ? `${Math.round((right / checked.length) * 100)}%` : "-"}
           hint={`${checked.length} checked by hand`}
         />
       </div>
@@ -394,7 +394,7 @@ function ChecksScorecard() {
                     </td>
                     <td className="px-4 py-2 text-xs text-slate-600">{d.planted}</td>
                     <td className="whitespace-nowrap px-4 py-2 font-mono text-xs tabular-nums text-slate-900">
-                      {d.expected.length ? `${d.caught.length} of ${d.expected.length}` : "—"}
+                      {d.expected.length ? `${d.caught.length} of ${d.expected.length}` : "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2">
                       {d.falseAlarms.length ? (

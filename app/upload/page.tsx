@@ -43,17 +43,17 @@ const num = (s: string) => {
 
 /** What code worked out from the CSV the moment it was picked. Every figure is a sum, not a guess. */
 function SheetCard({ s }: { s: SheetSummary }) {
-  const money = (v: number | null) => (v == null ? "—" : fmtMoney(v, s.currency || "USD"));
+  const money = (v: number | null) => (v == null ? "-" : fmtMoney(v, s.currency || "USD"));
   const rows: [string, string, string][] = [
     ["Latest MRR", money(s.mrr), `${s.to} row`],
     ["Implied ARR", money(s.impliedArr), "MRR × 12"],
-    ["Month on month", s.momGrowthPct == null ? "—" : `${s.momGrowthPct}%`, "last two months"],
-    ["Average growth", s.avgGrowthPct == null ? "—" : `${s.avgGrowthPct}%`, "compounded, 6 months"],
-    ["Customers", s.customers == null ? "—" : fmtNum(s.customers), "latest month"],
+    ["Month on month", s.momGrowthPct == null ? "-" : `${s.momGrowthPct}%`, "last two months"],
+    ["Average growth", s.avgGrowthPct == null ? "-" : `${s.avgGrowthPct}%`, "compounded, 6 months"],
+    ["Customers", s.customers == null ? "-" : fmtNum(s.customers), "latest month"],
     ["Monthly burn", money(s.burn), "latest month"],
     ["Cash", money(s.cash), "latest month"],
-    ["Runway", s.runwayMonths == null ? "—" : `${s.runwayMonths} months`, "cash ÷ burn"],
-    ["Headcount", s.headcount == null ? "—" : fmtNum(s.headcount), "latest month"],
+    ["Runway", s.runwayMonths == null ? "-" : `${s.runwayMonths} months`, "cash ÷ burn"],
+    ["Headcount", s.headcount == null ? "-" : fmtNum(s.headcount), "latest month"],
   ];
   return (
     <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">

@@ -133,7 +133,7 @@ export function StripLegend({ statuses = ["on time", "late", "missing", "excused
 /** A tiny trend line. Values are drawn as given; nothing is smoothed or filled in. */
 export function Sparkline({ values, className }: { values: (number | null)[]; className?: string }) {
   const pts = values.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v != null);
-  if (pts.length < 2) return <span className="text-xs text-slate-400">—</span>;
+  if (pts.length < 2) return <span className="text-xs text-slate-400">-</span>;
   const w = 80;
   const h = 24;
   const lo = Math.min(...pts.map((p) => p.v));

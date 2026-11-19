@@ -472,7 +472,7 @@ function DealsContent() {
                         r.city,
                         r.askUsd ?? "",
                         r.status,
-                        r.fit,
+                        r.fit ?? "",
                         r.fits ? "Yes" : "No",
                         r.owner ?? "Unassigned",
                         r.last,
@@ -635,7 +635,7 @@ function DealsContent() {
               )}
             </div>
 
-            {/* Active Signal Pills Strip — ONLY shown when user has enabled a signal filter */}
+            {/* Active Signal Pills Strip - ONLY shown when user has enabled a signal filter */}
             {activeSignals.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 bg-slate-50/60 px-3 py-1.5">
                 <span className="text-[11px] font-medium text-slate-400">Active:</span>

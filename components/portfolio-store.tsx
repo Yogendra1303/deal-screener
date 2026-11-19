@@ -15,6 +15,7 @@ const KEY = "ds.portfolio.v1";
 
 interface Local {
   added?: PortfolioCompany[];
+  owners?: Record<string, string>;
   submitted: Record<string, Record<string, { receivedAt: string; fileName: string; numbers: Partial<Record<MetricKey, ReportedNumber>> }>>;
   acks: Record<string, Record<string, string>>;
   asks: Record<string, FounderAsk[]>;
@@ -39,7 +40,7 @@ export interface RunningPlay {
   outcome?: string;
 }
 
-const EMPTY: Local = { added: [], submitted: {}, acks: {}, asks: {}, answered: {}, reminders: {}, notes: {}, docs: {}, plays: {} };
+const EMPTY: Local = { added: [], owners: {}, submitted: {}, acks: {}, asks: {}, answered: {}, reminders: {}, notes: {}, docs: {}, plays: {} };
 
 function merge(c: PortfolioCompany, local: Local, today: string): PortfolioCompany {
   const byMonth = new Map<string, MonthlyReport>(c.reports.map((r) => [r.month, { ...r }]));
@@ -63,6 +64,7 @@ function merge(c: PortfolioCompany, local: Local, today: string): PortfolioCompa
 
   return {
     ...c,
+    owner: local.owners?.[c.id] || c.owner,
     reports: [...byMonth.values()].sort((a, b) => (a.month ?? "").localeCompare(b.month ?? "")),
     requests: c.requests.map((q) => {
       const extra = local.reminders[`${c.id}:${q.id}`];
@@ -84,6 +86,7 @@ interface PortfolioStore {
   companies: PortfolioCompany[];
   get: (id: string) => PortfolioCompany | undefined;
   addCompany: (company: PortfolioCompany) => void;
+  setOwner: (id: string, owner: string) => void;
   changed: boolean;
   submitReport: (id: string, month: string, numbers: Partial<Record<MetricKey, number>>, fileName: string) => void;
   acknowledge: (id: string, month: string) => void;
@@ -165,6 +168,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
           const rest = (l.added ?? []).filter((c) => c.id !== company.id);
           return { ...l, added: [company, ...rest] };
         }),
+      setOwner: (id, owner) => update((l) => ({ ...l, owners: { ...(l.owners ?? {}), [id]: owner } })),
       changed: JSON.stringify(local) !== JSON.stringify(EMPTY),
       submitReport: (id, month, numbers, fileName) =>
         update((l) => {

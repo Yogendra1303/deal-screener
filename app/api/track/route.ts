@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** Partner-only analytics endpoint — strictly isolates Partner IP as 1 entity (0 external views) + computes avg time on site/page/source. */
+/** Partner-only analytics endpoint - strictly isolates Partner IP as 1 entity (0 external views) + computes avg time on site/page/source. */
 export async function GET(req: NextRequest) {
   const gate = await requireRole();
   if (!gate.ok) {

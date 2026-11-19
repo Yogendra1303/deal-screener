@@ -54,7 +54,7 @@ function toSafeFounderSummary(d: DealRow): FounderPitchSummary {
 /**
  * Strictly row-isolated Founder Data Room & Pitch Status API.
  * Enforces either:
- *   1) Cryptographic deal-scoped HMAC token (?id=<dealId>&token=<hmac>) — locked strictly to ONE dealId.
+ *   1) Cryptographic deal-scoped HMAC token (?id=<dealId>&token=<hmac>) - locked strictly to ONE dealId.
  *      Tampering with ?id= (e.g. 123 -> 124) immediately returns 403 Forbidden.
  *   2) Authenticated NextAuth session owning the requested dealId (or approved VC).
  * Never leaks internal math flags, partner notes, or any other startup's records.

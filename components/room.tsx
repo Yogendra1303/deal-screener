@@ -18,10 +18,10 @@ export function roomGroup(r: RoomRow): Group {
   return { id: r.id, name: r.name, kind: r.side === "pitch" ? "Pitch" : "Portfolio", href: `/dataroom/${r.id}`, owner: r.owner, status: r.side === "pitch" ? r.status : undefined };
 }
 
-/** Can this person act on this company's files? Only the analyst who looks after it. Partners see, they don't enter. */
+/** Can this person act on this company's files? Partners can supervise and act across the fund; analysts handle unclaimed pitches and their own companies. */
 export function useCanAct() {
   const w = useWorkspace();
-  return (r: { owner?: string }) => w.role === "Analyst" && r.owner === w.me;
+  return (r: { owner?: string }) => w.role === "Partner" || !r.owner || r.owner === w.me;
 }
 
 const CHANNEL_TONE: Partial<Record<Channel, string>> = {

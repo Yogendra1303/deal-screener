@@ -143,9 +143,14 @@ export function calculateVCMetrics(
   const prevRevenue = prevRow?.revenue ?? null;
   const prevARR = prevRevenue != null ? prevRevenue * 12 : null;
 
-  const currentBurn = latestRow?.netBurn != null ? Math.abs(latestRow.netBurn) : null;
-  const currentCash = latestRow?.cash != null ? latestRow.cash : null;
-  const headcount = latestRow?.headcount ?? null;
+  const latestBurnRow = [...rows].reverse().find((r) => r.netBurn != null) ?? null;
+  const latestCashRow = [...rows].reverse().find((r) => r.cash != null) ?? null;
+  const latestHeadRow = [...rows].reverse().find((r) => r.headcount != null) ?? null;
+
+  const rawBurn = latestBurnRow?.netBurn ?? (record?.traction?.monthlyBurn?.amount ?? null);
+  const currentBurn = rawBurn != null ? Math.abs(rawBurn) : null;
+  const currentCash = latestCashRow?.cash ?? (record?.traction?.cash?.amount ?? null);
+  const headcount = latestHeadRow?.headcount ?? (record?.traction?.teamSize?.value ?? null);
 
   // 1. Burn Multiple: Net Burn / Net New ARR
   let burnMultipleVal: number | null = null;
@@ -234,11 +239,12 @@ export function calculateVCMetrics(
   let ruleExplanation = "Requires YoY revenue history to calculate Rule of 40.";
 
   if (rows.length >= 4 && latestRow && firstRow && firstRow.revenue && latestRow.revenue) {
-    const growthPct = ((latestRow.revenue - firstRow.revenue) / firstRow.revenue) * (12 / Math.max(1, rows.length - 1)) * 100;
+    const spanMonths = Math.max(1, rows.indexOf(latestRow) - rows.indexOf(firstRow));
+    const growthPct = ((latestRow.revenue - firstRow.revenue) / firstRow.revenue) * (12 / spanMonths) * 100;
     const marginPct = currentBurn && currentRevenue ? (-currentBurn / currentRevenue) * 100 : -20;
     ruleOf40Score = Math.round(growthPct + marginPct);
     passesRuleOf40 = ruleOf40Score >= 40;
-    ruleExplanation = `Rule of 40 score: ${ruleOf40Score}% (YoY Growth ${Math.round(growthPct)}% + FCF Margin ${Math.round(marginPct)}%). ${passesRuleOf40 ? "Exceeds elite 40% benchmark." : "Below 40% growth-margin balance."}`;
+    ruleExplanation = `Rule of 40 score: ${ruleOf40Score}% (Annualized Growth ${Math.round(growthPct)}% + FCF Margin ${Math.round(marginPct)}%). ${passesRuleOf40 ? "Exceeds elite 40% benchmark." : "Below 40% growth-margin balance."}`;
   }
 
   // 5. Implied Valuation & Target Ownership

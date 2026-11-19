@@ -186,7 +186,7 @@ export function FlowRecord({ id }: { id: string }) {
                   )}
                 </span>,
               ],
-              ["Implied ARR", <span key="b" className="font-mono">{arr ? fmtMoney(arr, "USD") : "—"}</span>],
+              ["Implied ARR", <span key="b" className="font-mono">{arr ? fmtMoney(arr, "USD") : "-"}</span>],
               ["MoM growth", <span key="c" className="font-mono">{t.monthlyGrowthPct.value != null ? `${t.monthlyGrowthPct.value}%` : "Not stated"}</span>],
               ["Runway", <span key="d" className="font-mono">{t.runwayMonths.value != null ? `${t.runwayMonths.value} months` : "Not stated"}</span>],
               ["Team size", <span key="e" className="font-mono">{t.teamSize.value ?? "Not stated"}</span>],
@@ -485,7 +485,7 @@ function HistoryResearch({ id, archive }: { id: string; archive: Archive }) {
           {r.marketSize.whatItCounts && (
             <p className="text-xs text-slate-600">
               Market: {r.marketSize.low != null ? `${r.marketSize.low.toLocaleString("en-US")}–` : ""}
-              {r.marketSize.high != null ? r.marketSize.high.toLocaleString("en-US") : "—"} {r.marketSize.currency} of {r.marketSize.whatItCounts}.
+              {r.marketSize.high != null ? r.marketSize.high.toLocaleString("en-US") : "-"} {r.marketSize.currency} of {r.marketSize.whatItCounts}.
             </p>
           )}
         </div>
@@ -550,11 +550,11 @@ function EvidenceTable({ a }: { a: Archive }) {
                         <span className="block font-sans text-[11px] text-slate-400">{x.otherSource}</span>
                       </>
                     ) : (
-                      <span className="font-sans text-[11px] text-slate-400">{l.why ?? "—"}</span>
+                      <span className="font-sans text-[11px] text-slate-400">{l.why ?? "-"}</span>
                     )}
                   </td>
                   <td className={cx("whitespace-nowrap px-3 py-2 text-right font-mono text-xs tabular-nums", l.ran && !l.passed ? "font-semibold text-red-700" : "text-slate-500")}>
-                    {l.ran && x.gap != null ? `${Math.round(x.gap * 100)}%` : "—"}
+                    {l.ran && x.gap != null ? `${Math.round(x.gap * 100)}%` : "-"}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2">
                     {!l.ran ? <Tag>Not run</Tag> : l.passed ? <Tag tone="clear">✓ Matches</Tag> : <Tag tone="alert">Flagged</Tag>}

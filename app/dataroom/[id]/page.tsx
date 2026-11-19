@@ -10,21 +10,25 @@ import { useLinks } from "@/components/links-store";
 import { usePortfolio } from "@/components/portfolio-store";
 import { AiText, ChannelChip, EmailSimulator, FileIt, MissingLine, unfile, useCanAct } from "@/components/room";
 import { Avatar } from "@/components/shell";
-import { Card, cx } from "@/components/ui";
+import { Card, DropdownSelect, cx } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace";
 import { FOLDERS, TO_FILE, folderName } from "@/lib/dataroom";
 import { fmtDay } from "@/lib/dates";
+import { ANALYSTS, PARTNER } from "@/lib/team";
 
 export default function CompanyRoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const w = useWorkspace();
   const links = useLinks();
+  const p = usePortfolio();
   const rows = useDataRoom();
   const canAct = useCanAct();
   const r = rows.find((x) => x.id === id);
   const [asking, setAsking] = useState(false);
   const [mailing, setMailing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const currentUserName = w.userName || w.me || PARTNER.name;
+  const ownerChoices = [...new Set([currentUserName, ...ANALYSTS.map((a) => a.name), PARTNER.name].filter(Boolean))];
 
   if (!links.ready) return <p className="text-sm text-slate-500">Loading…</p>;
   if (!r)
@@ -63,12 +67,29 @@ export default function CompanyRoomPage({ params }: { params: Promise<{ id: stri
               Founder: <span className="font-medium text-slate-900">{r.founder}</span> · {r.email}
             </span>
             <span className="flex items-center gap-1.5">
-              {r.owner ? (
+              <span className="text-xs text-slate-500">Owner:</span>
+              {w.role === "Partner" || (r.side === "pitch" && !r.owner) ? (
+                <DropdownSelect
+                  ariaLabel={`Assign owner for ${r.name}`}
+                  value={r.owner ?? ""}
+                  placeholder="Unassigned"
+                  onChange={(next) => {
+                    if (r.side === "pitch") links.claim(r.id, next);
+                    else p.setOwner(r.id, next);
+                  }}
+                  options={[
+                    ...(r.side === "pitch" ? [{ value: "", label: "Unassigned" }] : []),
+                    ...ownerChoices.map((n) => ({ value: n, label: n })),
+                  ]}
+                  size="xs"
+                  buttonClassName={!r.owner ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100/70" : undefined}
+                />
+              ) : r.owner ? (
                 <>
                   <Avatar name={r.owner} size="xs" /> {r.owner}
                 </>
               ) : (
-                <span className="font-medium text-amber-700">Nobody has picked it up</span>
+                <span className="font-medium text-amber-700">Unassigned</span>
               )}
             </span>
             <Link href={r.href} className="font-medium text-indigo-700 hover:text-indigo-900">
